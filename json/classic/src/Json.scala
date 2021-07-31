@@ -44,6 +44,11 @@ abstract sealed class Json extends Dynamic:
   inline def as[T](using conv: Conversion[Json, T]): T =
     conv(this)
 
+
+  /** Convenience conversion to a string representation. */
+  override final def toString(): java.lang.String =
+    Json.toString(this)
+
 end Json
 
 
@@ -141,6 +146,56 @@ object Json:
     def ++(other: Object): Object = Object(values ++ other.values)
 
   end Object
+
+  
+  /** Returns a human-readable name of the type of the json value. */
+  def typeName(v: Json): java.lang.String =
+    v match {
+      case Undefined => "undefined"
+      case Null => "null"
+      case True | False => "boolean"
+      case String(_) => "string"
+      case Number(_) => "number"
+      case Array(_) => "array"
+      case Object(_) => "object"
+    }
+
+
+  /**
+   * Creates a JSON array from a list (of possibly optional) values. 
+   * {{{Undefined}}} values are removed from the input. {{{Null}}} values
+   * remains as null liteterals.
+   */
+  def array(items: Json*): Array =
+    Array(items.filter(_ != Undefined))
+
+
+  /**
+   * Creates a new JSON object from a list of key-value pairs. Pairs with the
+   * {{{Undefined}}} values are ignored (not present in the output). The {{{Null}}}
+   * values are serialized as Json literals.
+   */
+  def make(pairs: (java.lang.String, Json)*): Object =
+    Object(pairs.filter(x => x._2 != Undefined).toMap)
+
+
+  /**
+   * Writes the JSON value into the target stream.
+   * @param value value to write. Could not be {{{Undefined}}}.
+   * @param stream output writer to put the value to.
+   * @throws IOException if an error happens.
+   * @throws JsonException if value is undefined.
+   */
+  def write(value: Json, stream: java.io.Writer): Unit = 
+    Serializer.write(value, stream)
+
+
+  /** Converts a JSON value into a string. */
+  def toString(value: Json): java.lang.String =
+    val sw = new java.io.StringWriter
+    write(value, sw)
+    sw.close()
+    sw.toString()
 
 
   /** Utilities for json number. */
