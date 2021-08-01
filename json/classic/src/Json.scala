@@ -115,7 +115,7 @@ object Json:
    */
   case class Array(elements: Seq[Json]) extends Json:
     if elements.contains(Undefined) then
-      throw new IllegalArgumentException("Json array could not contain Undefined elements")
+      throw IllegalArgumentException("Json array could not contain Undefined elements")
 
     override def apply(idx: Int): Json =
       if idx < 0 || idx >= elements.length then
@@ -137,7 +137,7 @@ object Json:
    */
   final case class Object(values: Map[java.lang.String, Json]) extends Json:
     if values.values.iterator.contains(Undefined) then
-      throw new IllegalArgumentException("Undefined values are not allowed in Json object")
+      throw IllegalArgumentException("Undefined values are not allowed in Json object")
 
     override def selectDynamic(name: java.lang.String): Json =
       values.getOrElse(name, Undefined)
@@ -192,10 +192,33 @@ object Json:
 
   /** Converts a JSON value into a string. */
   def toString(value: Json): java.lang.String =
-    val sw = new java.io.StringWriter
+    val sw = java.io.StringWriter()
     write(value, sw)
     sw.close()
     sw.toString()
+
+
+  /** Parses JSON from a reader. */
+  def parse(r: java.io.Reader): Json = 
+    Deserializer.parse(r)
+
+
+  /** Parses JSON from a string. */
+  def parse(str: java.lang.String): Json =
+    Deserializer.parse(new java.io.StringReader(str))
+
+
+  /** Parses JSON from an array of bytes (assuming UTF-8 encodig per RFC 8259) */
+  def parse(data: scala.Array[Byte]): Json =
+    Deserializer.parse(data)
+
+
+  /** 
+   * Parses a byte array automatically detecting JSON encoding.
+   * The RFC 8259 makes UTF-8 the only supported format thus the default read method change.
+   */
+  def parseRFC7158(data: scala.Array[Byte]): Json =
+    Deserializer.parseRFC7158(data)
 
 
   /** Utilities for json number. */
@@ -212,7 +235,7 @@ object Json:
     /** Pattern for the json number. */
     private val pat = 
       java.util.regex.Pattern.compile(
-        s"${patMaybeMinus}(${patInt})(${patFrac}?)(${patExp}?)"
+        s"${patMaybeMinus}(${patInt})(${patFrac})?(${patExp})?"
       )
 
 
@@ -223,7 +246,7 @@ object Json:
     private def validate(num: java.lang.String): Unit =
       if !pat.matcher(num).matches then
         /* Json parser explicitly raises JsonException, this one is always developer error so IAE. */
-        throw new IllegalArgumentException("Invalid JSON number value " + num)
+        throw IllegalArgumentException("Invalid JSON number value " + num)
 
   end Number
 

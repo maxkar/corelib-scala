@@ -4,7 +4,7 @@ package json.classic
 import java.io.Writer
 
 /** Serialization utilities. */
-private[classic] object Serializer {
+private object Serializer:
   /* Hexadecimal characters (for unicode encoding). */
   private val HEX_CHARS = "0123456789ABCDEF"
 
@@ -13,7 +13,7 @@ private[classic] object Serializer {
   def write(value: Json, stream: Writer): Unit =
     value match 
       case Json.Undefined => 
-        throw new Json.Exception("Could not write undefined value")
+        throw Json.Exception("Could not write undefined value")
       case Json.Null => 
         stream.write("null")
       case Json.True =>
@@ -92,4 +92,5 @@ private[classic] object Serializer {
   /** Converts an integer value into a correspondig hexadecimal digit. */
   private inline def toHexDigit(v: Int): Char =
     HEX_CHARS.charAt(v)
-}
+
+end Serializer
