@@ -11,6 +11,16 @@ val commonSettings = Seq(
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 
 
+val libFun = project.in(file("fun"))
+  .settings(commonSettings)
+  .settings(
+    name := "fun",
+    description :=
+      """Very general functional programming definitions.""",
+    libraryDependencies += scalatest
+  )
+
+
 val libJsonClassic = project.in(file("json/classic"))
   .settings(commonSettings)
   .settings(
@@ -22,6 +32,7 @@ val libJsonClassic = project.in(file("json/classic"))
     libraryDependencies += scalatest
   )
 
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -29,4 +40,4 @@ val root = project.in(file("."))
     description := 
       """An (opinionated) set of small modular (faceted) libraries for the most common tasks"""
   )
-  .aggregate(libJsonClassic)
+  .aggregate(libFun, libJsonClassic)
