@@ -5,7 +5,7 @@ val commonSettings = Seq(
   version := "0.0.1-SNAPSHOT",
   Compile / scalaSource := baseDirectory.value / "src",
   Test / scalaSource := baseDirectory.value / "test",
-  scalaVersion := "3.0.1"
+  scalaVersion := "3.1.0"
 )
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
