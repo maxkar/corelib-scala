@@ -1,6 +1,8 @@
 package io.github.maxkar
 package json.parser
 
+import fun.Monad
+
 /**
  * A flexible abstraction over an input stream for the parser.
  *
@@ -59,5 +61,76 @@ trait ParserInput[M[_]]:
    * @return result of applying the parser returned by the `select` function.
    */
   def lookAhead[T](selector: Char => M[T]): M[T]
+
+end ParserInput
+
+
+object ParserInput:
+
+  /**
+   * Enchiches the input by providing additional functions. This function
+   * is intended for quick prototyping. It is preferred to use inputs
+   * directly implementing the `ParserInput` trait.
+   *
+   * @tparam M input-output operation type.
+   * @param peer input to enchich.
+   * @param unexpectedEof handler for the "EOF" situation where it is not expected.
+   * @return reach input relying on the `peer` for basic operations.
+   */
+  def fromBasic[M[_]: Monad](peer: BasicInput[M], unexpectedEof: [T] => () => M[T]): ParserInput[M] =
+    new ParserInput[M]():
+      override def statefulScan[S](initialState: S, step: (CharSequence, S) => (ConsumerStatus, S)): M[S] =
+        peer.statefulScan(initialState, step)
+
+      override def skipWhitespaces(): M[Unit] =
+        statefulScan((), skipWhitespaceInput)
+
+
+      override def lookAhead[T](selector: Char => M[T]): M[T] =
+        peekNextChar().flatMap {
+          case None => unexpectedEof()
+          case Some(c) => selector(c)
+        }
+
+
+      /** Skips whitespaces from the input - state function. */
+      private def skipWhitespaceInput(input: CharSequence, state: Unit): (ConsumerStatus, Unit) =
+        var ptr = 0
+        while ptr < input.length && isWhitespace(input.charAt(ptr)) do
+          ptr += 1
+
+        val command =
+          if ptr == input.length
+          then ConsumerStatus.NeedMoreInput
+          else ConsumerStatus.Finished(ptr)
+        (command, ())
+      end skipWhitespaceInput
+
+
+      /** Checks if the character is a whitespace character. */
+      private def isWhitespace(chr: Character): Boolean =
+        chr match
+          case ' ' | '\t' | '\r' | '\n' => true
+          case _ => false
+
+
+      /**
+       * Looks up a next character.
+       * @return Some(char) if there is character and None if there is no more input.
+       */
+      private def peekNextChar(): M[Option[Char]] =
+        statefulScan(None, lookAtChar)
+
+
+      /**
+       * "Statefully" processes the input and returns a look-ahead character.
+       */
+      private def lookAtChar(input: CharSequence, state: Option[Char]): (ConsumerStatus, Option[Char]) =
+        if input.length == 0 then
+          (ConsumerStatus.NeedMoreInput, None)
+        else
+          (ConsumerStatus.Finished(0), Some(input.charAt(0)))
+
+    end new
 
 end ParserInput
