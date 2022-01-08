@@ -33,6 +33,18 @@ val libJsonClassic = project.in(file("json/classic"))
   )
 
 
+val libJsonParser = project.in(file("json/parser"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-parser",
+    description :=
+      """Generic JSON parser. Provides the syntactic rules for parsing
+      but abstracts from the rest of concepts like json model or input mechanism."""
+  ).dependsOn(
+    libFun
+  )
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -40,4 +52,4 @@ val root = project.in(file("."))
     description := 
       """An (opinionated) set of small modular (faceted) libraries for the most common tasks"""
   )
-  .aggregate(libFun, libJsonClassic)
+  .aggregate(libFun, libJsonClassic, libJsonParser)
