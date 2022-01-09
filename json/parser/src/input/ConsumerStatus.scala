@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser
+package json.parser.input
 
 /**
  * Status of processing the input sequence. Indicates how much input was

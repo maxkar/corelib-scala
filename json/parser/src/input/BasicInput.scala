@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser
+package json.parser.input
 
 /**
  * A simplest (minimal) input abstraction for the parser. It is good for
