@@ -48,8 +48,8 @@ private class NumberParser[M[_]: Monad, J](
     if newOffset == 0 then
       (input.ConsumerStatus.Finished(0), state)
     else
-      val (newPeerState, terminate) = jsonFactory.update(peerState, buffer.subSequence(0, newOffset))
-      val myNewState = if terminate then State.FactoryAbort else scanner.state
+      val (newPeerState, shouldContinue) = jsonFactory.update(peerState, buffer.subSequence(0, newOffset))
+      val myNewState = if shouldContinue then scanner.state else State.FactoryAbort
       val cmd =
         if newOffset < buffer.length then
           input.ConsumerStatus.Finished(newOffset)

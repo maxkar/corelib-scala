@@ -9,9 +9,11 @@ package json.parser.factory
  * @param trueFactory factory of the `true` value representation.
  * @param falseFactory factory of the `false` value representation.
  * @param nullFactory factory of the `null` value representation.
+ * @param numberFactory factory for numeric values.
  */
 final case class JsonFactory[M[_], J](
   trueFactory: TermFactory[M, J],
   falseFactory: TermFactory[M, J],
   nullFactory: TermFactory[M, J],
+  numberFactory: NumberFactory[M, J],
 )
