@@ -87,7 +87,7 @@ class StringParser[M[_]: Monad, J](
                 myState = State.Unicode0
                 '\u0000'
               case _ =>
-                return (input.ConsumerStatus.Finished(ptr), (State.BadInput, peerState))
+                return (input.ConsumerStatus.Finished(ptr), (State.EscapeStart, peerState))
             end match
 
           if escaped > 0 then

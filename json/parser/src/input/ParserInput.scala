@@ -148,7 +148,7 @@ object ParserInput:
         if input.length == 0 then
           (ConsumerStatus.NeedMoreInput, false)
         else
-          (ConsumerStatus.Finished(0), true)
+          (ConsumerStatus.Finished(1), true)
 
     end new
 

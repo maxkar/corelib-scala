@@ -178,7 +178,7 @@ object NumberParser:
     private def handleDecimal(offset: Int): Int =
       val newOffset = skipDigits(offset, State.InsideDecimalDigits)
 
-      if newOffset < buf.length && state == State.InsideDecimalDigits && isExponentIndicator(buf.charAt(newOffset + 1)) then
+      if newOffset < buf.length && state == State.InsideDecimalDigits && isExponentIndicator(buf.charAt(newOffset)) then
         state = State.AfterExpIndicator
         skipAfterExpIndicator(newOffset + 1)
       else

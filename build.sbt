@@ -25,7 +25,7 @@ val libJsonClassic = project.in(file("json/classic"))
   .settings(commonSettings)
   .settings(
     name := "json-classic",
-    description := 
+    description :=
       """Easy to use and lightweight json parsing/generation library.
       It provides javascript-like member access syntax and set of handy conversions.
       The library is Scala 3 version of lib-json library in Scala 2.""",
@@ -39,7 +39,8 @@ val libJsonParser = project.in(file("json/parser"))
     name := "json-parser",
     description :=
       """Generic JSON parser. Provides the syntactic rules for parsing
-      but abstracts from the rest of concepts like json model or input mechanism."""
+      but abstracts from the rest of concepts like json model or input mechanism.""",
+    libraryDependencies += scalatest
   ).dependsOn(
     libFun
   )
@@ -49,7 +50,7 @@ val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
     name := "corelib",
-    description := 
+    description :=
       """An (opinionated) set of small modular (faceted) libraries for the most common tasks"""
   )
   .aggregate(libFun, libJsonClassic, libJsonParser)
