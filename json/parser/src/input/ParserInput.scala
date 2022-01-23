@@ -62,6 +62,10 @@ trait ParserInput[M[_]]:
    */
   def lookAhead[T](selector: Char => M[T]): M[T]
 
+
+  /** Skips one input character. */
+  def skipChar(): M[Unit]
+
 end ParserInput
 
 
@@ -90,6 +94,13 @@ object ParserInput:
         peekNextChar().flatMap {
           case None => unexpectedEof()
           case Some(c) => selector(c)
+        }
+
+
+      override def skipChar(): M[Unit] =
+        statefulScan(false, skipOne).flatMap {
+          case true => Monad.pure(())
+          case false => unexpectedEof()
         }
 
 
@@ -130,6 +141,14 @@ object ParserInput:
           (ConsumerStatus.NeedMoreInput, None)
         else
           (ConsumerStatus.Finished(0), Some(input.charAt(0)))
+
+
+      /** "Statefully" skips one character. */
+      private def skipOne(input: CharSequence, state: Boolean): (ConsumerStatus, Boolean) =
+        if input.length == 0 then
+          (ConsumerStatus.NeedMoreInput, false)
+        else
+          (ConsumerStatus.Finished(0), true)
 
     end new
 

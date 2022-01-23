@@ -21,6 +21,29 @@ class StringParser[M[_]: Monad, J](
   /** State of the value scanning. */
   private type ScanState = (State, jsonFactory.State)
 
+
+  /** Starts parsing. */
+  def parse: M[J] =
+    for
+      peerState <- jsonFactory.begin
+      _ <- parserInput.skipChar()
+      (myState, newPeerState) <- parserInput.statefulScan((State.Normal, peerState), updateState)
+      res <-
+        myState match
+          case State.End | State.FactoryAbort => jsonFactory.end(peerState)
+          case State.Normal => jsonFactory.unterminatedString(newPeerState)
+          case State.EscapeStart => jsonFactory.badEscape(newPeerState)
+          case State.Unicode0 => jsonFactory.badUnicodeEscape(newPeerState)
+          case State.Unicode1(_, c0) => jsonFactory.badUnicodeEscape(newPeerState, c0)
+          case State.Unicode2(_, c0, c1) => jsonFactory.badUnicodeEscape(newPeerState, c0, c1)
+          case State.Unicode3(_, c0, c1, c2) => jsonFactory.badUnicodeEscape(newPeerState, c0, c1, c2)
+          case State.BadInput => jsonFactory.badCharacter(peerState)
+        end match
+    yield
+      res
+  end parse
+
+
   /** Scans the input and updates the state based on the provided characters. */
   private def updateState(buffer: CharSequence, state: ScanState): (input.ConsumerStatus, ScanState) =
     var ptr = 0

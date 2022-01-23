@@ -20,13 +20,13 @@ trait StringFactory[M[_], J]:
    *
    * This method is used for passing batch of "regular" string characters to the factory.
 
-   * @param state number state so far.
+   * @param state string state so far.
    * @param input next portion of characters.
    * @return pair of (<new state>, <should continue>). If the <should continue> is
-   *   set to false, the parser will abort number processing (regardless of its) internal
+   *   set to false, the parser will abort string processing (regardless of its) internal
    *   state and will invoke the `end` method. If <should continue> is true, the parser
    *   will act according to the input characters - it may invoke one of the `update` methods again passing
-   *   more characters belonging to the number, it may invoke `end` when the full number
+   *   more characters belonging to the string, it may invoke `end` when the full string
    *   was consumed from the input or it may invoke any of the `error` methods to indicate
    *   malformed input.
    */
@@ -39,14 +39,14 @@ trait StringFactory[M[_], J]:
    *
    * This method is used with (decoded) escape sequences.
    *
-   * @param state number state so far.
+   * @param state string state so far.
    * @param input next input character.
    * @param inputWidth width occupied by the character in the input (2 for simple escapes and 5 for unicode escapes).
    * @return pair of (<new state>, <should continue>). If the <should continue> is
-   *   set to false, the parser will abort number processing (regardless of its) internal
+   *   set to false, the parser will abort srnting processing (regardless of its) internal
    *   state and will invoke the `end` method. If <should continue> is true, the parser
    *   will act according to the input characters - it may invoke one of the `update` methods again passing
-   *   more characters belonging to the number, it may invoke `end` when the full number
+   *   more characters belonging to the string, it may invoke `end` when the full string
    *   was consumed from the input or it may invoke any of the `error` methods to indicate
    *   malformed input.
    */
@@ -54,7 +54,7 @@ trait StringFactory[M[_], J]:
 
   /**
    * Ends parsing of the string and returns its json representation.
-   * @param state state captured at the start of the term.
+   * @param state state updated throughout the string.
    */
   def end(state: State): M[J]
 
