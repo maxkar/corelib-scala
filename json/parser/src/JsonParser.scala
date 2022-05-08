@@ -31,6 +31,19 @@ class JsonParser[M[_]: Monad, J](
 
 
   /**
+   * Parses single value and raises an error if EOF is reached.
+   * @param onEof End-of-file handler.
+   */
+  def parseSingleValue(onEof: M[J]): M[J] =
+    for
+      value <- parseValue
+      _ <- parserInput.skipWhitespaces()
+      isEof <- parserInput.statefulScan(true, checkEof)
+      res <- if isEof then onEof else Monad.pure(value)
+    yield res
+
+
+  /**
    * Parses single JSON value. Stops after the value is parsed (the input may
    * contain more json values).
    */
@@ -146,5 +159,14 @@ class JsonParser[M[_]: Monad, J](
         else
           jsonFactory.objectFactory.end(newState)
     yield res
+
+
+
+  /** Checks if there is some input in the stream or not. */
+  private def checkEof(buffer: CharSequence, isEof: Boolean): (input.ConsumerStatus, Boolean) =
+    if !buffer.isEmpty then
+      (input.ConsumerStatus.NeedMoreInput, isEof)
+    else
+      (input.ConsumerStatus.Finished(0), false)
 
 end JsonParser
