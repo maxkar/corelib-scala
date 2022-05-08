@@ -49,10 +49,10 @@ object Operation:
       extends BasicOperation[E, T]
 
   /** Skip one input character. */
-  case object SkipChar extends BasicOperation[Nothing, Nothing]
+  case object SkipChar extends BasicOperation[Nothing, Unit]
 
   /** Skips whitespaces from the input. */
-  case object SkipWhitespaces extends BasicOperation[Nothing, Nothing]
+  case object SkipWhitespaces extends BasicOperation[Nothing, Unit]
 
 
   /* MISCELANEOUS OPERATIONS. */
