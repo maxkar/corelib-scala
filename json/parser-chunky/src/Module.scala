@@ -55,10 +55,15 @@ class Module[E] private(eof: SourceLocation => E):
   /* CUSTOM OPERATIONS. */
 
   /** Aborts the execution with the given error. */
-  def abort(error: E): Parser[E] = Operation.Error[E](error)
+  def abort(error: E): Parser[Nothing] = Operation.Error[E](error)
 
   /** Retrieves the current location in the input stream. */
   val location: Parser[SourceLocation] = Operation.Location
+
+
+  /** Starts the processing and returns the input consumer. */
+  def start[T](parser: Parser[T]): InputProcessor[E, T] =
+    new InputProcessor[E, T](parser, eof, parserMonad)
 
 end Module
 

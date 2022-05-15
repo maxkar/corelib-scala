@@ -132,6 +132,7 @@ final class QualitativeParsingTest extends org.scalatest.funsuite.AnyFunSuite:
     parseFail("//", 0)
   }
 
+
   /** Checks that parsing is successfull .*/
   private def parseSucc(input: String): Unit =
     withClue(input) {

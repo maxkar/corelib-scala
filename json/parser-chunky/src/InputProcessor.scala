@@ -3,7 +3,6 @@ package json.parser.chunky
 
 import fun.Monad
 import json.parser.input.ConsumerStatus
-import javax.xml.transform.Source
 
 /**
  * Processor/consumer of the input stream. It tracks parsing state internally
@@ -26,12 +25,12 @@ import javax.xml.transform.Source
  * @tparam T result type.
  * @param state current state of the processor.
  * @param unexpectedEof handler for the unexpected end of file.
- * @param bindM bind function, used for expression re-write.
+ * @param md implementation of the monad typeclass for the "Parser" type associated with this processor.
  */
 final class InputProcessor[E, T] private[chunky](
       private var state: Operation[E, T],
       unexpectedEof: SourceLocation => E,
-      bindM: [S, R] => (Operation[E, S], S => Operation[E, R]) => Operation[E, R]):
+      md: Monad[({type P[R] = Operation[E, R]})#P]):
 
   /** Character offset in the (global) input. */
   private var inputOffset = 0
@@ -132,7 +131,7 @@ final class InputProcessor[E, T] private[chunky](
              * head and maybe complex tail. The rewrite should be a simple at-most-one rewrite
              * (there could be at most one "flatMap" at the start of the base).
              */
-            state = bindM(a, fn)
+            state = md.bind(a, fn)
           case Right(v) =>
             /* Now we should be calculating Right-hand side of the flat map. */
             state = fn(v)

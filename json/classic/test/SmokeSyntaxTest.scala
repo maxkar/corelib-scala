@@ -54,7 +54,7 @@ final class SmokeSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
 
   test("Conversions works with maps") {
     val base = Map(
-      "a" -> Map("x" -> 1, "y" -> 2), 
+      "a" -> Map("x" -> 1, "y" -> 2),
       "b" -> Map("x" -> 4, "y" -> 5)
     )
 

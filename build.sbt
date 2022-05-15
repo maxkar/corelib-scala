@@ -1,5 +1,7 @@
 Global / semanticdbEnabled := true
 
+Global / cancelable := true
+
 val commonSettings = Seq(
   organization := "io.github.maxkar",
   version := "0.0.1-SNAPSHOT",
