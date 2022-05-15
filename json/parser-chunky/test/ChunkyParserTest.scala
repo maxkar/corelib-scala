@@ -138,6 +138,13 @@ final class ChunkyParserTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
 
+  test("Failure location is correctly tracked across multiple lines") {
+    parseFail("[\ntrue,\n]?", SourceLocation(8, 3, 1))
+    parseFail("[\ntrue\n", SourceLocation(7, 3, 1))
+    parseFail("[\ntrue\n  ", SourceLocation(9, 3, 3))
+  }
+
+
   test("Deep nesting does not cause any issues") {
     val depth = 100000
     /* Deeply-nested string .*/
