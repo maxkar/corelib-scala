@@ -96,6 +96,26 @@ final class InputProcessor[E, T] private[chunky](
   end process
 
 
+  /** Finishes the processing (handles "end of input condition") and returns processing result. */
+  def end(): Either[E, T] =
+    while true do
+      state match
+        case Operation.Error(e) =>
+          return Left(e)
+        case Operation.FlatMap(base, fn) =>
+          endBasicOperation(base) match
+            case Left(e) =>
+              return Left(e)
+            case Right(v) =>
+              state = fn(v)
+          end match
+        case other: Operation.BasicOperation[E, T] =>
+          return endBasicOperation(other)
+      end match
+    throw new Error("Unreacheable code reached")
+  end end
+
+
   /** Processes one "reduction" of the monadic formula. */
   private def doOneReduction(): Unit =
     state match
@@ -168,7 +188,7 @@ final class InputProcessor[E, T] private[chunky](
         Right(())
 
       case Operation.Location =>
-        Right(SourceLocation(inputOffset, currentLine, currentColumn))
+        Right(currentLocation())
 
       case Operation.SkipWhitespaces =>
         while chunkOffset < chunk.length do
@@ -194,6 +214,23 @@ final class InputProcessor[E, T] private[chunky](
 
         Left(Operation.SkipWhitespaces)
     end match
+  end doBasicOperation
+
+
+  /** Ends a basic operation that does not cause other processing. */
+  private def endBasicOperation[T](op: Operation.BasicOperation[E, T]): Either[E, T] =
+    op match
+      case Operation.Pure(r) =>
+        return Right(r)
+      case Operation.StatefulScan(r, _) =>
+        return Right(r)
+      case Operation.LookAhead(_) | Operation.SkipChar =>
+        return Left(unexpectedEof(currentLocation()))
+      case Operation.SkipWhitespaces =>
+        Right(())
+      case Operation.Location =>
+        return Right(currentLocation())
+  end endBasicOperation
 
 
   /** Moves the position "in a single line" (i.e. no linefeed characters). */
@@ -215,5 +252,10 @@ final class InputProcessor[E, T] private[chunky](
     currentLine += 1
     currentColumn = 1
   end moveToNextLine
+
+
+  /** Returns current location in the file. */
+  private def currentLocation(): SourceLocation =
+    SourceLocation(inputOffset, currentLine, currentColumn)
 
 end InputProcessor
