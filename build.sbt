@@ -62,6 +62,18 @@ val libJsonParserChunky = project.in(file("json/parser-chunky"))
     libJsonParser
   )
 
+
+val libJsonAttributedModel = project.in(file("json/attributed/model"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-attributed-model",
+    description :=
+      """Json object model with support for non-json model attributes.
+         | The attributes may define "auxilary" information like source location where element
+         | was defined.
+         |""".stripMargin
+  )
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -69,4 +81,8 @@ val root = project.in(file("."))
     description :=
       """An (opinionated) set of small modular (faceted) libraries for the most common tasks"""
   )
-  .aggregate(libFun, libJsonClassic, libJsonParser, libJsonParserChunky)
+  .aggregate(
+    libFun,
+    libJsonClassic, libJsonParser, libJsonParserChunky,
+    libJsonAttributedModel
+  )
