@@ -74,6 +74,15 @@ val libJsonAttributedModel = project.in(file("json/attributed/model"))
          |""".stripMargin
   )
 
+val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-attributed-factory",
+    description := "Json model factories for use with the parsers provided by the platform."
+  )
+  .dependsOn(libJsonParser, libJsonAttributedModel)
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -84,5 +93,5 @@ val root = project.in(file("."))
   .aggregate(
     libFun,
     libJsonClassic, libJsonParser, libJsonParserChunky,
-    libJsonAttributedModel
+    libJsonAttributedModel, libJsonAttributedFactory
   )
