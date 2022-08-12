@@ -78,9 +78,10 @@ val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
   .settings(commonSettings)
   .settings(
     name := "json-attributed-factory",
-    description := "Json model factories for use with the parsers provided by the platform."
+    description := "Json model factories for use with the parsers provided by the platform.",
+    libraryDependencies += scalatest
   )
-  .dependsOn(libJsonParser, libJsonAttributedModel)
+  .dependsOn(libJsonParser, libJsonAttributedModel, libJsonParserChunky % "test")
 
 
 val root = project.in(file("."))
