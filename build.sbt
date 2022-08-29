@@ -63,6 +63,14 @@ val libJsonParserChunky = project.in(file("json/parser-chunky"))
   )
 
 
+val libJsonWriter = project.in(file("json/writer"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-writer",
+    description := "Utilities for writing/outputting json (both ugly and pretty print)"
+  )
+
+
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
   .settings(commonSettings)
   .settings(
@@ -73,6 +81,7 @@ val libJsonAttributedModel = project.in(file("json/attributed/model"))
          | was defined.
          |""".stripMargin
   )
+
 
 val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
   .settings(commonSettings)
@@ -94,5 +103,6 @@ val root = project.in(file("."))
   .aggregate(
     libFun,
     libJsonClassic, libJsonParser, libJsonParserChunky,
+    libJsonWriter,
     libJsonAttributedModel, libJsonAttributedFactory
   )
