@@ -2,8 +2,9 @@ package io.github.maxkar
 package json.writer
 
 /** Writer of the string value. */
-private class StringWriter(value: CharSequence) extends Iterator[CharSequence]:
-  import StringWriter._
+private class StringOutputIterator(value: CharSequence) extends OutputIterator:
+  import StringOutputIterator._
+  import OutputIterator.NextResult
 
   /**
    * Current offset in the stream. Special values are:
@@ -18,14 +19,10 @@ private class StringWriter(value: CharSequence) extends Iterator[CharSequence]:
    * (where a "regular" subsequence is detected) and the terminator is immediately stored
    * to avoid second round of parsing.
    */
-  private var special: String = null
+  private var special: NextResult = null
 
 
-  def hasNext: Boolean =
-    position < -1
-
-
-  override def next(): CharSequence =
+  override def next(): NextResult =
     if position == -1 then
       position = 0
       return QUOTE
@@ -44,14 +41,14 @@ private class StringWriter(value: CharSequence) extends Iterator[CharSequence]:
     scanRegularChars()
 
     if start < position then
-      return value.subSequence(start, position)
-
-    return special
+      return NextResult.Result(value.subSequence(start, position))
+    else
+      return special
   end next
 
 
   /** Takes the "special" return value that represents escaped character inside the string. */
-  private def getSpecial(): CharSequence =
+  private def getSpecial(): NextResult =
     val ret = special
     special = null
     position += 1
@@ -71,25 +68,25 @@ private class StringWriter(value: CharSequence) extends Iterator[CharSequence]:
     while position < value.length() do
       value.charAt(position) match
         case '"' =>
-          special = "\\\""
+          special = ESC_QUOTE
           return
         case '\\' =>
-          special = "\\\\"
+          special = ESC_RSLASH
           return
         case '\b' =>
-          special = "\\b"
+          special = ESC_BELL
           return
         case '\f' =>
-          special = "\\f"
+          special = ESC_FF
           return
         case '\n' =>
-          special = "\\n"
+          special = ESC_LF
           return
         case '\r' =>
-          special = "\\r"
+          special = ESC_CR
           return
         case '\t' =>
-          special = "\\t"
+          special = ESC_TAB
           return
         case c if c < 0x0020 =>
           special = LOWER_UNICODE(c)
@@ -100,24 +97,46 @@ private class StringWriter(value: CharSequence) extends Iterator[CharSequence]:
     end while
   end scanRegularChars
 
-end StringWriter
+end StringOutputIterator
 
 
-private object StringWriter:
+private object StringOutputIterator:
+  import OutputIterator.NextResult
 
   /** Quote character (outer quote for the string). */
-  val QUOTE = "\""
+  val QUOTE = OutputIterator.NextResult.Result("\"")
+
+  /** Quote escape character. */
+  val ESC_QUOTE = NextResult.Result("\\\"")
+
+  /** Reverse slash escape character. */
+  val ESC_RSLASH = NextResult.Result("\\\\")
+
+  /** Bell (\b) escape character. */
+  val ESC_BELL = NextResult.Result("\\b")
+
+  /** Form feed escape character. */
+  val ESC_FF = NextResult.Result("\\f")
+
+  /** Carriage return escape character. */
+  val ESC_CR = NextResult.Result("\\r")
+
+  /** Line feed escape character. */
+  val ESC_LF = NextResult.Result("\\n")
+
+  /** Tab escape character. */
+  val ESC_TAB = NextResult.Result("\\t")
 
   /** Hex digits. */
   private val HEX_DIGITS = "0123456789ABCDEF"
 
 
   /** Lower unicode range. JSON requires these to be always escaped.  */
-  val LOWER_UNICODE: Array[String] =
+  val LOWER_UNICODE: Array[OutputIterator.NextResult] =
     (
-      HEX_DIGITS.map(v => s"000${v}") ++
-      HEX_DIGITS.map(v => s"001${v}")
+      HEX_DIGITS.map(v => OutputIterator.NextResult.Result("000${v}")) ++
+      HEX_DIGITS.map(v => OutputIterator.NextResult.Result("001${v}"))
     ).toArray
 
 
-end StringWriter
+end StringOutputIterator
