@@ -18,7 +18,11 @@ private class OutputIteratorAdapter(
 
   override def hasNext: Boolean = nextResult != null
 
-  override def next(): CharSequence = nextResult
+  override def next(): CharSequence =
+    val res = nextResult
+    nextResult = advance()
+    res
+  end next
 
 
   /**

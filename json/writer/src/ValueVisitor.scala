@@ -33,6 +33,12 @@ trait ValueVisitor[T, R]:
 
 
   /**
+   * The value is null literal.
+   */
+  def nullValue(): R
+
+
+  /**
    * The value is JSON array.
    * @param iter iterator over values in the array.
    */

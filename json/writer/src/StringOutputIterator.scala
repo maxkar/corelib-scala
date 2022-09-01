@@ -31,11 +31,11 @@ private class StringOutputIterator(value: CharSequence) extends OutputIterator:
       position = -2
       return QUOTE
 
+    if position < -1 then
+      return NextResult.End
+
     if special != null then
       return getSpecial()
-
-    if position < -1 then
-      throw new IllegalStateException("Calling next when hasNext is false")
 
     val start = position
     scanRegularChars()
@@ -43,7 +43,7 @@ private class StringOutputIterator(value: CharSequence) extends OutputIterator:
     if start < position then
       return NextResult.Result(value.subSequence(start, position))
     else
-      return special
+      return getSpecial()
   end next
 
 

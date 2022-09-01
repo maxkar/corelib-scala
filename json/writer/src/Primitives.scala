@@ -16,6 +16,11 @@ private object Primitives:
     OutputIterator.single(repr)
 
 
+  /** Creates a writer for null literal. */
+  def nullValue(): OutputIterator =
+    OutputIterator.single("null")
+
+
   /** Creates a writer for a string. */
   def string(value: CharSequence): OutputIterator = new StringOutputIterator(value)
 end Primitives

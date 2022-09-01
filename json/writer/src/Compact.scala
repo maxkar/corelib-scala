@@ -6,8 +6,8 @@ package json.writer
  */
 private object Compact:
   /** Creates a compact output iterator for the given writeable value. */
-  def apply[T](value: T)(using writeable: Writeable[T]): OutputIterator =
-    object visitor extends ValueVisitor[T, OutputIterator]:
+  def apply[T <: B, B](value: T)(using writeable: Writeable[B]): OutputIterator =
+    object visitor extends ValueVisitor[B, OutputIterator]:
 
       override def boolean(v: Boolean): OutputIterator =
         Primitives.bool(v)
@@ -18,7 +18,10 @@ private object Compact:
       override def string(v: CharSequence): OutputIterator =
         Primitives.string(v)
 
-      override def array(iter: Iterator[T]): OutputIterator =
+      override def nullValue(): OutputIterator =
+        Primitives.nullValue()
+
+      override def array(iter: Iterator[B]): OutputIterator =
         IntercalateIterator(
           base = iter.map(writeable.decodeElement(_, this)),
           prefix = Iterator.single("["),
@@ -26,7 +29,7 @@ private object Compact:
           suffix = Iterator.single("]")
         )
 
-      override def unorderedObject(iter: Iterator[(String, T)]): OutputIterator =
+      override def unorderedObject(iter: Iterator[(String, B)]): OutputIterator =
         IntercalateIterator(
           base = iter.map((k, v) => ObjectEntry(k, ":", writeable.decodeElement(v, this))),
           prefix = Iterator.single("{"),

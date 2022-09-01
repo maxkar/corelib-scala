@@ -7,6 +7,7 @@ val commonSettings = Seq(
   version := "0.0.1-SNAPSHOT",
   Compile / scalaSource := baseDirectory.value / "src",
   Test / scalaSource := baseDirectory.value / "test",
+  Test / fork := true,
   scalaVersion := "3.1.0"
 )
 
@@ -93,6 +94,15 @@ val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
   .dependsOn(libJsonParser, libJsonAttributedModel, libJsonParserChunky % "test")
 
 
+val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-attributed-writer",
+    description := "Bindings to the JSON writer for the attributed model.",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonWriter, libJsonAttributedModel)
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -104,5 +114,5 @@ val root = project.in(file("."))
     libFun,
     libJsonClassic, libJsonParser, libJsonParserChunky,
     libJsonWriter,
-    libJsonAttributedModel, libJsonAttributedFactory
+    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
   )
