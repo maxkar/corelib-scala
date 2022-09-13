@@ -8,7 +8,8 @@ val commonSettings = Seq(
   Compile / scalaSource := baseDirectory.value / "src",
   Test / scalaSource := baseDirectory.value / "test",
   Test / fork := true,
-  scalaVersion := "3.1.0"
+  scalaVersion := "3.1.0",
+  testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"

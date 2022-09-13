@@ -67,4 +67,20 @@ private object OutputIterator:
       end next
     end new
   end single
+
+
+  /**
+   * Returns an iterator that returs the sequence.
+   */
+  def sequence(data: Seq[CharSequence]): OutputIterator =
+    val base = data.iterator
+    new OutputIterator:
+      override def next(): NextResult =
+        if base.hasNext then
+          NextResult.Result(base.next())
+        else
+          NextResult.End
+      end next
+    end new
+  end sequence
 end OutputIterator

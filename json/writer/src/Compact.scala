@@ -39,5 +39,6 @@ private object Compact:
     end visitor
 
     writeable.decodeElement(value, visitor)
+  end apply
 
 end Compact
