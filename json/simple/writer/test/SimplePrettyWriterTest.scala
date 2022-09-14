@@ -1,29 +1,29 @@
 package io.github.maxkar
-package json.attr.writer
+package json.simple.writer
 
 import json.writer.Output
-import json.attr.Json
+import json.simple.Json
 
 import scala.collection.SeqMap
 
 
 /**
- * Test for the writer (both json writer and writer for the attributed binding).
+ * Test for the writer (both json writer and writer for the simple binding).
  */
 final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuite:
   test("Primitives are serialized as needed") {
     given options: Output.PrettyPrintOptions = Output.PrettyPrintOptions("  ", false)
 
-    checkPretty("null", Json.Null(()))
-    checkPretty("true", Json.True(43))
-    checkPretty("false", Json.False("This is an attribute"))
-    checkPretty("42", Json.Number("42", this))
-    checkPretty("-42.35E+5", Json.Number("-42.35E+5", this))
-    checkPretty("\"Hello, World\"", Json.String("Hello, World", this))
-    checkPretty("\"Hello, \\\"World\\\"\"", Json.String("Hello, \"World\"", this))
-    checkPretty("\"Hello, \\\\\"", Json.String("Hello, \\", this))
-    checkPretty("\"\\r\\r\"", Json.String("\r\r", this))
-    checkPretty("\"\\t\\r\\n\\b\\\\\\\"\"", Json.String("\t\r\n\b\\\"", this))
+    checkPretty("null", Json.Null)
+    checkPretty("true", Json.True)
+    checkPretty("false", Json.False)
+    checkPretty("42", Json.Number("42"))
+    checkPretty("-42.35E+5", Json.Number("-42.35E+5"))
+    checkPretty("\"Hello, World\"", Json.String("Hello, World"))
+    checkPretty("\"Hello, \\\"World\\\"\"", Json.String("Hello, \"World\""))
+    checkPretty("\"Hello, \\\\\"", Json.String("Hello, \\"))
+    checkPretty("\"\\r\\r\"", Json.String("\r\r"))
+    checkPretty("\"\\t\\r\\n\\b\\\\\\\"\"", Json.String("\t\r\n\b\\\""))
   }
 
 
@@ -37,27 +37,27 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
     checkPretty(
       """[
       |]""".stripMargin,
-      Json.Array(Seq(), 45)
+      Json.Array(Seq())
     )
     checkPretty(
       """[
         |  true
         |]""".stripMargin,
-      Json.Array(Seq(Json.True("yes")), 45)
+      Json.Array(Seq(Json.True))
     )
     checkPretty(
       """[
          |  true,
          |  false
          |]""".stripMargin,
-      Json.Array(Seq(Json.True("yes"),Json.False("no")), 45)
+      Json.Array(Seq(Json.True, Json.False))
     )
     checkPretty(
       """[
         |  [
         |  ]
         |]""".stripMargin,
-      Json.Array(Seq(Json.Array(Seq(), 88)), 45)
+      Json.Array(Seq(Json.Array(Seq())))
     )
   }
 
@@ -73,18 +73,15 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
     checkPretty(
       """{
         |}""".stripMargin,
-      Json.Object(Map(), "Test")
+      Json.Object(Map())
     )
     checkPretty(
       """{
          |  "a": true
          |}""".stripMargin,
-      Json.Object(
-        SeqMap(
-          "a" -> Json.ObjectEntry("a", this, Json.True("This is A"))
-        ),
-        "Test"
-      )
+      Json.Object(SeqMap(
+        "a" -> Json.True
+      ))
     )
     checkPretty(
       """{
@@ -93,20 +90,17 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
          |  "\n": {
          |  }
          |}""".stripMargin,
-      Json.Object(
-        SeqMap(
-          "a" -> Json.ObjectEntry("a", this, Json.True("This is A")),
-          "b" -> Json.ObjectEntry("b", this, Json.Number("42", "This is B")),
-          "\n" -> Json.ObjectEntry("\n", this, Json.Object(Map(), 75)),
-        ),
-        "Test"
-      )
+      Json.Object(SeqMap(
+        "a" -> Json.True,
+        "b" -> Json.Number("42"),
+        "\n" -> Json.Object(Map()),
+      ))
     )
   }
 
 
   test("Array wrapping options - root") {
-    val arr1 = Json.Array(Seq.empty, ())
+    val arr1 = Json.Array(Seq.empty)
 
     checkPretty("""[]""", arr1)(using Output.PrettyPrintOptions(emptyArrayWrap = Output.noWrapEmpty))
     checkPretty("[]", arr1)(using Output.PrettyPrintOptions(emptyArrayWrap = Output.wrapEmptyInsideObjects))
@@ -115,8 +109,8 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
 
 
   test("Array wrapping options - nested") {
-    val arr1 = Json.Array(Seq.empty, ())
-    val arr2 = Json.Array(Seq(arr1, arr1), ())
+    val arr1 = Json.Array(Seq.empty)
+    val arr2 = Json.Array(Seq(arr1, arr1))
 
     checkPretty(
       """[
@@ -166,7 +160,7 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
 
 
   test("Object wrapping options - root") {
-    val obj = Json.Object(Map.empty, ())
+    val obj = Json.Object(Map.empty)
 
     checkPretty("{}", obj)(using Output.PrettyPrintOptions(emptyObjectWrap = Output.noWrapEmpty))
     checkPretty("{}", obj)(using Output.PrettyPrintOptions(emptyObjectWrap = Output.wrapEmptyInsideObjects))
@@ -176,15 +170,11 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
 
   test("Object wrapping options - nested") {
 
-    val obj1 = Json.Object(Map.empty, ())
-    val obj2 =
-      Json.Object(
-        SeqMap(
-          "a" -> Json.ObjectEntry("a", (), obj1),
-          "b" -> Json.ObjectEntry("b", (), obj1),
-        ),
-        ()
-      )
+    val obj1 = Json.Object(Map.empty)
+    val obj2 = Json.Object(SeqMap(
+      "a" -> obj1,
+      "b" -> obj1,
+    ))
 
     checkPretty(
       """{
@@ -234,17 +224,10 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
 
 
   test("Objects inside arrays") {
+    val obj1 = Json.Object(Map.empty)
+    val obj2 = Json.Object(SeqMap("a" -> obj1))
 
-    val obj1 = Json.Object(Map.empty, {})
-    val obj2 =
-      Json.Object(
-        SeqMap(
-          "a" -> Json.ObjectEntry("a", (), obj1),
-        ),
-        ()
-      )
-
-    val arr = Json.Array(Seq(obj1, obj2), ())
+    val arr = Json.Array(Seq(obj1, obj2))
 
     checkPretty(
       """[
@@ -317,17 +300,12 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
 
 
   test("Arrays inside objects.") {
-    val arr1 = Json.Array(Seq.empty, ())
-    val arr2 = Json.Array(Seq(arr1), ())
-    val obj =
-      Json.Object(
-        SeqMap(
-          "a" -> Json.ObjectEntry("a", (), arr1),
-          "b" -> Json.ObjectEntry("b", (), arr2),
-        ),
-        ()
-      )
-
+    val arr1 = Json.Array(Seq.empty)
+    val arr2 = Json.Array(Seq(arr1))
+    val obj = Json.Object(SeqMap(
+      "a" -> arr1,
+      "b" -> arr2,
+    ))
 
     checkPretty(
       """{
@@ -400,17 +378,13 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
 
 
   test("Object sorting options") {
-    val arr1 = Json.Array(Seq.empty, ())
-    val arr2 = Json.Array(Seq(arr1), ())
+    val arr1 = Json.Array(Seq.empty)
+    val arr2 = Json.Array(Seq(arr1))
 
-    val obj =
-      Json.Object(
-        SeqMap(
-          "b" -> Json.ObjectEntry("b", (), arr2),
-          "a" -> Json.ObjectEntry("a", (), arr1),
-        ),
-        ()
-      )
+    val obj = Json.Object(SeqMap(
+      "b" -> arr2,
+      "a" -> arr1,
+    ))
 
 
     checkPretty(
@@ -452,7 +426,7 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
    * @param expected expected output.
    * @param v json to serialize.
    */
-  private def checkPretty[T](expected: String, v: Json[T])(using opts: Output.PrettyPrintOptions): Unit =
+  private def checkPretty(expected: String, v: Json)(using opts: Output.PrettyPrintOptions): Unit =
     val writer = Output.pretty(v, opts)
     val result = writer.mkString("")
     assert(expected === result)
