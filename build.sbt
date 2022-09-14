@@ -7,7 +7,9 @@ val commonSettings = Seq(
   version := "0.0.1-SNAPSHOT",
   Compile / scalaSource := baseDirectory.value / "src",
   Test / scalaSource := baseDirectory.value / "test",
-  scalaVersion := "3.1.0"
+  Test / fork := true,
+  scalaVersion := "3.1.0",
+  testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
@@ -63,6 +65,14 @@ val libJsonParserChunky = project.in(file("json/parser-chunky"))
   )
 
 
+val libJsonWriter = project.in(file("json/writer"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-writer",
+    description := "Utilities for writing/outputting json (both ugly and pretty print)"
+  )
+
+
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
   .settings(commonSettings)
   .settings(
@@ -74,6 +84,7 @@ val libJsonAttributedModel = project.in(file("json/attributed/model"))
          |""".stripMargin
   )
 
+
 val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
   .settings(commonSettings)
   .settings(
@@ -83,6 +94,15 @@ val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
   )
   .dependsOn(libJsonParser, libJsonAttributedModel, libJsonParserChunky % "test")
 
+
+val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-attributed-writer",
+    description := "Bindings to the JSON writer for the attributed model.",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonWriter, libJsonAttributedModel)
 
 val root = project.in(file("."))
   .settings(commonSettings)
@@ -94,5 +114,6 @@ val root = project.in(file("."))
   .aggregate(
     libFun,
     libJsonClassic, libJsonParser, libJsonParserChunky,
-    libJsonAttributedModel, libJsonAttributedFactory
+    libJsonWriter,
+    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
   )
