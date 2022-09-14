@@ -73,6 +73,34 @@ val libJsonWriter = project.in(file("json/writer"))
   )
 
 
+val libJsonSimpleModel = project.in(file("json/simple/model"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-simple-model",
+    description :=
+      """Very basic json object model that is "just a tree"."""
+  )
+
+val libJsonSimpleFactory = project.in(file("json/simple/factory"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-simple-factory",
+    description := "Json model factories for use with the parsers provided by the platform.",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonParser, libJsonSimpleModel, libJsonParserChunky % "test")
+
+
+val libJsonSimpleWriter = project.in(file("json/simple/writer"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-simple-writer",
+    description := "Bindings to the JSON writer for the simple model.",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonWriter, libJsonSimpleModel)
+
+
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
   .settings(commonSettings)
   .settings(
@@ -115,5 +143,6 @@ val root = project.in(file("."))
     libFun,
     libJsonClassic, libJsonParser, libJsonParserChunky,
     libJsonWriter,
+    libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
   )

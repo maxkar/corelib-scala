@@ -192,7 +192,7 @@ final class Factory[M[+_]: Monad, L, A](
       location.flatMap { endLocation =>
         val startStr = locationToString(state._1)
         val endStr = locationToString(endLocation)
-        val msg = s"${endStr}: Illegal digits after leading 0 in the numeric literal ${startStr}"
+        val msg = s"${endStr}: Illegal digits after leading 0 in the numeric literal started at ${startStr}"
         fail(msg)
       }
   end numberFactory
