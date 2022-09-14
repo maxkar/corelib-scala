@@ -34,10 +34,31 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
         emptyArrayWrap = Output.alwaysWrapEmpty
       )
 
-    checkPretty("[\n]", Json.Array(Seq(), 45))
-    checkPretty("[\n  true\n]", Json.Array(Seq(Json.True("yes")), 45))
-    checkPretty("[\n  true,\n  false\n]", Json.Array(Seq(Json.True("yes"),Json.False("no")), 45))
-    checkPretty("[\n  [\n  ]\n]", Json.Array(Seq(Json.Array(Seq(), 88)), 45))
+    checkPretty(
+      """[
+      |]""".stripMargin,
+      Json.Array(Seq(), 45)
+    )
+    checkPretty(
+      """[
+        |  true
+        |]""".stripMargin,
+      Json.Array(Seq(Json.True("yes")), 45)
+    )
+    checkPretty(
+      """[
+         |  true,
+         |  false
+         |]""".stripMargin,
+      Json.Array(Seq(Json.True("yes"),Json.False("no")), 45)
+    )
+    checkPretty(
+      """[
+        |  [
+        |  ]
+        |]""".stripMargin,
+      Json.Array(Seq(Json.Array(Seq(), 88)), 45)
+    )
   }
 
 
@@ -49,9 +70,15 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
       )
 
 
-    checkPretty("{\n}", Json.Object(Map(), "Test"))
     checkPretty(
-      "{\n  \"a\": true\n}",
+      """{
+        |}""".stripMargin,
+      Json.Object(Map(), "Test")
+    )
+    checkPretty(
+      """{
+         |  "a": true
+         |}""".stripMargin,
       Json.Object(
         SeqMap(
           "a" -> Json.ObjectEntry("a", this, Json.True("This is A"))
@@ -60,7 +87,12 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
       )
     )
     checkPretty(
-      "{\n  \"a\": true,\n  \"b\": 42,\n  \"\\n\": {\n  }\n}",
+      """{
+         |  "a": true,
+         |  "b": 42,
+         |  "\n": {
+         |  }
+         |}""".stripMargin,
       Json.Object(
         SeqMap(
           "a" -> Json.ObjectEntry("a", this, Json.True("This is A")),
@@ -76,7 +108,7 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
   test("Array wrapping options - root") {
     val arr1 = Json.Array(Seq.empty, ())
 
-    checkPretty("[]", arr1)(using Output.PrettyPrintOptions(emptyArrayWrap = Output.noWrapEmpty))
+    checkPretty("""[]""", arr1)(using Output.PrettyPrintOptions(emptyArrayWrap = Output.noWrapEmpty))
     checkPretty("[]", arr1)(using Output.PrettyPrintOptions(emptyArrayWrap = Output.wrapEmptyInsideObjects))
     checkPretty("[\n]", arr1)(using Output.PrettyPrintOptions(emptyArrayWrap = Output.alwaysWrapEmpty))
   }
@@ -86,19 +118,47 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
     val arr1 = Json.Array(Seq.empty, ())
     val arr2 = Json.Array(Seq(arr1, arr1), ())
 
-    checkPretty("[\n    [],\n    []\n]", arr2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """[
+        |    [],
+        |    []
+        |]""".stripMargin,
+      arr2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyArrayWrap = Output.noWrapEmpty
     ))
-    checkPretty("[\n    [],\n    []\n]", arr2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """[
+        |    [],
+        |    []
+        |]""".stripMargin,
+      arr2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyArrayWrap = Output.wrapEmptyInsideObjects
     ))
-    checkPretty("[\n    [\n    ],\n    [\n    ]\n]", arr2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """[
+        |    [
+        |    ],
+        |    [
+        |    ]
+        |]""".stripMargin,
+      arr2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyArrayWrap = Output.alwaysWrapEmpty
     ))
-    checkPretty("[\n    [\n    ],\n    [\n    ]\n]", arr2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """[
+        |    [
+        |    ],
+        |    [
+        |    ]
+        |]""".stripMargin,
+      arr2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyArrayWrap = Output.WrapEmptyOptions(wrapInObjects = false, wrapInArrays = true, wrapAtTopLevel = true)
     ))
@@ -126,22 +186,264 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
         ()
       )
 
-    checkPretty("{\n    \"a\": {},\n    \"b\": {}\n}", obj2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """{
+        |    "a": {},
+        |    "b": {}
+        |}""".stripMargin,
+      obj2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyObjectWrap = Output.noWrapEmpty
     ))
-    checkPretty("{\n    \"a\": {},\n    \"b\": {}\n}", obj2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """{
+        |    "a": {},
+        |    "b": {}
+        |}""".stripMargin,
+      obj2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyObjectWrap = Output.WrapEmptyOptions(wrapInObjects = false, wrapInArrays = true, wrapAtTopLevel = true)
     ))
-    checkPretty("{\n    \"a\": {\n    },\n    \"b\": {\n    }\n}", obj2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """{
+        |    "a": {
+        |    },
+        |    "b": {
+        |    }
+        |}""".stripMargin,
+      obj2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyObjectWrap = Output.wrapEmptyInsideObjects
     ))
-    checkPretty("{\n    \"a\": {\n    },\n    \"b\": {\n    }\n}", obj2)(using Output.PrettyPrintOptions(
+    checkPretty(
+      """{
+        |    "a": {
+        |    },
+        |    "b": {
+        |    }
+        |}""".stripMargin,
+      obj2
+    )(using Output.PrettyPrintOptions(
       "    ",
       emptyObjectWrap = Output.alwaysWrapEmpty
     ))
+  }
+
+
+  test("Objects inside arrays") {
+
+    val obj1 = Json.Object(Map.empty, {})
+    val obj2 =
+      Json.Object(
+        SeqMap(
+          "a" -> Json.ObjectEntry("a", (), obj1),
+        ),
+        ()
+      )
+
+    val arr = Json.Array(Seq(obj1, obj2), ())
+
+    checkPretty(
+      """[
+        |  {},
+        |  {
+        |    "a": {}
+        |  }
+        |]""".stripMargin,
+      arr
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyObjectWrap = Output.noWrapEmpty,
+      )
+    )
+
+    checkPretty(
+      """[
+        |  {},
+        |  {
+        |    "a": {
+        |    }
+        |  }
+        |]""".stripMargin,
+      arr
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyObjectWrap = Output.wrapEmptyInsideObjects,
+      )
+    )
+
+    checkPretty(
+      """[
+        |  {
+        |  },
+        |  {
+        |    "a": {
+        |    }
+        |  }
+        |]""".stripMargin,
+      arr
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyObjectWrap = Output.alwaysWrapEmpty,
+      )
+    )
+
+    checkPretty(
+      """[
+        |  {
+        |  },
+        |  {
+        |    "a": {}
+        |  }
+        |]""".stripMargin,
+      arr
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyObjectWrap = Output.WrapEmptyOptions(
+          wrapInObjects = false,
+          wrapInArrays = true,
+          wrapAtTopLevel = false,
+        ),
+      )
+    )
+  }
+
+
+  test("Arrays inside objects.") {
+    val arr1 = Json.Array(Seq.empty, ())
+    val arr2 = Json.Array(Seq(arr1), ())
+    val obj =
+      Json.Object(
+        SeqMap(
+          "a" -> Json.ObjectEntry("a", (), arr1),
+          "b" -> Json.ObjectEntry("b", (), arr2),
+        ),
+        ()
+      )
+
+
+    checkPretty(
+      """{
+        |  "a": [],
+        |  "b": [
+        |    []
+        |  ]
+        |}""".stripMargin,
+      obj
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyArrayWrap = Output.noWrapEmpty,
+      )
+    )
+
+    checkPretty(
+      """{
+        |  "a": [
+        |  ],
+        |  "b": [
+        |    []
+        |  ]
+        |}""".stripMargin,
+      obj
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyArrayWrap = Output.wrapEmptyInsideObjects,
+      )
+    )
+
+    checkPretty(
+      """{
+        |  "a": [
+        |  ],
+        |  "b": [
+        |    [
+        |    ]
+        |  ]
+        |}""".stripMargin,
+      obj
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyArrayWrap = Output.alwaysWrapEmpty,
+      )
+    )
+
+    checkPretty(
+      """{
+        |  "a": [],
+        |  "b": [
+        |    [
+        |    ]
+        |  ]
+        |}""".stripMargin,
+      obj
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        emptyArrayWrap = Output.WrapEmptyOptions(
+          wrapAtTopLevel = false,
+          wrapInObjects = false,
+          wrapInArrays = true,
+        ),
+      )
+    )
+  }
+
+
+  test("Object sorting options") {
+    val arr1 = Json.Array(Seq.empty, ())
+    val arr2 = Json.Array(Seq(arr1), ())
+
+    val obj =
+      Json.Object(
+        SeqMap(
+          "b" -> Json.ObjectEntry("b", (), arr2),
+          "a" -> Json.ObjectEntry("a", (), arr1),
+        ),
+        ()
+      )
+
+
+    checkPretty(
+      """{
+        |  "b": [
+        |    []
+        |  ],
+        |  "a": []
+        |}""".stripMargin,
+      obj
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        sortObjectKeys = false,
+        emptyArrayWrap = Output.noWrapEmpty,
+      )
+    )
+
+    checkPretty(
+      """{
+        |  "a": [],
+        |  "b": [
+        |    []
+        |  ]
+        |}""".stripMargin,
+      obj
+    )(
+      using Output.PrettyPrintOptions(
+        "  ",
+        sortObjectKeys = true,
+        emptyArrayWrap = Output.noWrapEmpty,
+      )
+    )
   }
 
   /**
