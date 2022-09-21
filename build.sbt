@@ -73,6 +73,21 @@ val libJsonWriter = project.in(file("json/writer"))
   )
 
 
+val libJsonQuery = project.in(file("json/query"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-query",
+    description :=
+        """Json navigation and query library. It provides an ability to navigate abstract DOM and
+          | capture paths during that navigation. The paths may later be used to provide some good context
+          | (for example, in error messages).
+          |
+          |The library only defines generic tools (queries and query integration interfaces), the actual
+          | integration with Json Model is responsibility of that particular model.""".stripMargin,
+    libraryDependencies += scalatest
+  )
+
+
 val libJsonSimpleModel = project.in(file("json/simple/model"))
   .settings(commonSettings)
   .settings(
@@ -141,8 +156,8 @@ val root = project.in(file("."))
   )
   .aggregate(
     libFun,
-    libJsonClassic, libJsonParser, libJsonParserChunky,
-    libJsonWriter,
+    libJsonClassic, libJsonParser, libJsonParserChunky, libJsonWriter,
+    libJsonQuery,
     libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
   )
