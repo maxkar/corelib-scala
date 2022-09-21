@@ -51,6 +51,12 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
 
+  test("Unicode chars are encoded as required") {
+    checkCompact("\"\\u0001\"", Json.String("\u0001"))
+    checkCompact("\"\\u001A\"", Json.String("\u001A"))
+  }
+
+
   /**
    * Checks that the json serialization provides expected result.
    *
@@ -63,5 +69,3 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(expected === result)
   end checkCompact
 end AttributedWriterTest
-
-
