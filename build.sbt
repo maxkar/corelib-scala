@@ -116,6 +116,16 @@ val libJsonSimpleWriter = project.in(file("json/simple/writer"))
   .dependsOn(libJsonWriter, libJsonSimpleModel)
 
 
+val libJsonSimpleQuery = project.in(file("json/simple/query"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-simple-query",
+    description := "Query integration for the simple JSON",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonSimpleModel, libJsonQuery)
+
+
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
   .settings(commonSettings)
   .settings(
@@ -158,6 +168,6 @@ val root = project.in(file("."))
     libFun,
     libJsonClassic, libJsonParser, libJsonParserChunky, libJsonWriter,
     libJsonQuery,
-    libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter,
+    libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
   )
