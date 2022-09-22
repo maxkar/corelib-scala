@@ -43,6 +43,16 @@ abstract sealed class Path:
   /** Checks if this path is non-empty. */
   def nonEmpty: Boolean = this != Empty
 
+  /**
+   * Returns an iterator over steps of this path.
+   */
+  def stepIterator: Iterator[Step] =
+    this match
+      case Empty => Iterator.empty
+      case NonEmpty(steps) => steps.iterator
+    end match
+  end stepIterator
+
 end Path
 
 
