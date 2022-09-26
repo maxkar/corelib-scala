@@ -265,7 +265,7 @@ final class Factory[M[+_]: Monad, L, A](
             fail(msg)
           case None =>
             val objAttrs = makeAttrs(state._1, endLocation)
-            val elems = state._2.mapValues {
+            val elems = state._2.view.mapValues {
               /* Unfortunately, only one level of untupling works automatically. */
               case ((key, start, end), v) => Json.ObjectEntry(key, makeAttrs(start, end), v)
             }

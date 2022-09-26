@@ -1,6 +1,8 @@
 package io.github.maxkar
 package json.query
 
+import scala.language.implicitConversions
+
 final class PathTest extends org.scalatest.funsuite.AnyFunSuite:
   test("Basic path equalities and properties hold") {
     assert(Path.empty === Path.empty)

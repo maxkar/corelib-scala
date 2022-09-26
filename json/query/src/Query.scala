@@ -3,6 +3,8 @@ package json.query
 
 import scala.language.dynamics
 
+import scala.language.implicitConversions
+
 /**
  * A query over some object that has json-like navigation (i.e.
  * property and index access).

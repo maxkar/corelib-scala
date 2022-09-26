@@ -9,6 +9,8 @@ import fun.Collect
 import fun.Monad
 import io.github.maxkar.json.simple.query.ConvertibleBy.Identity
 
+import scala.language.implicitConversions
+
 
 /**
  * Automatic derivation of the conversion from definitions for M (error encoding) and
@@ -126,7 +128,7 @@ given mapIdConversion[T](
       mapConv: Conversion[Query[Json], Map[String, Query[Json]]])
     : Conversion[Query[Json], Map[String, T]] with
   override def apply(v: Query[Json]): Map[String, T] =
-    mapConv(v).mapValues(eltConv).toMap
+    mapConv(v).view.mapValues(eltConv).toMap
 end mapIdConversion
 
 /**

@@ -2,7 +2,6 @@ package io.github.maxkar
 package json.simple.query
 
 import json.query.Query
-import json.query.Path
 import json.simple.Json
 
 import json.simple.query.given
