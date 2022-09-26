@@ -123,7 +123,7 @@ val libJsonSimpleQuery = project.in(file("json/simple/query"))
     description := "Query integration for the simple JSON",
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonSimpleModel, libJsonQuery)
+  .dependsOn(libJsonSimpleModel, libJsonQuery, libFun)
 
 
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
