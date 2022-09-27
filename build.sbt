@@ -158,6 +158,20 @@ val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
   )
   .dependsOn(libJsonWriter, libJsonAttributedModel)
 
+
+val libJsonAttributedQuery = project.in(file("json/attributed/query"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-attributed-query",
+    description := "Query integration for the attributed JSON",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(
+    libJsonAttributedModel, libJsonQuery, libFun,
+    libJsonAttributedFactory % Test, libJsonParserChunky % Test
+  )
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -170,5 +184,5 @@ val root = project.in(file("."))
     libJsonClassic, libJsonParser, libJsonParserChunky, libJsonWriter,
     libJsonQuery,
     libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
-    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
+    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
   )

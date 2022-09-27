@@ -1,16 +1,16 @@
 package io.github.maxkar
-package json.simple.query.defaultConversions
+package json.attr.query.defaultConversions
 
-import json.simple.Json
+import json.attr.Json
 
 /**
  * Conversion from JSON to boolean value.
  */
-given jsonToBoolean: Function[Json, Either[String, Boolean]] with
-  override def apply(v: Json): Either[String, Boolean] =
+given jsonToBoolean[A]: Function[Json[A], Either[String, Boolean]] with
+  override def apply(v: Json[A]): Either[String, Boolean] =
     v match
-      case Json.True => Right(true)
-      case Json.False => Right(false)
+      case Json.True(_) => Right(true)
+      case Json.False(_) => Right(false)
       case other => Left(s"Can't convert ${Json.typeName(other)} to boolean")
     end match
   end apply
@@ -20,10 +20,10 @@ end jsonToBoolean
 /**
  * Conversion from JSON to string value.
  */
-given jsonToString: Function[Json, Either[String, String]] with
-  override def apply(v: Json): Either[String, String] =
+given jsonToString[A]: Function[Json[A], Either[String, String]] with
+  override def apply(v: Json[A]): Either[String, String] =
     v match
-      case Json.String(v) => Right(v)
+      case Json.String(v, _) => Right(v)
       case other => Left(s"Can't convert ${Json.typeName(other)} to string")
     end match
   end apply
@@ -33,10 +33,10 @@ end jsonToString
 /**
  * Conversion from JSON to int value.
  */
-given jsonToInt: Function[Json, Either[String, Int]] with
-  override def apply(v: Json): Either[String, Int] =
+given jsonToInt[A]: Function[Json[A], Either[String, Int]] with
+  override def apply(v: Json[A]): Either[String, Int] =
     v match
-      case Json.Number(v) =>
+      case Json.Number(v, _) =>
         try
           Right(Integer.parseInt(v))
         catch
@@ -52,10 +52,10 @@ end jsonToInt
 /**
  * Conversion from JSON to long value.
  */
-given jsonToLong: Function[Json, Either[String, Long]] with
-  override def apply(v: Json): Either[String, Long] =
+given jsonToLong[A]: Function[Json[A], Either[String, Long]] with
+  override def apply(v: Json[A]): Either[String, Long] =
     v match
-      case Json.Number(v) =>
+      case Json.Number(v, _) =>
         try
           Right(java.lang.Long.parseLong(v))
         catch
@@ -71,10 +71,10 @@ end jsonToLong
 /**
  * Conversion from JSON to float value.
  */
-given jsonToFloat: Function[Json, Either[String, Float]] with
-  override def apply(v: Json): Either[String, Float] =
+given jsonToFloat[A]: Function[Json[A], Either[String, Float]] with
+  override def apply(v: Json[A]): Either[String, Float] =
     v match
-      case Json.Number(v) =>
+      case Json.Number(v, _) =>
         try
           Right(java.lang.Float.parseFloat(v))
         catch
@@ -90,10 +90,10 @@ end jsonToFloat
 /**
  * Conversion from JSON to double value.
  */
-given jsonToDouble: Function[Json, Either[String, Double]] with
-  override def apply(v: Json): Either[String, Double] =
+given jsonToDouble[A]: Function[Json[A], Either[String, Double]] with
+  override def apply(v: Json[A]): Either[String, Double] =
     v match
-      case Json.Number(v) =>
+      case Json.Number(v, _) =>
         try
           Right(java.lang.Double.parseDouble(v))
         catch
@@ -109,10 +109,10 @@ end jsonToDouble
 /**
  * Conversion from JSON to BigDecimal.
  */
-given jsonToBigInt: Function[Json, Either[String, BigInt]] with
-  override def apply(v: Json): Either[String, BigInt] =
+given jsonToBigInt[A]: Function[Json[A], Either[String, BigInt]] with
+  override def apply(v: Json[A]): Either[String, BigInt] =
     v match
-      case Json.Number(v) =>
+      case Json.Number(v, _) =>
         try
           Right(BigInt(v))
         catch
@@ -128,10 +128,10 @@ end jsonToBigInt
 /**
  * Conversion from JSON to BigDecimal.
  */
-given jsonToBigDecimal: Function[Json, Either[String, BigDecimal]] with
-  override def apply(v: Json): Either[String, BigDecimal] =
+given jsonToBigDecimal[A]: Function[Json[A], Either[String, BigDecimal]] with
+  override def apply(v: Json[A]): Either[String, BigDecimal] =
     v match
-      case Json.Number(v) =>
+      case Json.Number(v, _) =>
         try
           Right(BigDecimal(v))
         catch
@@ -148,6 +148,6 @@ end jsonToBigDecimal
  * Noop conversion. Could be used to derive JSON value or optional JSON value
  * from a query.
  */
-given noopConversion: Function[Json, Either[String, Json]] with
-  override def apply(v: Json): Either[String, Json] = Right(v)
+given noopConversion[A]: Function[Json[A], Either[String, Json[A]]] with
+  override def apply(v: Json[A]): Either[String, Json[A]] = Right(v)
 end noopConversion
