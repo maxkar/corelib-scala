@@ -8,7 +8,8 @@ val commonSettings = Seq(
   Compile / scalaSource := baseDirectory.value / "src",
   Test / scalaSource := baseDirectory.value / "test",
   Test / fork := true,
-  scalaVersion := "3.1.0",
+  scalaVersion := "3.2.0",
+  scalacOptions ++= Seq("-feature", "-deprecation"),
   testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
@@ -73,6 +74,21 @@ val libJsonWriter = project.in(file("json/writer"))
   )
 
 
+val libJsonQuery = project.in(file("json/query"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-query",
+    description :=
+        """Json navigation and query library. It provides an ability to navigate abstract DOM and
+          | capture paths during that navigation. The paths may later be used to provide some good context
+          | (for example, in error messages).
+          |
+          |The library only defines generic tools (queries and query integration interfaces), the actual
+          | integration with Json Model is responsibility of that particular model.""".stripMargin,
+    libraryDependencies += scalatest
+  )
+
+
 val libJsonSimpleModel = project.in(file("json/simple/model"))
   .settings(commonSettings)
   .settings(
@@ -99,6 +115,16 @@ val libJsonSimpleWriter = project.in(file("json/simple/writer"))
     libraryDependencies += scalatest
   )
   .dependsOn(libJsonWriter, libJsonSimpleModel)
+
+
+val libJsonSimpleQuery = project.in(file("json/simple/query"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-simple-query",
+    description := "Query integration for the simple JSON",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonSimpleModel, libJsonQuery, libFun)
 
 
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
@@ -132,6 +158,20 @@ val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
   )
   .dependsOn(libJsonWriter, libJsonAttributedModel)
 
+
+val libJsonAttributedQuery = project.in(file("json/attributed/query"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-attributed-query",
+    description := "Query integration for the attributed JSON",
+    libraryDependencies += scalatest
+  )
+  .dependsOn(
+    libJsonAttributedModel, libJsonQuery, libFun,
+    libJsonAttributedFactory % Test, libJsonParserChunky % Test
+  )
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -141,8 +181,8 @@ val root = project.in(file("."))
   )
   .aggregate(
     libFun,
-    libJsonClassic, libJsonParser, libJsonParserChunky,
-    libJsonWriter,
-    libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter,
-    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter
+    libJsonClassic, libJsonParser, libJsonParserChunky, libJsonWriter,
+    libJsonQuery,
+    libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
+    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
   )

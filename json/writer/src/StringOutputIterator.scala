@@ -134,8 +134,8 @@ private object StringOutputIterator:
   /** Lower unicode range. JSON requires these to be always escaped.  */
   val LOWER_UNICODE: Array[OutputIterator.NextResult] =
     (
-      HEX_DIGITS.map(v => OutputIterator.NextResult.Result("000${v}")) ++
-      HEX_DIGITS.map(v => OutputIterator.NextResult.Result("001${v}"))
+      HEX_DIGITS.map(v => OutputIterator.NextResult.Result(s"\\u000${v}")) ++
+      HEX_DIGITS.map(v => OutputIterator.NextResult.Result(s"\\u001${v}"))
     ).toArray
 
 

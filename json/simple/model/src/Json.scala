@@ -20,3 +20,20 @@ enum Json:
   /** Json Object. */
   case Object(elements: Map[java.lang.String, Json])
 end Json
+
+
+object Json:
+  /**
+   * Retruns simple name of the json type (i.e. boolean, number, etc...).
+   */
+  def typeName(v: Json): java.lang.String =
+    v match
+      case Json.Null => "null"
+      case Json.True | Json.False => "boolean"
+      case Json.Number(_) => "number"
+      case Json.String(_) => "string"
+      case Json.Object(_) => "object"
+      case Json.Array(_) => "array"
+    end match
+  end typeName
+end Json

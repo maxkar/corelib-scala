@@ -108,4 +108,18 @@ object Json:
       Object(elements.view.mapValues(_.mapAttributes(fn)).toMap, fn(attrs))
   end Object
 
+
+  /**
+   * Returns simple name of the JSON type.
+   */
+  def typeName(v: Json[_]): java.lang.String =
+    v match
+      case Json.Null(_) => "null"
+      case Json.True(_) | Json.False(_) => "boolean"
+      case Json.String(_, _) => "string"
+      case Json.Number(_, _) => "number"
+      case Json.Array(_, _) => "array"
+      case Json.Object(_, _) => "object"
+    end match
+  end typeName
 end Json
