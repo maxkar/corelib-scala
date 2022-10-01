@@ -51,6 +51,19 @@ val libJsonParser = project.in(file("json/parser"))
   )
 
 
+val libJsonParser2 = project.in(file("json/parser2"))
+  .settings(commonSettings)
+  .settings(
+    name := "json-parser2",
+    description :=
+      """Generic JSON parser (second version). Provides the syntactic rules for parsing
+      but abstracts from the rest of concepts like json model or input mechanism.""",
+    libraryDependencies += scalatest
+  ).dependsOn(
+    libFun
+  )
+
+
 val libJsonParserChunky = project.in(file("json/parser-chunky"))
   .settings(commonSettings)
   .settings(
@@ -181,8 +194,9 @@ val root = project.in(file("."))
   )
   .aggregate(
     libFun,
-    libJsonClassic, libJsonParser, libJsonParserChunky, libJsonWriter,
-    libJsonQuery,
+    libJsonClassic,
+    libJsonParser, libJsonParser2, libJsonParserChunky,
+    libJsonWriter, libJsonQuery,
     libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
   )
