@@ -40,7 +40,6 @@ trait CharacterStream[M[_]]:
    */
   def peekChar(): M[Char]
 
-
   /**
    * Attempts to look at the next `minLength` characters from the input stream. The
    * call may return less that `minLength` characters only if these are the very
