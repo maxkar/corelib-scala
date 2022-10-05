@@ -478,7 +478,7 @@ object Numbers:
       if nextState == null then
         Monad.pure(buffer.toString)
       else
-        readAllImpl(stream, buffer, state)
+        readAllImpl(stream, buffer, nextState)
     }
 
 
@@ -592,7 +592,7 @@ object Numbers:
     override def continue[M[_]: Monad: Errors](
           stream: CharacterStream[M]
         ): M[(CharSequence, ParsingContinuation)] =
-      stream.peek(1) flatMap { lookAhead =>
+      stream.peek(3) flatMap { lookAhead =>
         if lookAhead.length() <= 0 then
           Monad.pure(("", null))
         else
@@ -670,18 +670,20 @@ object Numbers:
     end continueFrom
   end MaybeDecimalPartParser
 
+
   /** Parser for decimal digits and the rest of the input. */
   private object IntegerDigitsParser extends ParsingContinuation:
     override def continue[M[_]: Monad: Errors](
           stream: CharacterStream[M]
         ): M[(CharSequence, ParsingContinuation)] =
-      stream.peek(1) flatMap { lookAhead =>
+      stream.peek(3) flatMap { lookAhead =>
         if lookAhead.length() <= 0 then
           Monad.pure(("", null))
         else
           continueFrom(stream, lookAhead, 0)
       }
     end continue
+
 
     /**
      * Continues parsing from the given position in the look-ahead stream.
@@ -695,7 +697,7 @@ object Numbers:
       val nonDigit = Numbers.skipDigits(lookAhead, offset)
 
       if nonDigit >= lookAhead.length() then
-        stream.consume(nonDigit) map { chars => (chars, DecimalDigitsParser)}
+        stream.consume(nonDigit) map { chars => (chars, IntegerDigitsParser)}
       else
         MaybeDecimalPartParser.continueFrom(stream, lookAhead, nonDigit)
     end continueFrom

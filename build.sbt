@@ -58,7 +58,7 @@ val libJsonParser2 = project.in(file("json/parser2"))
     description :=
       """Generic JSON parser (second version). Provides the syntactic rules for parsing
       but abstracts from the rest of concepts like json model or input mechanism.""",
-    libraryDependencies += scalatest
+    libraryDependencies += scalatest,
   ).dependsOn(
     libFun
   )
