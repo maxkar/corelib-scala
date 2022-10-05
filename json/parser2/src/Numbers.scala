@@ -306,7 +306,7 @@ object Numbers:
   /**
    * Reads an optional indicator of the exponential part.
    */
-  def readOptionalExponentSeparator[M[_]: Monad](
+  def readOptionalExponentIndicator[M[_]: Monad](
         stream: CharacterStream[M]
       ) : M[Option[Char]] =
     stream.peek(1) flatMap { lookAhead =>
@@ -315,7 +315,7 @@ object Numbers:
       else
         Monad.pure(None)
     }
-  end readOptionalExponentSeparator
+  end readOptionalExponentIndicator
 
 
   /**
@@ -334,7 +334,7 @@ object Numbers:
       ) : M[Char] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() > 0 && isExponentIndicator(lookAhead.charAt(0)) then
-        stream.skip(1) map { rd => '.' }
+        stream.consume(1) map { rd => rd.charAt(0) }
       else
         Monad.pure(0)
     }

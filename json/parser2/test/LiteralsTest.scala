@@ -37,6 +37,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
     input.SimpleStringStream.forAllLookAheadSizes[Identity]("greeting") { stream =>
       try
         Literals.readLiteral("greeter", stream)
+        fail("Exception expected")
       catch
         case BadLiteral("greeter", "greetin") => ()
         case other => throw other
