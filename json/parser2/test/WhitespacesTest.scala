@@ -11,6 +11,7 @@ final class WhitespacesTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(2 === Whitespaces.countWhitespaces(" \tTest"))
   }
 
+
   test("Next works as expected") {
     val str1 = input.SimpleStringStream("  Hello, world", 5)
     assert(Whitespaces.next(str1).toString() === "  ")

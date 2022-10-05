@@ -100,7 +100,7 @@ final class NumberScanner:
       state = State.AfterLeading0
       afterLeading0(chars, start + 1)
     else if Numbers.isDigit(chars.charAt(start)) then
-      state = State.InsideDecimalDigits
+      state = State.InsideIntegerDigits
       insideIntegerDigits(chars, start)
     else
       result = Result.MissingIntegerDigits
@@ -214,8 +214,11 @@ final class NumberScanner:
 
   /** Processes exponent digits. */
   private def insideExpDigits(chars: CharSequence, start: Int): Int =
-    Numbers.skipDigits(chars, start)
-
+    val ret = Numbers.skipDigits(chars, start)
+    if ret < chars.length() then
+      result = Result.Success
+    ret
+  end insideExpDigits
 
 
 end NumberScanner
