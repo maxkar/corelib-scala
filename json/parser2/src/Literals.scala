@@ -20,6 +20,16 @@ object Literals:
   end Errors
 
 
+  /** Representation of the `true` literal. */
+  val TRUE = "true"
+
+  /** Representation of the `false` literal. */
+  val FALSE = "false"
+
+  /** Representation of the `null` literal. */
+  val NULL = "null"
+
+
   /**
    * Compares string (expected literal) and actual literal in the stream.
    * @param literal expected literal.
@@ -68,4 +78,18 @@ object Literals:
     }
   end readLiteral
 
+
+  /** Reads the "true" literal from the stream. */
+  inline def readTrue[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+    readLiteral(TRUE, stream)
+
+
+  /** Reads the "false" literal from the stream. */
+  inline def readFalse[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+    readLiteral(FALSE, stream)
+
+
+  /** Reads the "null" literal from the stream. */
+  inline def readNull[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+    readLiteral(NULL, stream)
 end Literals
