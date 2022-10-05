@@ -48,6 +48,25 @@ object Whitespaces:
 
 
   /**
+   * Parses a next portion of whitespaces and returns flag indicating if it was the
+   * final part of the input. This may be used to optimize happy-path scenario where all
+   * whitespaces fits the buffer and could be read in one go.
+   * @return pair of the next input portion and `hasMore` flag.
+   */
+  def parse[M[_]: Monad](stream: CharacterStream[M]): M[(CharSequence, Boolean)] =
+    stream.peek(1) flatMap { lookAhead =>
+      val wsCharCount = countWhitespaces(lookAhead)
+      if wsCharCount == 0 then
+        Monad.pure(("", false))
+      else
+        val mayHaveMore = wsCharCount >= lookAhead.length()
+        stream.consume(wsCharCount) map { chars => (chars, mayHaveMore)}
+      end if
+    }
+  end parse
+
+
+  /**
    * Skips all whitespace characters in the input stream.
    */
   def skipAll[M[_]: Monad](stream: CharacterStream[M]): M[Unit] =

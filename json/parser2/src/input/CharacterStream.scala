@@ -36,11 +36,6 @@ package json.parser.input
  */
 trait CharacterStream[M[_]]:
   /**
-   * Returns next character to be read from the stream.
-   */
-  def peekChar(): M[Char]
-
-  /**
    * Attempts to look at the next `minLength` characters from the input stream. The
    * call may return less that `minLength` characters only if these are the very
    * last characters before end of file. Otherwise it should return at least `minLength`

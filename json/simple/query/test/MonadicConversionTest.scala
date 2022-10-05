@@ -83,12 +83,12 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
 
   /** Parse inner object in a cool way. */
   def parseInner(q: Query[Json]): Md[Inner] =
-    Inner.apply ≻ q
+    Inner.apply ≻≻ q
 
 
   /** Parse outer dto in a cool way. */
   def parseDto(q: Query[Json]): Md[Dto] =
-    Dto.apply.curried ≻
+    Dto.apply.curried ≻≻
       q.x ≻
       q.y ≻
       q.z ≻
