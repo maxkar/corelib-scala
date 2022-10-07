@@ -18,27 +18,6 @@ import fun.Applicative
  * `isExponentIndicator`, `isExponentSign`, `isDigit`) may be used by implementations
  * doing their own state management
  *
- * ## Partial Reads
- *
- * The `readXXX` sections may be used by clients reading number "section by section" (i.e.
- * internally separating digits, exponent, etc...).
- * Number sequences should be parsed in the following way:
- *
- * ```
- *   var buf = readIntegerDigitsStart() // or other readXXXStart
- *   var next = readNextDigits()
- *   while next != null do
- *     buf += next
- *     next = readNextDigits()
- * ```
- *
- * ## State-assisted parsing
- *
- * The client manages all input/output and deals with number representation. The utility helps the client
- * in identifying number boundaries and potential errors in the number representation. The parsing
- * is initiated by the `scanner()` call and is described by the `NumberScanner` class.
- *
- *
  * ## Continuation-based parsing
  *
  * The client starts parsing by invoking `startParsing` and receives porting of the input and the next
@@ -83,11 +62,6 @@ import fun.Applicative
  * The number representation could be read completely in one call to `readAll`.
  */
 object Numbers:
-  /** Synonym for the NumberScanner type for convenient access. */
-  type Scanner = NumberScanner
-  /** Synonym for the NumberScanner companion for convenient access. */
-  val Scanner = NumberScanner
-
   /**
    * Errors that may occur during number parsing.
    */
@@ -104,6 +78,7 @@ object Numbers:
     /** Indicates that exponent part does not have any digits. */
     def missingExponentDigits[T](): M[T]
   end Errors
+
 
   /**
    * Description of how to **continue** parsing of the specific element.
@@ -122,21 +97,20 @@ object Numbers:
   end ParsingContinuation
 
 
-
   /** Checks if the character is valid number sign. */
-  def isNumberSign(char: Character): Boolean =
+  def isNumberSign(char: Char): Boolean =
     char == '-'
 
   /** Checks if the character is a decimal separator. */
-  def isDecimalSeparator(char: Character): Boolean =
+  def isDecimalSeparator(char: Char): Boolean =
     char == '.'
 
   /** Checks if the character is an exponent indicator. */
-  def isExponentIndicator(char: Character): Boolean =
+  def isExponentIndicator(char: Char): Boolean =
     char == 'E' || char == 'e'
 
   /** Checks if the character is an exponent sign. */
-  def isExponentSign(char: Character): Boolean =
+  def isExponentSign(char: Char): Boolean =
     char == '+' || char == '-'
 
   /**
@@ -144,8 +118,14 @@ object Numbers:
    * does not mean that the sequence of characters would be valid number. The
    * integer value part (and the only part) could not have leading zero(es).
    */
-  def isDigit(char: Character): Boolean =
+  def isDigit(char: Char): Boolean =
     '0' <= char && char <= '9'
+
+  /**
+   * Checks if the character is valid number start.
+   */
+  def isNumberStart(char: Char): Boolean =
+    isNumberSign(char) || isDigit(char)
 
   /**
    * Counts number of digits in the prefix.
@@ -156,7 +136,6 @@ object Numbers:
       res += 1
     res
   end countDigits
-
 
   /**
    * "Skips" digits from the given position in the input and returns a "non-digit" position.
@@ -171,271 +150,6 @@ object Numbers:
       ptr += 1
     ptr
   end skipDigits
-
-
-  /**
-   * Reads an optional number sign from the stream.
-   * @param stream stream to read from.
-   * @return optional sign character that occurs in the number.
-   */
-  def readOptionalNumberSign[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Option[Character]] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isNumberSign(lookAhead.charAt(0)) then
-        stream.skip(1) map { rd => Some('-') }
-      else
-        Monad.pure(None)
-    }
-  end readOptionalNumberSign
-
-
-  /**
-   * Reads an optional number sign. Returns "absent" value as 0.
-   * This is similar * to the
-   * ```
-   *   for
-   *     maybeCode <- readOptionalNumberSign(stream)
-   *   yield maybeCode.getOrElse(0)
-   * ```
-   * but may be more efficient.
-   */
-  def readNumberSignAsOptChar[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Character] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isNumberSign(lookAhead.charAt(0)) then
-        stream.skip(1) map { rd => '-' }
-      else
-        Monad.pure(0: Char)
-    }
-  end readNumberSignAsOptChar
-
-
-  /**
-   * Reads initial section of the integer part of the number (without sign). May
-   * raise errors if number is mailformed.
-   */
-  def readIntegerDigitsStart[M[_]: Monad: Errors](
-        stream: CharacterStream[M]
-      ) : M[CharSequence] =
-    stream.peek(2) flatMap { lookAhead =>
-      val totalDigits = countDigits(lookAhead)
-      if totalDigits < 1 then
-        implicitly[Errors[M]].missingIntegerDigits()
-      else if totalDigits > 1 && lookAhead.charAt(0) == '0' then
-        implicitly[Errors[M]].leadingIntegerZero()
-      else
-        stream.consume(totalDigits)
-    }
-  end readIntegerDigitsStart
-
-
-  /**
-   * Reads an optional indicator of the fractional part.
-   */
-  def readOptionalDecimalSeparator[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Option[Char]] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isDecimalSeparator(lookAhead.charAt(0)) then
-        stream.skip(1) map { rd => Some('.') }
-      else
-        Monad.pure(None)
-    }
-  end readOptionalDecimalSeparator
-
-
-  /**
-   * Reads an optional indicator of the fractional part representing absent
-   * value as a character 0.
-   *
-   * This is similar * to the
-   * ```
-   *   for
-   *     maybeCode <- readOptionalDecimalSeparator(stream)
-   *   yield maybeCode.getOrElse(0)
-   * ```
-   * but may be more efficient.
-   */
-  def readDecimalSeparatorAsOptChar[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Char] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isDecimalSeparator(lookAhead.charAt(0)) then
-        stream.skip(1) map { rd => '.' }
-      else
-        Monad.pure(0)
-    }
-  end readDecimalSeparatorAsOptChar
-
-
-  /**
-   * Reads an optional indicator of the fractional part and indicates if the
-   * part was read (`true`) or not (`false`).
-   */
-  def readDecimalSeparatorAsBoolean[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Boolean] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isDecimalSeparator(lookAhead.charAt(0)) then
-        stream.skip(1) map { _ => true }
-      else
-        Monad.pure(false)
-    }
-  end readDecimalSeparatorAsBoolean
-
-
-  /**
-   * Reads initial section of the fractional (decimal) part of the number. May  raise errors if
-   * number is mailformed.
-   */
-  def readDecimalDigitsStart[M[_]: Monad: Errors](
-        stream: CharacterStream[M]
-      ) : M[CharSequence] =
-    stream.peek(1) flatMap { lookAhead =>
-      val totalDigits = countDigits(lookAhead)
-      if totalDigits < 1 then
-        implicitly[Errors[M]].missingDecimalDigits()
-      else
-        stream.consume(totalDigits)
-    }
-  end readDecimalDigitsStart
-
-
-  /**
-   * Reads an optional indicator of the exponential part.
-   */
-  def readOptionalExponentIndicator[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Option[Char]] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isExponentIndicator(lookAhead.charAt(0)) then
-        stream.consume(1) map { rd => Some(rd.charAt(0)) }
-      else
-        Monad.pure(None)
-    }
-  end readOptionalExponentIndicator
-
-
-  /**
-   * Reads an optional exponent indicator representing absent value as a character 0.
-   *
-   * This is similar * to the
-   * ```
-   *   for
-   *     maybeCode <- readOptionalExponentIndicator(stream)
-   *   yield maybeCode.getOrElse(0)
-   * ```
-   * but may be more efficient.
-   */
-  def readExponentIndicatorAsOptChar[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Char] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isExponentIndicator(lookAhead.charAt(0)) then
-        stream.consume(1) map { rd => rd.charAt(0) }
-      else
-        Monad.pure(0)
-    }
-  end readExponentIndicatorAsOptChar
-
-
-  /**
-   * Reads an optional exponent indicator and indicates if the
-   * part was read (`true`) or not (`false`).
-   */
-  def readExponentIndicatorAsBoolean[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Boolean] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isExponentIndicator(lookAhead.charAt(0)) then
-        stream.skip(1) map { _ => true }
-      else
-        Monad.pure(false)
-    }
-  end readExponentIndicatorAsBoolean
-
-
-  /**
-   * Reads an optional exponent  sign from the stream.
-   * @param stream stream to read from.
-   * @return optional exponent sign character that occurs in the number.
-   */
-  def readOptionalExponentSign[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Option[Character]] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isExponentSign(lookAhead.charAt(0)) then
-        stream.consume(1) map { rd => Some(rd.charAt(0)) }
-      else
-        Monad.pure(None)
-    }
-  end readOptionalExponentSign
-
-
-  /**
-   * Reads an optional exponent sign. Returns "absent" value as 0.
-   * This is similar * to the
-   * ```
-   *   for
-   *     maybeCode <- readOptionalExponentSign(stream)
-   *   yield maybeCode.getOrElse(0)
-   * ```
-   * but may be more efficient.
-   */
-  def readExponentSignAsOptChar[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[Character] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() > 0 && isExponentSign(lookAhead.charAt(0)) then
-        stream.consume(1) map { rd => rd.charAt(0) }
-      else
-        Monad.pure(0: Char)
-    }
-  end readExponentSignAsOptChar
-
-
-  /**
-   * Reads initial section of the exponent. May  raise errors if number is mailformed.
-   */
-  def readExponentDigitsStart[M[_]: Monad: Errors](
-        stream: CharacterStream[M]
-      ) : M[CharSequence] =
-    stream.peek(1) flatMap { lookAhead =>
-      val totalDigits = countDigits(lookAhead)
-      if totalDigits < 1 then
-        implicitly[Errors[M]].missingExponentDigits()
-      else
-        stream.consume(totalDigits)
-    }
-  end readExponentDigitsStart
-
-
-  /**
-   * Continues reading digits after intial part was consumed by the
-   * specific `readXXXDigitsStart` method.
-   * This method return `null` to indicate that there are no more digits
-   * that could be read in the stream.
-   */
-  def readNextDigits[M[_]: Monad](
-        stream: CharacterStream[M]
-      ) : M[CharSequence] =
-    stream.peek(1) flatMap { lookAhead =>
-      val totalDigits = countDigits(lookAhead)
-      if totalDigits <= 0 then
-        Monad.pure(null)
-      else
-        stream.consume(totalDigits)
-    }
-  end readNextDigits
-
-
-  /**
-   * Creates a new number scanner to assist the client in marking number boundaries
-   * in the input.
-   */
-  def scanner(): Scanner = new NumberScanner()
 
 
   /**
