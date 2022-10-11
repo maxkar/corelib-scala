@@ -4,7 +4,7 @@ package json.parser
 /**
  * Tests for the string parsers.
  */
-final class StringTest extends org.scalatest.funsuite.AnyFunSuite:
+final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
   /** Implementation of the string parsing error handlers. */
   given StringErrors: Strings.Errors[Identity]
       with Strings.StartErrors[Identity]
@@ -228,4 +228,4 @@ final class StringTest extends org.scalatest.funsuite.AnyFunSuite:
         end try
       }
   end checkError
-end StringTest
+end StringsTest

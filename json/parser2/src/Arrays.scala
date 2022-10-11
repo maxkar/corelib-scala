@@ -39,8 +39,8 @@ object Arrays {
 
   /** Reads start of the array - the leading character. */
   def readArrayStart[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
-    stream.peek(0) flatMap { lookAhead =>
-      if lookAhead.length() <= 0 || !isArrayEnd(lookAhead.charAt(0)) then
+    stream.peek(1) flatMap { lookAhead =>
+      if lookAhead.length() <= 0 || !isArrayStart(lookAhead.charAt(0)) then
         implicitly[Errors[M]].invalidArrayStart()
       else
         stream.skip(1)
@@ -110,6 +110,7 @@ object Arrays {
         agg: ArrayBuffer[T],
       ): M[Seq[T]] =
     for
+      _ <- skipWhitespaces(stream)
       elem <- readValue(stream)
       _ <- skipWhitespaces(stream)
       hasNext <- hasNextValue(stream)
