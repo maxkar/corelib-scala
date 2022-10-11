@@ -5,37 +5,7 @@ package json.parser
  * Tests for the string parsers.
  */
 final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
-  /** Implementation of the string parsing error handlers. */
-  given StringErrors: Strings.Errors[Identity]
-      with Strings.StartErrors[Identity]
-      with
-    /** Encoding of invalid escape error. */
-    final case class InvalidEscapeCharacter() extends Exception
-    /** Encoding of invalid unicode escape error. */
-    final case class InvalidUnicodeEscape() extends Exception
-    /** Encoding of invalid string character error. */
-    final case class InvalidCharacter() extends Exception
-    /** Encoding of unterminated string error. */
-    final case class UnterminatedString() extends Exception
-    /** Encoding of illegal string start. */
-    final case class IllegalStringStart() extends Exception
-
-    override def invalidEscapeCharacter[T](): T =
-      throw new InvalidEscapeCharacter()
-
-    override def invalidUnicodeEscape[T](): T =
-      throw new InvalidUnicodeEscape()
-
-    override def invalidCharacter[T](): T =
-      throw new InvalidCharacter()
-
-    override def unterminatedString[T](): T =
-      throw new UnterminatedString()
-
-    override def illegalStringStart[T](): T =
-      throw new IllegalStringStart()
-  end StringErrors
-
+  import StringsTest.given
 
   test("Smoke test") {
     checkSimpleSuccess("Hello, world", "\"Hello, world\"")
@@ -228,4 +198,38 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
         end try
       }
   end checkError
+end StringsTest
+
+
+object StringsTest:
+  /** Implementation of the string parsing error handlers. */
+  given StringErrors: Strings.Errors[Identity]
+      with Strings.StartErrors[Identity]
+      with
+    /** Encoding of invalid escape error. */
+    final case class InvalidEscapeCharacter() extends Exception
+    /** Encoding of invalid unicode escape error. */
+    final case class InvalidUnicodeEscape() extends Exception
+    /** Encoding of invalid string character error. */
+    final case class InvalidCharacter() extends Exception
+    /** Encoding of unterminated string error. */
+    final case class UnterminatedString() extends Exception
+    /** Encoding of illegal string start. */
+    final case class IllegalStringStart() extends Exception
+
+    override def invalidEscapeCharacter[T](): T =
+      throw new InvalidEscapeCharacter()
+
+    override def invalidUnicodeEscape[T](): T =
+      throw new InvalidUnicodeEscape()
+
+    override def invalidCharacter[T](): T =
+      throw new InvalidCharacter()
+
+    override def unterminatedString[T](): T =
+      throw new UnterminatedString()
+
+    override def illegalStringStart[T](): T =
+      throw new IllegalStringStart()
+  end StringErrors
 end StringsTest

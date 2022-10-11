@@ -131,12 +131,14 @@ object Objects:
           agg: HashMap[K, V],
       ): M[Map[K, V]] =
     for
+      _ <- skipWhitespaces(stream)
       key <- readKey(stream)
       _ <- skipWhitespaces(stream)
       _ <- readKeyValueSeparator(stream)
       _ <- skipWhitespaces(stream)
       value <- readValue(stream)
       _ = agg.put(key, value)
+      _ <- skipWhitespaces(stream)
       hasNext <- hasNextValue(stream)
       res <-
         if hasNext then
