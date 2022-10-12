@@ -4,21 +4,7 @@ package json.parser
 /** Tests for array-related functionality. */
 final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
   import NumbersTest.given
-
-  /** Array errors implementation. */
-  given ArrayErrors: Arrays.Errors[Identity] with
-    /** Encoding of invalid array start. */
-    final case class InvalidArrayStart() extends Exception
-
-    /** Encoding for invalid value separator. */
-    final case class InvalidArraySeparator() extends Exception
-
-    override def invalidArrayStart[T](): T =
-      throw new InvalidArrayStart()
-
-    override def arraySeparatorOrEndIsMissing[T](): T =
-      throw new InvalidArraySeparator()
-  end ArrayErrors
+  import ArraysTest.given
 
 
   test("Happy path scenarios") {
@@ -76,4 +62,22 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
       }
     end for
   }
+end ArraysTest
+
+
+object ArraysTest:
+  /** Array errors implementation. */
+  given ArrayErrors: Arrays.Errors[Identity] with
+    /** Encoding of invalid array start. */
+    final case class InvalidArrayStart() extends Exception
+
+    /** Encoding for invalid value separator. */
+    final case class InvalidArraySeparator() extends Exception
+
+    override def invalidArrayStart[T](): T =
+      throw new InvalidArrayStart()
+
+    override def arraySeparatorOrEndIsMissing[T](): T =
+      throw new InvalidArraySeparator()
+  end ArrayErrors
 end ArraysTest

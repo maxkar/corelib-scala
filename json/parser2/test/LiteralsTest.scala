@@ -6,11 +6,8 @@ package json.parser
  */
 final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
   import LiteralsTest._
+  import LiteralsTest.given
 
-  given Literals.Errors[Identity] with
-    override def badLiteral(expected: String, actual: CharSequence): Unit =
-      throw new BadLiteral(expected, actual.toString())
-  end given
 
   test("isSameLiteral works") {
     assert(Literals.isSameLiteral("hello", "hello"))
@@ -75,4 +72,9 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 private object LiteralsTest:
   /** Encoding of the "bad literal" exception. */
   final case class BadLiteral(expected: String, actual: String) extends Exception
+
+  given LiteralErrors: Literals.Errors[Identity] with
+    override def badLiteral(expected: String, actual: CharSequence): Unit =
+      throw new BadLiteral(expected, actual.toString())
+  end LiteralErrors
 end LiteralsTest

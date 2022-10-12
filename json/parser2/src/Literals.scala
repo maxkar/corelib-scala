@@ -6,7 +6,6 @@ import json.parser.input.CharacterStream
 import fun.Monad
 import fun.Applicative
 
-
 /**
  * Literal readers.
  */

@@ -5,27 +5,7 @@ package json.parser
 final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
   import NumbersTest.given
   import StringsTest.given
-
-  /** Object errors implementation. */
-  given ObjectErrors: Objects.Errors[Identity] with
-    /** Encoding of invalid object start. */
-    final case class InvalidObjectStart() extends Exception
-
-    /** Encoding for invalid entry separator. */
-    final case class InvalidEntrySeparator() extends Exception
-
-    /** Encoding for invalid key-value separator. */
-    final case class InvalidKeyValueSeparator() extends Exception
-
-    override def invalidObjectStart[T](): T =
-      throw new InvalidObjectStart()
-
-    override def entrySeparatorOrEndIsMissing[T](): T =
-      throw new InvalidEntrySeparator()
-
-    override def invalidKeyValueSeparator[T](): T =
-      throw new InvalidKeyValueSeparator()
-  end ObjectErrors
+  import ObjectsTest.given
 
 
   test("Happy path scenarios") {
@@ -83,4 +63,28 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
       }
     end for
   }
+end ObjectsTest
+
+
+object ObjectsTest:
+  /** Object errors implementation. */
+  given ObjectErrors: Objects.Errors[Identity] with
+    /** Encoding of invalid object start. */
+    final case class InvalidObjectStart() extends Exception
+
+    /** Encoding for invalid entry separator. */
+    final case class InvalidEntrySeparator() extends Exception
+
+    /** Encoding for invalid key-value separator. */
+    final case class InvalidKeyValueSeparator() extends Exception
+
+    override def invalidObjectStart[T](): T =
+      throw new InvalidObjectStart()
+
+    override def entrySeparatorOrEndIsMissing[T](): T =
+      throw new InvalidEntrySeparator()
+
+    override def invalidKeyValueSeparator[T](): T =
+      throw new InvalidKeyValueSeparator()
+  end ObjectErrors
 end ObjectsTest
