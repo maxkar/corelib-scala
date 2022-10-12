@@ -9,9 +9,11 @@ import fun.Monad
  * "Iterator-like" reader of the number. Reads number section by section
  * and returns `null` when there are no more parts to read.
  */
-final class NumberReader[M[_]: Monad: Numbers.Errors] private[parser](
+final class NumberReader[M[_]: Monad, S <: CharacterStream[M]] private[parser](
       private var state: Numbers.ParsingContinuation,
-      stream: CharacterStream[M]
+      stream: S,
+    )(using
+      errs: Numbers.Errors[M, S]
     ):
   /** Reads next part of the number. Returns `null` (within monad) if all the number was read. */
   def next(): M[CharSequence] =

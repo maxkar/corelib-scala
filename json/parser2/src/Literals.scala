@@ -10,12 +10,17 @@ import fun.Applicative
  * Literal readers.
  */
 object Literals:
-  /** Handler for bad literals. */
-  trait Errors[M[_]]:
+  /**
+   * Error handlers for (simple) JSON literals.
+   * @tparam M execution (monad).
+   * @tparam S type of the stream (i.e. "context") required by the error generation.
+   */
+  trait Errors[M[_], -S]:
     /**
-     * The method is invoked when input does not match the expected literal.
+     * Invoked when specific literal (text) was expected but stream content was different.
+     * Stream position is before the first character of the literal in the stream.
      */
-    def badLiteral(expected: String, actual: CharSequence): M[Unit]
+    def badLiteral(expected: String, stream: S): M[Unit]
   end Errors
 
 
@@ -62,33 +67,44 @@ object Literals:
    * @param literal expected literal to read.
    * @param stream stream that must contain the literal exactly at the defined position.
    */
-  def readLiteral[M[_]: Monad: Errors](
+  def readLiteral[M[_]: Monad, S <: CharacterStream[M]](
         literal: String,
-        stream: CharacterStream[M])
-      : M[Unit] =
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     stream.peek(literal.length()) flatMap { lookAhead =>
       if isSameLiteral(literal, lookAhead) then
         stream.skip(literal.length())
       else
-        implicitly[Errors[M]].badLiteral(
-          literal,
-          lookAhead.subSequence(0, Math.min(literal.length(), lookAhead.length()))
-        )
+        errs.badLiteral(literal, stream)
     }
   end readLiteral
 
 
   /** Reads the "true" literal from the stream. */
-  inline def readTrue[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+  inline def readTrue[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     readLiteral(TRUE, stream)
 
 
   /** Reads the "false" literal from the stream. */
-  inline def readFalse[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+  inline def readFalse[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     readLiteral(FALSE, stream)
 
 
   /** Reads the "null" literal from the stream. */
-  inline def readNull[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+  inline def readNull[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     readLiteral(NULL, stream)
 end Literals

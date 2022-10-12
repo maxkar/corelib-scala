@@ -36,7 +36,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
         Literals.readLiteral("greeter", stream)
         fail("Exception expected")
       catch
-        case BadLiteral("greeter", "greetin") => ()
+        case BadLiteral("greeter") => ()
         case other => throw other
       end try
       assert(stream.readOffset === 0)
@@ -71,10 +71,10 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 private object LiteralsTest:
   /** Encoding of the "bad literal" exception. */
-  final case class BadLiteral(expected: String, actual: String) extends Exception
+  final case class BadLiteral(expected: String) extends Exception
 
-  given LiteralErrors: Literals.Errors[Identity] with
-    override def badLiteral(expected: String, actual: CharSequence): Unit =
-      throw new BadLiteral(expected, actual.toString())
+  given LiteralErrors: Literals.Errors[Identity, Any] with
+    override def badLiteral(expected: String, stream: Any): Unit =
+      throw new BadLiteral(expected)
   end LiteralErrors
 end LiteralsTest

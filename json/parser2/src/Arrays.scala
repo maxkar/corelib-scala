@@ -11,16 +11,22 @@ import scala.collection.mutable.ArrayBuffer
 object Arrays {
 
   /** Error encoding for array formats. */
-  trait Errors[M[_]]:
-    /** Encodes invalid array start. */
-    def invalidArrayStart[T](): M[T]
+  trait Errors[M[_], -S]:
+    /**
+     * Invoked when array start was expected but something different occured in the stream.
+     * Stream position is before the character that was expected to be array start.
+     */
+    def invalidArrayStart[T](stream: S): M[T]
 
     /**
-     * Encodes situation where array separator or array end character
-     * is expected but no such element is found.
+     * Invoked when array end or value separator was expected
+     * but something different occured in the stream.
+     * Stream position is before the character that should be array end or
+     * value separator.
      */
-    def arraySeparatorOrEndIsMissing[T](): M[T]
+    def invalidArrayEnd[T](stream: S): M[T]
   end Errors
+
 
   /** Checks if character is an array start character. */
   def isArrayStart(char: Char): Boolean =
@@ -38,10 +44,14 @@ object Arrays {
 
 
   /** Reads start of the array - the leading character. */
-  def readArrayStart[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+  def readArrayStart[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 || !isArrayStart(lookAhead.charAt(0)) then
-        implicitly[Errors[M]].invalidArrayStart()
+        errs.invalidArrayStart(stream)
       else
         stream.skip(1)
     }
@@ -65,15 +75,19 @@ object Arrays {
    * Checks if array has next element or it is array end. Consumes the separator or end
    * character from input.
    */
-  def hasNextValue[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Boolean] =
+  def hasNextValue[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Boolean] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 then
-        implicitly[Errors[M]].arraySeparatorOrEndIsMissing()
+        errs.invalidArrayEnd(stream)
       else
         lookAhead.charAt(0) match {
           case ',' => stream.skip(1) map { _ => true }
           case ']' => stream.skip(1) map { _ => false }
-          case _ => implicitly[Errors[M]].arraySeparatorOrEndIsMissing()
+          case _ => errs.invalidArrayEnd(stream)
         }
     }
   end hasNextValue
@@ -83,10 +97,12 @@ object Arrays {
    * Reads complete array as a sequence.
    * Whitespace and value reading is delegated to provided handlers.
    */
-  def readAll[T, M[_]: Monad: Errors](
-        skipWhitespaces: CharacterStream[M] => M[Unit],
-        readValue: CharacterStream[M] => M[T],
-        stream: CharacterStream[M],
+  def readAll[T, M[_]: Monad, S <: CharacterStream[M]](
+        skipWhitespaces: S => M[Unit],
+        readValue: S => M[T],
+        stream: S,
+      )(using
+        errs: Errors[M, S]
       ): M[Seq[T]] =
     for
       _ <- readArrayStart(stream)
@@ -103,11 +119,13 @@ object Arrays {
 
 
   /** Recursive reader implementation. */
-  private def readAllImpl[T, M[_]: Monad: Errors](
-        skipWhitespaces: CharacterStream[M] => M[Unit],
-        readValue: CharacterStream[M] => M[T],
-        stream: CharacterStream[M],
+  private def readAllImpl[T, M[_]: Monad, S <: CharacterStream[M]](
+        skipWhitespaces: S => M[Unit],
+        readValue: S => M[T],
+        stream: S,
         agg: ArrayBuffer[T],
+      )(using
+        errs: Errors[M, S]
       ): M[Seq[T]] =
     for
       _ <- skipWhitespaces(stream)

@@ -9,22 +9,31 @@ import scala.collection.mutable.HashMap
 
 /** Json object reader and related utilities. */
 object Objects:
-  /** Error encoding for object formats. */
-  trait Errors[M[_]]:
-    /** Encodes invalid object start. */
-    def invalidObjectStart[T](): M[T]
+  /**
+   * Error handlers for JSON object format.
+   * @tparam M execution monad.
+   * @tparam S type of the stream (i.e. "context") required by the error generation.
+   */
+  trait Errors[M[_], -S]:
+    /**
+     * Invoked when object start was expected but something different occured in the stream.
+     * Stream position is before the character that was expected to be object start.
+     */
+    def invalidObjectStart[T](stream: S): M[T]
 
     /**
-     * Encodes situation where value separator or object end character
-     * is expected but no such element is found.
+     * Invoked when object end or object entry separator was expected
+     * but something different occured in the stream.
+     * Stream position is before the character that should be object end or object entity
+     * separator.
      */
-    def entrySeparatorOrEndIsMissing[T](): M[T]
+    def invalidObjectEnd[T](stream: S): M[T]
 
     /**
-     * Encodes situation where key-value separator was expected but
-     * no such character occured in the stream.
+     * Invoked when key-value separator was expected but something different occured on the stream.
+     * Stream position is before the character that should be key-value separator.
      */
-    def invalidKeyValueSeparator[T](): M[T]
+    def invalidKeyValueSeparator[T](stream: S): M[T]
   end Errors
 
 
@@ -36,11 +45,9 @@ object Objects:
   def isObjectEnd(char: Char): Boolean =
     char == '}'
 
-
   /** Checks if the character is valid separator between two key-value pairs. */
   def isEntrySeparator(char: Char): Boolean =
     char == ','
-
 
   /** Checks if the character is valid key-value separator. */
   def isKeyValueSeparator(char: Char): Boolean =
@@ -48,10 +55,14 @@ object Objects:
 
 
   /** Reads the object start character from the stream. */
-  def readObjectStart[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+  def readObjectStart[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 || !isObjectStart(lookAhead.charAt(0)) then
-        implicitly[Errors[M]].invalidObjectStart()
+        errs.invalidObjectStart(stream)
       else
         stream.skip(1)
     }
@@ -62,7 +73,11 @@ object Objects:
    * Checks if object has first value (after object start was read). Consumes
    * the object terminator if object is empty.
    */
-  def hasFirstValue[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Boolean] =
+  def hasFirstValue[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Boolean] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 || !isObjectEnd(lookAhead.charAt(0)) then
         Monad.pure(true)
@@ -76,25 +91,33 @@ object Objects:
    * Checks if array has next element or it is array end. Consumes the separator or end
    * character from input.
    */
-  def hasNextValue[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Boolean] =
+  def hasNextValue[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[Boolean] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 then
-        implicitly[Errors[M]].entrySeparatorOrEndIsMissing()
+        errs.invalidObjectEnd(stream)
       else
         lookAhead.charAt(0) match {
           case ',' => stream.skip(1) map { _ => true }
           case '}' => stream.skip(1) map { _ => false }
-          case _ => implicitly[Errors[M]].entrySeparatorOrEndIsMissing()
+          case _ => errs.invalidObjectEnd(stream)
         }
     }
   end hasNextValue
 
 
   /** Reads key-value separator. */
-  def readKeyValueSeparator[M[_]: Monad: Errors](stream: CharacterStream[M]): M[Unit] =
+  def readKeyValueSeparator[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S
+      )(using
+        errs: Errors[M, S]
+      ): M[Unit] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 || !isKeyValueSeparator(lookAhead.charAt(0)) then
-        implicitly[Errors[M]].invalidKeyValueSeparator()
+        errs.invalidKeyValueSeparator(stream)
       else
         stream.skip(1)
     }
@@ -102,11 +125,13 @@ object Objects:
 
 
   /** Reads the complete object as a map. Duplicate keys will retain only the last value. */
-  def readAll[K, V, M[_]: Monad: Errors](
-          skipWhitespaces: CharacterStream[M] => M[Unit],
-          readKey: CharacterStream[M] => M[K],
-          readValue: CharacterStream[M] => M[V],
-          stream: CharacterStream[M],
+  def readAll[K, V, M[_]: Monad, S <: CharacterStream[M]](
+          skipWhitespaces: S => M[Unit],
+          readKey: S => M[K],
+          readValue: S => M[V],
+          stream: S,
+      )(using
+        errs: Errors[M, S]
       ): M[Map[K, V]] =
     for
       _ <- readObjectStart(stream)
@@ -123,12 +148,14 @@ object Objects:
 
 
   /** Aggregating reader implementation. */
-  private def readAllImpl[K, V, M[_]: Monad: Errors](
-          skipWhitespaces: CharacterStream[M] => M[Unit],
-          readKey: CharacterStream[M] => M[K],
-          readValue: CharacterStream[M] => M[V],
-          stream: CharacterStream[M],
+  private def readAllImpl[K, V, M[_]: Monad, S <: CharacterStream[M]](
+          skipWhitespaces: S => M[Unit],
+          readKey: S => M[K],
+          readValue: S => M[V],
+          stream: S,
           agg: HashMap[K, V],
+      )(using
+        errs: Errors[M, S]
       ): M[Map[K, V]] =
     for
       _ <- skipWhitespaces(stream)

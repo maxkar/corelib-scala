@@ -138,7 +138,7 @@ end NumbersTest
 
 object NumbersTest:
   /** Implementation of number errors. */
-  given NumberErrors: Numbers.Errors[Identity] with
+  given NumberErrors: Numbers.Errors[Identity, Any] with
     /** Encoding for missing integer digits. */
     case class MissingIntegerDigits() extends Exception
 
@@ -151,16 +151,16 @@ object NumbersTest:
     /** Encoding for integer with leading 0. */
     case class LeadingIntegerZero() extends Exception
 
-    override def missingIntegerDigits[T](): T =
+    override def missingIntegerDigits[T](stream: Any): T =
       throw new MissingIntegerDigits()
 
-    override def leadingIntegerZero[T](): T =
+    override def leadingIntegerZero[T](stream: Any): T =
       throw new LeadingIntegerZero()
 
-    override def missingDecimalDigits[T](): T =
+    override def missingDecimalDigits[T](stream: Any): T =
       throw new MissingDecimalDigits()
 
-    override def missingExponentDigits[T](): T =
+    override def missingExponentDigits[T](stream: Any): T =
       throw new MissingExponentDigits()
   end NumberErrors
 end NumbersTest

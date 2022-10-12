@@ -67,17 +67,17 @@ end ArraysTest
 
 object ArraysTest:
   /** Array errors implementation. */
-  given ArrayErrors: Arrays.Errors[Identity] with
+  given ArrayErrors: Arrays.Errors[Identity, Any] with
     /** Encoding of invalid array start. */
     final case class InvalidArrayStart() extends Exception
 
     /** Encoding for invalid value separator. */
     final case class InvalidArraySeparator() extends Exception
 
-    override def invalidArrayStart[T](): T =
+    override def invalidArrayStart[T](stream: Any): T =
       throw new InvalidArrayStart()
 
-    override def arraySeparatorOrEndIsMissing[T](): T =
+    override def invalidArrayEnd[T](stream: Any): Identity[T] =
       throw new InvalidArraySeparator()
   end ArrayErrors
 end ArraysTest

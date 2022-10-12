@@ -12,35 +12,47 @@ import fun.Applicative
  */
 object Strings:
   /**
-   * Errors that may occur during string parsing.
+   * Error handlers for JSON strings.
+   * @tparam M execution (monad).
+   * @tparam S type of the stream (i.e. "context") required by the error generation.
    */
-  trait Errors[M[_]]:
-    /** Handles situation where input encounters invalid escape(d) character. */
-    def invalidEscapeCharacter[T](): M[T]
+  trait Errors[M[_], -S]:
+    /**
+     * Invoked when string start was expected but something different was present
+     * on the stream.
+     * Stream position is before the character that was expected to be string start.
+     */
+    def illegalStringStart[T](stream: S): M[T]
 
     /**
-     * Handles situation where unicode escape is not valid (not enough digits or
-     * not a hexadecimal digit is present).
+     * Invoked when string contains some escaped character (like '\n') but the escape
+     * code is not the valid one.
+     * Stream position is before the escape character (i.e. '\'), not the escape code.
      */
-    def invalidUnicodeEscape[T](): M[T]
+    def invalidEscapeCharacter[T](stream: S): M[T]
 
     /**
-     * Handles situation where string contains invalid character (that could not
-     * occur regularly)
+     * Invoked when string contains some unicode escape (like '\u0058') but the encoding
+     * is not valid (i.e. digits are not valid).
+     * Stream position is before the escape character (i.e. '\'), not the escape code.
      */
-    def invalidCharacter[T](): M[T]
+    def invalidUnicodeEscape[T](stream: S): M[T]
+
+    /**
+     * Invoked when string contains a character that could not be present (i.e. the one
+     * that should always be present as escape character).
+     * Stream position is before the invalid character.
+     */
+    def invalidCharacter[T](stream: S): M[T]
 
 
-    /** String is not properly terminated.  */
-    def unterminatedString[T](): M[T]
+    /**
+     * Invoked when string is not properly terminated. Practially this means that the
+     * end of stream was reached but no stream terminator character was found.
+     * Stream position is at the end of stream.
+     */
+    def unterminatedString[T](stream: S): M[T]
   end Errors
-
-
-  /** Special error - string is expected but start is different. */
-  trait StartErrors[M[_]]:
-    /** Illegal string start detected on the stream. */
-    def illegalStringStart[T](): M[T]
-  end StartErrors
 
 
   /**
@@ -106,12 +118,14 @@ object Strings:
    * @return characters read and indicator if there is more data (i.e. `continueString`
    *   should be called).
    */
-  def startString[M[_]: Monad: Errors: StartErrors](
-        stream: CharacterStream[M]
+  def startString[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
       ): M[(CharSequence, Boolean)] =
     stream.peek(7) flatMap { lookAhead =>
       if lookAhead.length() <= 1 || !isStringBoundary(lookAhead.charAt(0)) then
-        implicitly[StartErrors[M]].illegalStringStart()
+        errs.illegalStringStart(stream)
       else
         processContent(lookAhead, stream, true)
     }
@@ -125,19 +139,29 @@ object Strings:
    * @return characters read and indicator if there is more data (i.e. `continueString`
    *   should be called).
    */
-  def continueString[M[_]: Monad: Errors](
-        stream: CharacterStream[M]
+  def continueString[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
       ): M[(CharSequence, Boolean)] =
     stream.peek(6) flatMap { processContent(_, stream, false) }
 
 
   /** Creates new iterator-like pull string reader. */
-  def newReader[M[_]: Monad: Errors: StartErrors](stream: CharacterStream[M]): StringReader[M] =
+  def newReader[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): StringReader[M, _] =
     new StringReader(stream)
 
 
   /** Reads the string fully. This may be memory-inefficient for huge numbers. */
-  def readAll[M[_]: Monad: Errors: StartErrors](stream: CharacterStream[M]): M[String] =
+  def readAll[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[String] =
     startString(stream) flatMap { (inputPortion, hasMore) =>
       if !hasMore then
         Monad.pure(inputPortion.toString())
@@ -149,9 +173,11 @@ object Strings:
 
 
   /** Internal "accumulating" implementation of read-all. */
-  private def readAllImpl[M[_]: Monad: Errors](
-          stream: CharacterStream[M],
+  private def readAllImpl[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
           buffer: StringBuilder,
+      )(using
+        errs: Errors[M, S]
       ): M[String] =
     continueString(stream) flatMap { (inputPortion, hasMore) =>
       buffer.append(inputPortion)
@@ -171,18 +197,20 @@ object Strings:
    *   should be ignored).
    * @return contents of the string portion and indicator that there is more data.
    */
-  private def processContent[M[_]: Monad: Errors](
+  private def processContent[M[_]: Monad, S <: CharacterStream[M]](
           chars: CharSequence,
-          stream: CharacterStream[M],
+          stream: S,
           isFirstChunk: Boolean
+      )(using
+        errs: Errors[M, S]
       ): M[(CharSequence, Boolean)] =
     val seqStart = if isFirstChunk then 1 else 0
 
     if chars.length() <= seqStart then
       if isFirstChunk then
-        return stream.skip(1) flatMap { _ => implicitly[Errors[M]].unterminatedString() }
+        return stream.skip(1) flatMap { _ => errs.unterminatedString(stream) }
       else
-        return implicitly[Errors[M]].unterminatedString()
+        return errs.unterminatedString(stream)
     end if
 
     chars.charAt(seqStart) match
@@ -199,9 +227,9 @@ object Strings:
           stream.consume(regCharsEnd) map { res => (res, true) }
       case _ =>
         if isFirstChunk then
-          return stream.skip(1) flatMap { _ => implicitly[Errors[M]].invalidCharacter() }
+          return stream.skip(1) flatMap { _ => errs.invalidCharacter(stream) }
         else
-          implicitly[Errors[M]].invalidCharacter()
+          errs.invalidCharacter(stream)
     end match
   end processContent
 
@@ -215,16 +243,18 @@ object Strings:
    *   should be ignored).
    * @return contents of the string portion and indicator that there is more data.
    */
-  private def processEscape[M[_]: Monad: Errors](
+  private def processEscape[M[_]: Monad, S <: CharacterStream[M]](
           chars: CharSequence,
-          stream: CharacterStream[M],
+          stream: S,
           isFirstChunk: Boolean
+      )(using
+        errs: Errors[M, S]
       ): M[(CharSequence, Boolean)] =
     val escapeStart = if isFirstChunk then 1 else 0
     val escapeCodeIndex = escapeStart + 1
 
     if chars.length() <= escapeCodeIndex then
-      return stream.skip(escapeStart) flatMap { _ => implicitly[Errors[M]].unterminatedString() }
+      return stream.skip(escapeStart) flatMap { _ => errs.unterminatedString(stream) }
 
     val (ret, escapeLength) =
       chars.charAt(escapeCodeIndex) match
@@ -239,9 +269,9 @@ object Strings:
         case 'u' =>
           if chars.length() <= escapeCodeIndex + 4 then
             if isFirstChunk then
-              return stream.skip(1) flatMap { _ => implicitly[Errors[M]].invalidUnicodeEscape() }
+              return stream.skip(1) flatMap { _ => errs.invalidUnicodeEscape(stream) }
             else
-              return implicitly[Errors[M]].invalidUnicodeEscape()
+              return errs.invalidUnicodeEscape(stream)
 
           var charCode = 0
           var charCharPtr = escapeCodeIndex + 1
@@ -255,9 +285,9 @@ object Strings:
               case x if 'A' <= x && x <= 'F' => charCode = (charCode << 4) | (x - 'A' + 10)
               case other =>
                 if isFirstChunk then
-                  return stream.skip(1) flatMap { _ => implicitly[Errors[M]].invalidUnicodeEscape() }
+                  return stream.skip(1) flatMap { _ => errs.invalidUnicodeEscape(stream) }
                 else
-                  return implicitly[Errors[M]].invalidUnicodeEscape()
+                  return errs.invalidUnicodeEscape(stream)
             end match
             charCharPtr += 1
           end while
@@ -265,9 +295,9 @@ object Strings:
           (String.valueOf(charCode.toChar), 5)
         case other =>
           if isFirstChunk then
-            return stream.skip(1) flatMap { _ => implicitly[Errors[M]].invalidEscapeCharacter() }
+            return stream.skip(1) flatMap { _ => errs.invalidEscapeCharacter(stream) }
           else
-            return implicitly[Errors[M]].invalidEscapeCharacter()
+            return errs.invalidEscapeCharacter(stream)
       end match
 
     var ptr = escapeCodeIndex + escapeLength

@@ -10,8 +10,12 @@ import fun.Monad
  * Reader of the string data.
  * Pull interface that reads data chunk by chunk.
  */
-final class StringReader[M[_]: Monad: Strings.Errors: Strings.StartErrors](
-      stream: CharacterStream[M]):
+final class StringReader[M[_]: Monad, S <: CharacterStream[M]](
+      stream: S
+    )(using
+      errs: Strings.Errors[M, S]
+    ):
+
   /** Inidcator on how to start reading. */
   private var isStart = true
 

@@ -8,31 +8,40 @@ import fun.Monad
 
 /** Generic value-related functionality. */
 object Values:
-  /** Error encoding for values. */
-  trait Errors[M[_]]:
+  /**
+   * Error handler for general value errors.
+   * @tparam M execution (monad).
+   * @tparam S type of the stream (i.e. "context") required by the error generation.
+   */
+  trait Errors[M[_], -S]:
     /**
-     * Handles a situation where value is expected but none is given.
+     * Invoked when JSON value is expected but the next input character
+     * (if present) is not valid start of any JSON value.
+     * Stream position is before what was expected to be a first character
+     * of the input value.
      */
-    def illegalValue[T](): M[T]
+    def illegalValue[T](stream: S): M[T]
   end Errors
 
 
-  /** All errors combined. */
-  trait AllErrors[M[_]]:
+  /**
+   * All errors combined.
+   * @tparam M execution monad.
+   * @tparam S type of the stream (context) used by the computation.
+   */
+  trait AllErrors[M[_], -S]:
     /** Value errors handlers. */
-    given valueErrors: Errors[M]
+    given valueErrors: Errors[M, S]
     /** Literal error handlers. */
-    given literalErrors: Literals.Errors[M]
+    given literalErrors: Literals.Errors[M, S]
     /** Number error handlers. */
-    given numberErrors: Numbers.Errors[M]
+    given numberErrors: Numbers.Errors[M, S]
     /** String error handlers. */
-    given stringErrors: Strings.Errors[M]
-    /** String error handlers. */
-    given stringStartErrors: Strings.StartErrors[M]
+    given stringErrors: Strings.Errors[M, S]
     /** Array error handlers. */
-    given arrayErrors: Arrays.Errors[M]
+    given arrayErrors: Arrays.Errors[M, S]
     /** Object error handlers. */
-    given objectErrors: Objects.Errors[M]
+    given objectErrors: Objects.Errors[M, S]
   end AllErrors
 
 
@@ -59,7 +68,7 @@ object Values:
 
 
   /**
-   * A very simple builder of the JSON model.
+   * Very simple builder of the JSON model.
    * @tparam T type of the JSON model element.
    */
   trait SimpleBuilder[T]:
@@ -130,11 +139,12 @@ object Values:
    * @param model model builder - how to build JSON representation from elements.
    * @param stream data stream to read.
    */
-  def readSimple[T, M[_]: Monad: AllErrors](
+  def readSimple[T, M[_]: Monad, S <: CharacterStream[M]](
         model: SimpleBuilder[T],
-        stream: CharacterStream[M],
+        stream: S,
+      )(using
+        errs: AllErrors[M, S]
       ): M[T] =
-    val errs = implicitly[AllErrors[M]]
     import errs.given
 
     object reader extends ValueCallback[M[T]]:
@@ -163,14 +173,14 @@ object Values:
       override def onObject(): M[T] =
         Objects.readAll(
           skipWhitespaces = Whitespaces.skipAll[M],
-          readKey = Strings.readAll,
+          readKey = Strings.readAll[M, S],
           readValue = readValue,
           stream = stream
         ) map model.fromObject
 
       /** Reads a value. */
-      def readValue(stream: CharacterStream[M]): M[T] =
-        Monad.flatten(expectedValue(stream, this, errs.valueErrors.illegalValue()))
+      def readValue(stream: S): M[T] =
+        Monad.flatten(expectedValue(stream, this, errs.valueErrors.illegalValue(stream)))
     end reader
 
     Whitespaces.skipAll(stream) flatMap { _ => reader.readValue(stream) }

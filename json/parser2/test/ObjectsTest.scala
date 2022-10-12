@@ -68,7 +68,7 @@ end ObjectsTest
 
 object ObjectsTest:
   /** Object errors implementation. */
-  given ObjectErrors: Objects.Errors[Identity] with
+  given ObjectErrors: Objects.Errors[Identity, Any] with
     /** Encoding of invalid object start. */
     final case class InvalidObjectStart() extends Exception
 
@@ -78,13 +78,13 @@ object ObjectsTest:
     /** Encoding for invalid key-value separator. */
     final case class InvalidKeyValueSeparator() extends Exception
 
-    override def invalidObjectStart[T](): T =
+    override def invalidObjectStart[T](stream: Any): T =
       throw new InvalidObjectStart()
 
-    override def entrySeparatorOrEndIsMissing[T](): T =
+    override def invalidObjectEnd[T](stream: Any): Identity[T] =
       throw new InvalidEntrySeparator()
 
-    override def invalidKeyValueSeparator[T](): T =
+    override def invalidKeyValueSeparator[T](stream: Any): Identity[T] =
       throw new InvalidKeyValueSeparator()
   end ObjectErrors
 end ObjectsTest

@@ -80,29 +80,27 @@ end ValuesTest
 
 object ValuesTest:
   /** Value errors implementation. */
-  given ValueErrors: Values.Errors[Identity] with
+  given ValueErrors: Values.Errors[Identity, Any] with
     /** Encoding for invalid value. */
     case class IllegalValue() extends Exception
 
-    def illegalValue[T](): T =
+    def illegalValue[T](stream: Any): T =
       throw new IllegalValue()
   end ValueErrors
 
 
-  given AllValueErrors: Values.AllErrors[Identity] with
-    override given valueErrors: Values.Errors[Identity] =
+  given AllValueErrors: Values.AllErrors[Identity, Any] with
+    override given valueErrors: Values.Errors[Identity, Any] =
       ValueErrors
-    override given literalErrors: Literals.Errors[Identity] =
+    override given literalErrors: Literals.Errors[Identity, Any] =
       LiteralsTest.LiteralErrors
-    override given numberErrors: Numbers.Errors[Identity] =
+    override given numberErrors: Numbers.Errors[Identity, Any] =
       NumbersTest.NumberErrors
-    override given stringErrors: Strings.Errors[Identity] =
+    override given stringErrors: Strings.Errors[Identity, Any] =
       StringsTest.StringErrors
-    override given stringStartErrors: Strings.StartErrors[Identity] =
-      StringsTest.StringErrors
-    override given arrayErrors: Arrays.Errors[Identity] =
+    override given arrayErrors: Arrays.Errors[Identity, Any] =
       ArraysTest.ArrayErrors
-    override given objectErrors: Objects.Errors[Identity] =
+    override given objectErrors: Objects.Errors[Identity, Any] =
       ObjectsTest.ObjectErrors
   end AllValueErrors
 

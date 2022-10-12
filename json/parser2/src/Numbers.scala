@@ -6,77 +6,41 @@ import json.parser.input.CharacterStream
 import fun.Monad
 import fun.Applicative
 
-/**
- * Number-related functionality.
- *
- * Provides multiple utilities and predicates that may be used by clients
- * of different levels to implement number reading functionality.
- *
- * ## Predicates
- *
- * The family of isXXX methods (`isNumberSign`, `isDecimalSeparator`,
- * `isExponentIndicator`, `isExponentSign`, `isDigit`) may be used by implementations
- * doing their own state management
- *
- * ## Continuation-based parsing
- *
- * The client starts parsing by invoking `startParsing` and receives porting of the input and the next
- * state. This method may look a bit tricky to use. However it has an advantage of being able to parse
- * complete number in ONE go with sufficiently populated buffer thus avoid unnecessary copying required
- * to construct the full number representation on the client side (in intermediate StringBuilder or any
- * other class with the similar functionality).
- *
- * Usage pseudocode:
- * ```
- * def parseNumber() =
- *   var (chars, nextState) = startParsing(input)
- *   if (nextState == null)
- *     return chars.toString()
- *   val buf = new StringBuilder(chars)
- *   while nextState != null do
- *     (chars, nextState) = nextState.continue(input)
- *     buf ++= chars
- *   end while
- *   return buf.toString()
- * end parseNumber
- * ```
- *
- * ## Pull-based "Iterator" parsing
- *
- * The client has an iterator by invoking `newReader()` and then invokes `next()` until receives null.
- *
- * Usage pseudocode:
- * ```
- * val reader = Numbers.newReader(input)
- *
- * val buf = new StringBuilder()
- * var rd = reader.next()
- * while rd != null do
- *   buf ++= rd
- *   rd = reader.next()
- * val number = buf.toString()
- * ```
- *
- * ## Wholistic Reading
- *
- * The number representation could be read completely in one call to `readAll`.
- */
+/** Number-related parsing functionality. */
 object Numbers:
   /**
-   * Errors that may occur during number parsing.
+   * Error handlers for JSON numbers.
+   * @tparam M execution (monad).
+   * @tparam S type of the stream (i.e. "context") required by the error generation.
    */
-  trait Errors[M[_]]:
-    /** Indicates that the integer part of the number is missing. */
-    def missingIntegerDigits[T](): M[T]
+  trait Errors[M[_], -S]:
+    /**
+     * Invoked when integer digits are missing in the number.
+     * Stream position is before the character that should be an integer digit but
+     * is not. The position is after the number sign (if present).
+     */
+    def missingIntegerDigits[T](stream: S): M[T]
 
-    /** Indicates that leading zero is present in the integer section. */
-    def leadingIntegerZero[T](): M[T]
+    /**
+     * Invoked when a number's integer part contains leading zero (and the part is
+     * not just a simple zero).
+     * Stream position is before the leading zero.
+     */
+    def leadingIntegerZero[T](stream: S): M[T]
 
-    /** Indicates that fractional (decimal) part does not have any digits. */
-    def missingDecimalDigits[T](): M[T]
+    /**
+     * Invoked when the number has decimal separator but no decimal digits.
+     * Stream position is after the decimal separator (i.e. just before where
+     * a first decimal digit should occur).
+     */
+    def missingDecimalDigits[T](stream: S): M[T]
 
-    /** Indicates that exponent part does not have any digits. */
-    def missingExponentDigits[T](): M[T]
+    /**
+     * Invoked when the number has exponent indicator but no exponent digits.
+     * Stream position is just before where the first exponent digit was expected.
+     * This is after the exponent indicator and an optional exponent sign.
+     */
+    def missingExponentDigits[T](stream: S): M[T]
   end Errors
 
 
@@ -93,7 +57,11 @@ object Numbers:
      *   never `null` (but may be an empty sequence). The continuation may be `null`, this value indicates
      *   that the number was parsed completely.
      */
-    def continue[M[_]: Monad: Errors](stream: CharacterStream[M]): M[(CharSequence, ParsingContinuation)]
+    def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
+        ): M[(CharSequence, ParsingContinuation)]
   end ParsingContinuation
 
 
@@ -158,17 +126,29 @@ object Numbers:
    * @return pair consisting of the consumed portion of the number (never `null`) and
    *   optional (nullable) parser that should be used to consume next portion of the number.
    */
-  def startParsing[M[_]: Monad: Errors](stream: CharacterStream[M]): M[(CharSequence, ParsingContinuation)] =
+  def startParsing[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S
+      )(using
+        errs: Errors[M, S]
+      ): M[(CharSequence, ParsingContinuation)] =
     NumberParser.continue(stream)
 
 
   /** Creates new iterator-like pull number reader. */
-  def newReader[M[_]: Monad: Errors](stream: CharacterStream[M]): NumberReader[M] =
+  def newReader[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): NumberReader[M, _] =
     new NumberReader(NumberParser, stream)
 
 
   /** Reads the number fully. This may be memory-inefficient for huge numbers. */
-  def readAll[M[_]: Monad: Errors](stream: CharacterStream[M]): M[String] =
+  def readAll[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+      )(using
+        errs: Errors[M, S]
+      ): M[String] =
     startParsing(stream) flatMap { (inputPortion, nextState) =>
       /* Check if we could go happy-path (all number contents is available) or not. */
       if nextState == null then
@@ -182,10 +162,12 @@ object Numbers:
 
 
   /** Internal "accumulating" implementation of read-all. */
-  private def readAllImpl[M[_]: Monad: Errors](
-          stream: CharacterStream[M],
-          buffer: StringBuilder,
-          state: ParsingContinuation
+  private def readAllImpl[M[_]: Monad, S <: CharacterStream[M]](
+        stream: S,
+        buffer: StringBuilder,
+        state: ParsingContinuation,
+      )(using
+        errs: Errors[M, S]
       ): M[String] =
     state.continue(stream) flatMap { (inputPortion, nextState) =>
       buffer.append(inputPortion)
@@ -198,8 +180,10 @@ object Numbers:
 
   /** Parser of the state **inside** exponent digits. */
   private object ExponentDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       stream.peek(1) flatMap { lookAhead =>
         if lookAhead.length() > 0 then
@@ -232,17 +216,21 @@ object Numbers:
 
   /** Parser that reports missing exponent digits. */
   private object MissingExponentDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
-      implicitly[Errors[M]].missingExponentDigits()
+      errs.missingExponentDigits(stream)
   end MissingExponentDigitsParser
 
 
   /** Parser for the optional exponent part. */
   private object MaybeExponentParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       stream.peek(3) flatMap { lookAhead =>
         /* EOF and non-exponent condition first. */
@@ -303,8 +291,10 @@ object Numbers:
 
   /** Parser for decimal digits and the rest of the input. */
   private object DecimalDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       stream.peek(3) flatMap { lookAhead =>
         if lookAhead.length() <= 0 then
@@ -318,8 +308,8 @@ object Numbers:
      * Continues parsing from the given position in the look-ahead stream.
      * This may be used from other parsers to consume more parts of the already available data.
      */
-    private[Numbers] def continueFrom[M[_]: Monad](
-          stream: CharacterStream[M],
+    private[Numbers] def continueFrom[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
           lookAhead: CharSequence,
           offset: Int = 0
         ): M[(CharSequence, ParsingContinuation)] =
@@ -335,16 +325,20 @@ object Numbers:
 
   /** Parser that reports missing decimal digits. */
   private object MissingDecimalDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
-      implicitly[Errors[M]].missingDecimalDigits()
+      errs.missingDecimalDigits(stream)
   end MissingDecimalDigitsParser
 
 
   private object MaybeDecimalPartParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       /* Request 3 just in case there is just exponent but no decimal part. This way
        * there are no retruns of empty sequence (and no 0-length consume calls).
@@ -387,8 +381,10 @@ object Numbers:
 
   /** Parser for decimal digits and the rest of the input. */
   private object IntegerDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       stream.peek(3) flatMap { lookAhead =>
         if lookAhead.length() <= 0 then
@@ -420,27 +416,33 @@ object Numbers:
 
   /** Parser that reports missing integer digits. */
   private object MissingIntegerDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
-      implicitly[Errors[M]].missingIntegerDigits()
+      errs.missingIntegerDigits(stream)
   end MissingIntegerDigitsParser
 
 
 
   /** Parser that reports leading 0 in the integer part. */
   private object Leading0Parser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
-      implicitly[Errors[M]].leadingIntegerZero()
+      errs.leadingIntegerZero(stream)
   end Leading0Parser
 
 
   /** Parser for the numbers. */
   private object NumberParser extends ParsingContinuation:
-    override def continue[M[_]: Monad: Errors](
-          stream: CharacterStream[M]
+    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+          stream: S,
+        )(using
+          errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       stream.peek(3) flatMap { lookAhead =>
         val hasSign = lookAhead.length() > 0 && Numbers.isNumberSign(lookAhead.charAt(0))
@@ -451,14 +453,14 @@ object Numbers:
           if hasSign then
             stream.consume(1) map { chars => (chars, MissingIntegerDigitsParser) }
           else
-            implicitly[Errors[M]].missingIntegerDigits()
+            errs.missingIntegerDigits(stream)
         else if lookAhead.charAt(firstDigitIndex) == '0'
             && secondDigitIndex < lookAhead.length()
             && Numbers.isDigit(lookAhead.charAt(secondDigitIndex)) then
           if hasSign then
             stream.consume(1) map { chars => (chars, Leading0Parser) }
           else
-            implicitly[Errors[M]].leadingIntegerZero()
+            errs.leadingIntegerZero(stream)
         else
           IntegerDigitsParser.continueFrom(stream, lookAhead, firstDigitIndex)
       }

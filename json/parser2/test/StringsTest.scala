@@ -203,9 +203,9 @@ end StringsTest
 
 object StringsTest:
   /** Implementation of the string parsing error handlers. */
-  given StringErrors: Strings.Errors[Identity]
-      with Strings.StartErrors[Identity]
-      with
+  given StringErrors: Strings.Errors[Identity, Any] with
+    /** Encoding of illegal string start. */
+    final case class IllegalStringStart() extends Exception
     /** Encoding of invalid escape error. */
     final case class InvalidEscapeCharacter() extends Exception
     /** Encoding of invalid unicode escape error. */
@@ -214,22 +214,20 @@ object StringsTest:
     final case class InvalidCharacter() extends Exception
     /** Encoding of unterminated string error. */
     final case class UnterminatedString() extends Exception
-    /** Encoding of illegal string start. */
-    final case class IllegalStringStart() extends Exception
 
-    override def invalidEscapeCharacter[T](): T =
+    override def illegalStringStart[T](stream: Any): T =
+      throw new IllegalStringStart()
+
+    override def invalidEscapeCharacter[T](stream: Any): T =
       throw new InvalidEscapeCharacter()
 
-    override def invalidUnicodeEscape[T](): T =
+    override def invalidUnicodeEscape[T](stream: Any): T =
       throw new InvalidUnicodeEscape()
 
-    override def invalidCharacter[T](): T =
+    override def invalidCharacter[T](stream: Any): T =
       throw new InvalidCharacter()
 
-    override def unterminatedString[T](): T =
+    override def unterminatedString[T](stream: Any): T =
       throw new UnterminatedString()
-
-    override def illegalStringStart[T](): T =
-      throw new IllegalStringStart()
   end StringErrors
 end StringsTest
