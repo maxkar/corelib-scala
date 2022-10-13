@@ -78,7 +78,7 @@ object Numbers:
    * Implementation of the reader. This one has extra type parameters not
    * exposed by the (provided) `Reader` API.
    */
-  final class ReaderImpl[M[_]: Monad, S <: CharacterStream[M]] private[Numbers](
+  private final class ReaderImpl[M[_]: Monad, S <: CharacterStream[M]] private[Numbers](
         private var state: Numbers.ParsingContinuation,
         stream: S,
       )(using
