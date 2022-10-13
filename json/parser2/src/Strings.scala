@@ -54,6 +54,51 @@ object Strings:
 
 
   /**
+   * "Iterator-like" reader of string. Reads string section by section
+   * and returns `null` when there are no more parts to read.
+   */
+  abstract sealed class Reader[M[_]] private[Strings]():
+    /** Reads next part of the string. Returns `null` (within monad) if all the number was read. */
+    def next(): M[CharSequence]
+  end Reader
+
+
+  /**
+   * Implementation of the reader. This one has extra type parameters not
+   * exposed by the (provided) `Reader` API.
+   */
+  private final class ReaderImpl[M[_]: Monad, S <: CharacterStream[M]] private[Strings](
+        stream: S
+      )(using
+        errs: Strings.Errors[M, S]
+      )
+      extends Reader[M]:
+
+    /** Inidcator on how to start reading. */
+    private var isStart = true
+
+    /** Inidcates if we processed everything. */
+    private var isEnd = false
+
+    /** Reads next part of the number. Returns `null` (within monad) if all the number was read. */
+    override def next(): M[CharSequence] =
+      if isEnd then
+        return Monad.pure(null)
+      val op =
+        if isStart then
+          isStart = false
+          Strings.startString(stream)
+        else
+          Strings.continueString(stream)
+      op map { (data, hasMore) =>
+        isEnd = !hasMore
+        data
+      }
+    end next
+  end ReaderImpl
+
+
+  /**
    * Checks if the character is string boundary or not.
    */
   def isStringBoundary(char: Char): Boolean =
@@ -150,8 +195,8 @@ object Strings:
         stream: S,
       )(using
         errs: Errors[M, S]
-      ): StringReader[M, _] =
-    new StringReader(stream)
+      ): Reader[M] =
+    new ReaderImpl(stream)
 
 
   /** Reads the string fully. This may be memory-inefficient for huge numbers. */

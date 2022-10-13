@@ -63,6 +63,41 @@ object Numbers:
   end ParsingContinuation
 
 
+  /**
+   * "Iterator-like" reader of number. Reads number section by section
+   * and returns `null` when there are no more parts to read.
+   */
+  abstract sealed class Reader[M[_]] private[Numbers]():
+    /** Reads next part of the number. Returns `null` (within monad) if all the number was read. */
+    def next(): M[CharSequence]
+  end Reader
+
+
+
+  /**
+   * Implementation of the reader. This one has extra type parameters not
+   * exposed by the (provided) `Reader` API.
+   */
+  final class ReaderImpl[M[_]: Monad, S <: CharacterStream[M]] private[Numbers](
+        private var state: Numbers.ParsingContinuation,
+        stream: S,
+      )(using
+        errs: Numbers.Errors[M, S]
+      )
+      extends Reader[M]:
+
+    override def next(): M[CharSequence] =
+      if state == null then
+        Monad.pure(null)
+      else
+        state.continue(stream) map { (chars, newState) =>
+          state = newState
+          chars
+        }
+    end next
+  end ReaderImpl
+
+
   /** Checks if the character is valid number sign. */
   def isNumberSign(char: Char): Boolean =
     char == '-'
@@ -137,8 +172,8 @@ object Numbers:
         stream: S,
       )(using
         errs: Errors[M, S]
-      ): NumberReader[M, _] =
-    new NumberReader(NumberParser, stream)
+      ): Reader[M] =
+    new ReaderImpl(NumberParser, stream)
 
 
   /** Reads the number fully. This may be memory-inefficient for huge numbers. */
