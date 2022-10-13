@@ -26,7 +26,7 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
       chunkSize <- 1 until inputString.length()
     do
       withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new input.SimpleStringStream(inputString, chunkSize)
+        val stream = new SimpleStringStream(inputString, chunkSize)
         val res = Arrays.readAll(Whitespaces.skipAll[Identity], Numbers.readAll, stream)
         assert(res === expected)
         assert(stream.readOffset === inputBase.length())
@@ -50,7 +50,7 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
       chunkSize <- 1 until inputString.length()
     do
       withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new input.SimpleStringStream(inputString, chunkSize)
+        val stream = new SimpleStringStream(inputString, chunkSize)
         try
           Arrays.readAll(Whitespaces.skipAll[Identity], Numbers.readAll, stream)
           fail(s"Expected ${exn} but got nothing")

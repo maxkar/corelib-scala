@@ -1,8 +1,6 @@
 package io.github.maxkar
 package json.parser
 
-import json.parser.input.CharacterStream
-
 import fun.Monad
 
 

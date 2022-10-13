@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.input
+package json.parser
 
 import fun.Applicative
 

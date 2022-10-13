@@ -16,7 +16,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
   test("startsWithLiteral works") {
-    input.SimpleStringStream.forAllLookAheadSizes[Identity]("hello, world") { stream =>
+    SimpleStringStream.forAllLookAheadSizes[Identity]("hello, world") { stream =>
       assert(Literals.startsWithLiteral("hello", stream))
       assert(stream.readOffset === 0)
     }
@@ -24,14 +24,14 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("readLiteral works") {
-    input.SimpleStringStream.forAllLookAheadSizes[Identity]("hello, world") { stream =>
+    SimpleStringStream.forAllLookAheadSizes[Identity]("hello, world") { stream =>
       Literals.readLiteral("hello", stream)
       assert(stream.readOffset === 5)
     }
   }
 
   test("readLiteral properly handles invalid terminals") {
-    input.SimpleStringStream.forAllLookAheadSizes[Identity]("greeting") { stream =>
+    SimpleStringStream.forAllLookAheadSizes[Identity]("greeting") { stream =>
       try
         Literals.readLiteral("greeter", stream)
         fail("Exception expected")
@@ -45,7 +45,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("readTrue works") {
-    input.SimpleStringStream.forAllLookAheadSizes[Identity]("true?") { stream =>
+    SimpleStringStream.forAllLookAheadSizes[Identity]("true?") { stream =>
       Literals.readTrue(stream)
       assert(stream.readOffset === 4)
     }
@@ -53,7 +53,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("readFalse works") {
-    input.SimpleStringStream.forAllLookAheadSizes[Identity]("false?") { stream =>
+    SimpleStringStream.forAllLookAheadSizes[Identity]("false?") { stream =>
       Literals.readFalse(stream)
       assert(stream.readOffset === 5)
     }
@@ -61,7 +61,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("readNull works") {
-    input.SimpleStringStream.forAllLookAheadSizes[Identity]("null?") { stream =>
+    SimpleStringStream.forAllLookAheadSizes[Identity]("null?") { stream =>
       Literals.readNull(stream)
       assert(stream.readOffset === 4)
     }

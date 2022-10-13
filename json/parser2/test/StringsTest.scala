@@ -174,7 +174,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       chunkSize <- 1 until text.length()
     do
       withClue(s"${text} (by ${chunkSize})") {
-        val stream = input.SimpleStringStream(text, chunkSize)
+        val stream = SimpleStringStream(text, chunkSize)
         assert(expected === Strings.readAll(stream))
         assert(expectedResultOffset === stream.readOffset)
       }
@@ -189,7 +189,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
     do
       withClue(s"${data} (by ${chunkSize})") {
         try
-          val stream = input.SimpleStringStream(data, chunkSize)
+          val stream = SimpleStringStream(data, chunkSize)
           Strings.readAll(stream)
           fail("Failure expected")
         catch

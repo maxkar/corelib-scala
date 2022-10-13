@@ -34,7 +34,7 @@ final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite:
       chunkSize <- 1 until inputString.length()
     do
       withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new input.SimpleStringStream(inputString, chunkSize)
+        val stream = new SimpleStringStream(inputString, chunkSize)
         val res = Values.readSimple(TestValueBuilder, stream)
         assert(res === expected)
         assert(stream.readOffset === (inputBase.length() + lpad.length()))
@@ -62,7 +62,7 @@ final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite:
       chunkSize <- 1 until inputString.length()
     do
       withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new input.SimpleStringStream(inputString, chunkSize)
+        val stream = new SimpleStringStream(inputString, chunkSize)
         try
           Values.readSimple(TestValueBuilder, stream)
           fail(s"Expected ${exn} but got nothing")
