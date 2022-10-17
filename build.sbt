@@ -26,6 +26,16 @@ val libFun = project.in(file("fun"))
   )
 
 
+val libText = project.in(file("text"))
+  .settings(commonSettings)
+  .settings(
+    name := "text",
+    description := "Generic text utilities (like text input/output, text location representation, etc...)."
+  ).dependsOn(
+    libFun
+  )
+
+
 val libJsonClassic = project.in(file("json/classic"))
   .settings(commonSettings)
   .settings(
@@ -194,6 +204,7 @@ val root = project.in(file("."))
   )
   .aggregate(
     libFun,
+    libText,
     libJsonClassic,
     libJsonParser, libJsonParser2, libJsonParserChunky,
     libJsonWriter, libJsonQuery,
