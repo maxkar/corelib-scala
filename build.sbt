@@ -71,7 +71,8 @@ val libJsonParser2 = project.in(file("json/parser2"))
       but abstracts from the rest of concepts like json model or input mechanism.""",
     libraryDependencies += scalatest,
   ).dependsOn(
-    libFun
+    libFun,
+    libText,
   )
 
 

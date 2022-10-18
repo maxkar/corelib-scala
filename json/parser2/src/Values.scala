@@ -4,6 +4,8 @@ package json.parser
 import fun.typeclass.Functor
 import fun.typeclass.Monad
 
+import text.input.LookAheadStream
+
 /** Generic value-related functionality. */
 object Values:
   /**
@@ -120,7 +122,7 @@ object Values:
    *   first character of **any** json value.
    * @return one of the values returned by the `callback` or `noMatch`.
    */
-  def expectedValue[T, M[_]: Functor](stream: CharacterStream[M], callback: ValueCallback[T], noMatch: => T): M[T] =
+  def expectedValue[T, M[_]: Functor](stream: LookAheadStream[M], callback: ValueCallback[T], noMatch: => T): M[T] =
     stream.peek(1) map { lookAhead =>
       if lookAhead.length() <= 0 then
         noMatch
@@ -137,7 +139,7 @@ object Values:
    * @param model model builder - how to build JSON representation from elements.
    * @param stream data stream to read.
    */
-  def readSimple[T, M[_]: Monad, S <: CharacterStream[M]](
+  def readSimple[T, M[_]: Monad, S <: LookAheadStream[M]](
         model: SimpleBuilder[T],
         stream: S,
       )(using

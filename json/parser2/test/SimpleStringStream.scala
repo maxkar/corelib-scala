@@ -3,6 +3,8 @@ package json.parser
 
 import fun.typeclass.Applicative
 
+import text.input.LookAheadStream
+
 /**
  * Simple input implementation that reads the provided `data` string.
  * @param data string with the data that will be read by this "stream".
@@ -13,7 +15,7 @@ import fun.typeclass.Applicative
 final class SimpleStringStream[M[_]: Applicative](
       data: String,
       lookAheadSizeHint: Int
-    ) extends CharacterStream[M]:
+    ) extends LookAheadStream[M]:
   /** Read pointer. */
   private var ptr = 0
 

@@ -4,6 +4,7 @@ package json.parser
 import fun.typeclass.Monad
 import fun.typeclass.Applicative
 
+import text.input.LookAheadStream
 
 /**
  * String-related functionality.
@@ -67,7 +68,7 @@ object Strings:
    * Implementation of the reader. This one has extra type parameters not
    * exposed by the (provided) `Reader` API.
    */
-  private final class ReaderImpl[M[_]: Monad, S <: CharacterStream[M]] private[Strings](
+  private final class ReaderImpl[M[_]: Monad, S <: LookAheadStream[M]] private[Strings](
         stream: S
       )(using
         errs: Strings.Errors[M, S]
@@ -161,7 +162,7 @@ object Strings:
    * @return characters read and indicator if there is more data (i.e. `continueString`
    *   should be called).
    */
-  def startString[M[_]: Monad, S <: CharacterStream[M]](
+  def startString[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -182,7 +183,7 @@ object Strings:
    * @return characters read and indicator if there is more data (i.e. `continueString`
    *   should be called).
    */
-  def continueString[M[_]: Monad, S <: CharacterStream[M]](
+  def continueString[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -191,7 +192,7 @@ object Strings:
 
 
   /** Creates new iterator-like pull string reader. */
-  def newReader[M[_]: Monad, S <: CharacterStream[M]](
+  def newReader[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -200,7 +201,7 @@ object Strings:
 
 
   /** Reads the string fully. This may be memory-inefficient for huge numbers. */
-  def readAll[M[_]: Monad, S <: CharacterStream[M]](
+  def readAll[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -216,7 +217,7 @@ object Strings:
 
 
   /** Internal "accumulating" implementation of read-all. */
-  private def readAllImpl[M[_]: Monad, S <: CharacterStream[M]](
+  private def readAllImpl[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
           buffer: StringBuilder,
       )(using
@@ -240,7 +241,7 @@ object Strings:
    *   should be ignored).
    * @return contents of the string portion and indicator that there is more data.
    */
-  private def processContent[M[_]: Monad, S <: CharacterStream[M]](
+  private def processContent[M[_]: Monad, S <: LookAheadStream[M]](
           chars: CharSequence,
           stream: S,
           isFirstChunk: Boolean
@@ -286,7 +287,7 @@ object Strings:
    *   should be ignored).
    * @return contents of the string portion and indicator that there is more data.
    */
-  private def processEscape[M[_]: Monad, S <: CharacterStream[M]](
+  private def processEscape[M[_]: Monad, S <: LookAheadStream[M]](
           chars: CharSequence,
           stream: S,
           isFirstChunk: Boolean

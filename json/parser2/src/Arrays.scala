@@ -2,6 +2,9 @@ package io.github.maxkar
 package json.parser
 
 import fun.typeclass.Monad
+
+import text.input.LookAheadStream
+
 import scala.collection.mutable.ArrayBuffer
 
 
@@ -42,7 +45,7 @@ object Arrays {
 
 
   /** Reads start of the array - the leading character. */
-  def readArrayStart[M[_]: Monad, S <: CharacterStream[M]](
+  def readArrayStart[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -59,7 +62,7 @@ object Arrays {
    * Checks if array is an empty array or not after the start character was read.
    * Consumes array end character if array is empty, otherwise leaves input intact.
    */
-  def hasFirstValue[M[_]: Monad](stream: CharacterStream[M]): M[Boolean] =
+  def hasFirstValue[M[_]: Monad](stream: LookAheadStream[M]): M[Boolean] =
     stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 || !isArrayEnd(lookAhead.charAt(0)) then
         Monad.pure(true)
@@ -73,7 +76,7 @@ object Arrays {
    * Checks if array has next element or it is array end. Consumes the separator or end
    * character from input.
    */
-  def hasNextValue[M[_]: Monad, S <: CharacterStream[M]](
+  def hasNextValue[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -95,7 +98,7 @@ object Arrays {
    * Reads complete array as a sequence.
    * Whitespace and value reading is delegated to provided handlers.
    */
-  def readAll[T, M[_]: Monad, S <: CharacterStream[M]](
+  def readAll[T, M[_]: Monad, S <: LookAheadStream[M]](
         skipWhitespaces: S => M[Unit],
         readValue: S => M[T],
         stream: S,
@@ -117,7 +120,7 @@ object Arrays {
 
 
   /** Recursive reader implementation. */
-  private def readAllImpl[T, M[_]: Monad, S <: CharacterStream[M]](
+  private def readAllImpl[T, M[_]: Monad, S <: LookAheadStream[M]](
         skipWhitespaces: S => M[Unit],
         readValue: S => M[T],
         stream: S,

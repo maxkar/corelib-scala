@@ -4,6 +4,8 @@ package json.parser
 import fun.typeclass.Monad
 import fun.typeclass.Applicative
 
+import text.input.LookAheadStream
+
 /** Number-related parsing functionality. */
 object Numbers:
   /**
@@ -55,7 +57,7 @@ object Numbers:
      *   never `null` (but may be an empty sequence). The continuation may be `null`, this value indicates
      *   that the number was parsed completely.
      */
-    def continue[M[_]: Monad, S <: CharacterStream[M]](
+    def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -78,7 +80,7 @@ object Numbers:
    * Implementation of the reader. This one has extra type parameters not
    * exposed by the (provided) `Reader` API.
    */
-  private final class ReaderImpl[M[_]: Monad, S <: CharacterStream[M]] private[Numbers](
+  private final class ReaderImpl[M[_]: Monad, S <: LookAheadStream[M]] private[Numbers](
         private var state: Numbers.ParsingContinuation,
         stream: S,
       )(using
@@ -159,7 +161,7 @@ object Numbers:
    * @return pair consisting of the consumed portion of the number (never `null`) and
    *   optional (nullable) parser that should be used to consume next portion of the number.
    */
-  def startParsing[M[_]: Monad, S <: CharacterStream[M]](
+  def startParsing[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S
       )(using
         errs: Errors[M, S]
@@ -168,7 +170,7 @@ object Numbers:
 
 
   /** Creates new iterator-like pull number reader. */
-  def newReader[M[_]: Monad, S <: CharacterStream[M]](
+  def newReader[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -177,7 +179,7 @@ object Numbers:
 
 
   /** Reads the number fully. This may be memory-inefficient for huge numbers. */
-  def readAll[M[_]: Monad, S <: CharacterStream[M]](
+  def readAll[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -195,7 +197,7 @@ object Numbers:
 
 
   /** Internal "accumulating" implementation of read-all. */
-  private def readAllImpl[M[_]: Monad, S <: CharacterStream[M]](
+  private def readAllImpl[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
         buffer: StringBuilder,
         state: ParsingContinuation,
@@ -213,7 +215,7 @@ object Numbers:
 
   /** Parser of the state **inside** exponent digits. */
   private object ExponentDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -232,7 +234,7 @@ object Numbers:
      * This may be used from other parsers to consume more parts of the already available data.
      */
     private[Numbers] def continueFrom[M[_]: Monad](
-          stream: CharacterStream[M],
+          stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
         ): M[(CharSequence, ParsingContinuation)] =
@@ -249,7 +251,7 @@ object Numbers:
 
   /** Parser that reports missing exponent digits. */
   private object MissingExponentDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -260,7 +262,7 @@ object Numbers:
 
   /** Parser for the optional exponent part. */
   private object MaybeExponentParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -289,7 +291,7 @@ object Numbers:
      * This may be used from other parsers to consume more parts of the already available data.
      */
     private[Numbers] def continueFrom[M[_]: Monad](
-          stream: CharacterStream[M],
+          stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
         ): M[(CharSequence, ParsingContinuation)] =
@@ -324,7 +326,7 @@ object Numbers:
 
   /** Parser for decimal digits and the rest of the input. */
   private object DecimalDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -341,7 +343,7 @@ object Numbers:
      * Continues parsing from the given position in the look-ahead stream.
      * This may be used from other parsers to consume more parts of the already available data.
      */
-    private[Numbers] def continueFrom[M[_]: Monad, S <: CharacterStream[M]](
+    private[Numbers] def continueFrom[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
           lookAhead: CharSequence,
           offset: Int = 0
@@ -358,7 +360,7 @@ object Numbers:
 
   /** Parser that reports missing decimal digits. */
   private object MissingDecimalDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -368,7 +370,7 @@ object Numbers:
 
 
   private object MaybeDecimalPartParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -393,7 +395,7 @@ object Numbers:
      * This may be used from other parsers to consume more parts of the already available data.
      */
     private[Numbers] def continueFrom[M[_]: Monad](
-          stream: CharacterStream[M],
+          stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
         ): M[(CharSequence, ParsingContinuation)] =
@@ -414,7 +416,7 @@ object Numbers:
 
   /** Parser for decimal digits and the rest of the input. */
   private object IntegerDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -433,7 +435,7 @@ object Numbers:
      * This may be used from other parsers to consume more parts of the already available data.
      */
     private[Numbers] def continueFrom[M[_]: Monad](
-          stream: CharacterStream[M],
+          stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
         ): M[(CharSequence, ParsingContinuation)] =
@@ -449,7 +451,7 @@ object Numbers:
 
   /** Parser that reports missing integer digits. */
   private object MissingIntegerDigitsParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -461,7 +463,7 @@ object Numbers:
 
   /** Parser that reports leading 0 in the integer part. */
   private object Leading0Parser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
@@ -472,7 +474,7 @@ object Numbers:
 
   /** Parser for the numbers. */
   private object NumberParser extends ParsingContinuation:
-    override def continue[M[_]: Monad, S <: CharacterStream[M]](
+    override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]

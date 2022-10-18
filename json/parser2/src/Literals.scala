@@ -4,6 +4,8 @@ package json.parser
 import fun.typeclass.Monad
 import fun.typeclass.Applicative
 
+import text.input.LookAheadStream
+
 /**
  * Literal readers.
  */
@@ -55,7 +57,7 @@ object Literals:
    */
   def startsWithLiteral[M[_]: Applicative](
         literal: String,
-        stream: CharacterStream[M])
+        stream: LookAheadStream[M])
       : M[Boolean] =
     stream.peek(literal.length()) map { isSameLiteral(literal, _) }
 
@@ -65,7 +67,7 @@ object Literals:
    * @param literal expected literal to read.
    * @param stream stream that must contain the literal exactly at the defined position.
    */
-  def readLiteral[M[_]: Monad, S <: CharacterStream[M]](
+  def readLiteral[M[_]: Monad, S <: LookAheadStream[M]](
         literal: String,
         stream: S,
       )(using
@@ -81,7 +83,7 @@ object Literals:
 
 
   /** Reads the "true" literal from the stream. */
-  inline def readTrue[M[_]: Monad, S <: CharacterStream[M]](
+  inline def readTrue[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -90,7 +92,7 @@ object Literals:
 
 
   /** Reads the "false" literal from the stream. */
-  inline def readFalse[M[_]: Monad, S <: CharacterStream[M]](
+  inline def readFalse[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -99,7 +101,7 @@ object Literals:
 
 
   /** Reads the "null" literal from the stream. */
-  inline def readNull[M[_]: Monad, S <: CharacterStream[M]](
+  inline def readNull[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]

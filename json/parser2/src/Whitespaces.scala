@@ -3,6 +3,7 @@ package json.parser
 
 import fun.typeclass.Monad
 
+import text.input.LookAheadStream
 
 /**
  * (Standard) Whitespace reader and utilities.
@@ -34,7 +35,7 @@ object Whitespaces:
    * Reads a next portion of whitespaces from the data stream.
    * @return `null` if there are no more whitespaces or next portion of whitespace characters.
    */
-  def next[M[_]: Monad](stream: CharacterStream[M]): M[CharSequence] =
+  def next[M[_]: Monad](stream: LookAheadStream[M]): M[CharSequence] =
     stream.peek(1) flatMap { lookAhead =>
       val wsCharCount = countWhitespaces(lookAhead)
       if wsCharCount == 0 then
@@ -51,7 +52,7 @@ object Whitespaces:
    * whitespaces fits the buffer and could be read in one go.
    * @return pair of the next input portion and `hasMore` flag.
    */
-  def parse[M[_]: Monad](stream: CharacterStream[M]): M[(CharSequence, Boolean)] =
+  def parse[M[_]: Monad](stream: LookAheadStream[M]): M[(CharSequence, Boolean)] =
     stream.peek(1) flatMap { lookAhead =>
       val wsCharCount = countWhitespaces(lookAhead)
       if wsCharCount == 0 then
@@ -67,7 +68,7 @@ object Whitespaces:
   /**
    * Skips all whitespace characters in the input stream.
    */
-  def skipAll[M[_]: Monad](stream: CharacterStream[M]): M[Unit] =
+  def skipAll[M[_]: Monad](stream: LookAheadStream[M]): M[Unit] =
     next(stream) flatMap {
       case null => Monad.pure(())
       case _ => skipAll(stream)
@@ -78,7 +79,7 @@ object Whitespaces:
   /**
    * Reads all whitespaces characters as a string. This method may be memory-inefficient.
    */
-  def readAll[M[_]: Monad](stream: CharacterStream[M]): M[String] =
+  def readAll[M[_]: Monad](stream: LookAheadStream[M]): M[String] =
     readAllImpl(new StringBuilder(), stream)
 
 
@@ -88,7 +89,7 @@ object Whitespaces:
    */
   private def readAllImpl[M[_]: Monad](
         accum: StringBuilder,
-        stream: CharacterStream[M])
+        stream: LookAheadStream[M])
       : M[String] =
     next(stream) flatMap { nextSection =>
       if nextSection == null then

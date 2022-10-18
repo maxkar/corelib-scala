@@ -2,8 +2,9 @@ package io.github.maxkar
 package json.parser
 
 import fun.typeclass.Monad
-import scala.collection.mutable.HashMap
+import text.input.LookAheadStream
 
+import scala.collection.mutable.HashMap
 
 /** Json object reader and related utilities. */
 object Objects:
@@ -53,7 +54,7 @@ object Objects:
 
 
   /** Reads the object start character from the stream. */
-  def readObjectStart[M[_]: Monad, S <: CharacterStream[M]](
+  def readObjectStart[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -71,7 +72,7 @@ object Objects:
    * Checks if object has first value (after object start was read). Consumes
    * the object terminator if object is empty.
    */
-  def hasFirstValue[M[_]: Monad, S <: CharacterStream[M]](
+  def hasFirstValue[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -89,7 +90,7 @@ object Objects:
    * Checks if array has next element or it is array end. Consumes the separator or end
    * character from input.
    */
-  def hasNextValue[M[_]: Monad, S <: CharacterStream[M]](
+  def hasNextValue[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S,
       )(using
         errs: Errors[M, S]
@@ -108,7 +109,7 @@ object Objects:
 
 
   /** Reads key-value separator. */
-  def readKeyValueSeparator[M[_]: Monad, S <: CharacterStream[M]](
+  def readKeyValueSeparator[M[_]: Monad, S <: LookAheadStream[M]](
         stream: S
       )(using
         errs: Errors[M, S]
@@ -123,7 +124,7 @@ object Objects:
 
 
   /** Reads the complete object as a map. Duplicate keys will retain only the last value. */
-  def readAll[K, V, M[_]: Monad, S <: CharacterStream[M]](
+  def readAll[K, V, M[_]: Monad, S <: LookAheadStream[M]](
           skipWhitespaces: S => M[Unit],
           readKey: S => M[K],
           readValue: S => M[V],
@@ -146,7 +147,7 @@ object Objects:
 
 
   /** Aggregating reader implementation. */
-  private def readAllImpl[K, V, M[_]: Monad, S <: CharacterStream[M]](
+  private def readAllImpl[K, V, M[_]: Monad, S <: LookAheadStream[M]](
           skipWhitespaces: S => M[Unit],
           readKey: S => M[K],
           readValue: S => M[V],

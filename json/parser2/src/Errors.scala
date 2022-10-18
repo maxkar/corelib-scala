@@ -3,6 +3,8 @@ package json.parser
 
 import fun.typeclass.Monad
 
+import text.input.LookAheadStream
+
 /**
  * Error-related utilities.
  */
@@ -33,7 +35,7 @@ object Errors:
    *   execution monad M. It may also enrich the message with the error context
    *   (like location) from the input stream.
    */
-  def simple[M[_]: Monad, S <: CharacterStream[M]](handler: SimpleHandler[M, S]): Values.AllErrors[M, S] =
+  def simple[M[_]: Monad, S <: LookAheadStream[M]](handler: SimpleHandler[M, S]): Values.AllErrors[M, S] =
     new Values.AllErrors[M, S]:
       /** Returns "context" of the stream that could be used in the messages. */
       private def getContext(seq: CharSequence, maxLength: Int = 7): String =
