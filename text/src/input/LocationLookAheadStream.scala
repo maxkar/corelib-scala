@@ -69,6 +69,7 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
         case '\r' =>
           line += 1
           column = 1
+          offset += 1
 
           val nextIdx = ptr + 1
           /* Keep the flag as the "read state", we need to carry this over. */
@@ -79,10 +80,9 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
           end if
 
           if data.charAt(nextIdx) == '\n' then
-            offset += 2
+            offset += 1
             ptr = nextIdx + 1
           else
-            offset += 1
             ptr = nextIdx
           end if
 

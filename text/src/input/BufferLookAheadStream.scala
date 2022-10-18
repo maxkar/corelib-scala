@@ -32,7 +32,7 @@ private final class BufferLookAheadStream[M[_]: Monad](
 
   override def consume(count: Int): M[CharSequence] =
     setConsumed(count)
-    Monad.pure(buffer)
+    Monad.pure(buffer.subSequence(0, count))
   end consume
 
 
@@ -49,7 +49,8 @@ private final class BufferLookAheadStream[M[_]: Monad](
     if minLength <= buffer.remaining() || eofObserved then
       return Monad.pure(buffer)
 
-    if minLength >= buffer.capacity() then
+
+    if minLength > buffer.capacity() then
       throw new IllegalArgumentException(
         s"Can't look at ${minLength} characters as this exceeds maximal limit of ${buffer.capacity()}"
       )
@@ -196,5 +197,8 @@ object BufferLookAheadStream:
    * @param buffer internal buffer.
    */
   def apply[M[_]: Monad](filler: Filler[M], buffer: CharBuffer): LookAheadStream[M] =
+    buffer.clear()
+    buffer.limit(0)
     new BufferLookAheadStream(filler, buffer)
+  end apply
 end BufferLookAheadStream

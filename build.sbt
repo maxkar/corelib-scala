@@ -30,7 +30,8 @@ val libText = project.in(file("text"))
   .settings(commonSettings)
   .settings(
     name := "text",
-    description := "Generic text utilities (like text input/output, text location representation, etc...)."
+    description := "Generic text utilities (like text input/output, text location representation, etc...).",
+    libraryDependencies += scalatest,
   ).dependsOn(
     libFun
   )
