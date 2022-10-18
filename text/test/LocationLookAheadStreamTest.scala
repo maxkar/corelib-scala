@@ -2,9 +2,11 @@ package io.github.maxkar
 package text.input
 
 import fun.typeclass.Monad
-import java.nio.CharBuffer
+import fun.instances.Identity
+import fun.instances.Identity.given
 
 import java.io.StringReader
+import java.nio.CharBuffer
 
 import text.Location
 

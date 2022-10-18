@@ -3,6 +3,9 @@ package text.input
 
 import java.nio.CharBuffer
 
+import fun.instances.Identity
+import fun.instances.Identity.given
+
 /**
  * Data feeder that has controllable chunks.
  * @param source data that is being fed into the stream.

@@ -1,6 +1,9 @@
 package io.github.maxkar
 package json.parser
 
+import fun.instances.Identity
+import fun.instances.Identity.given
+
 /**
  * Tests for the literal parser.
  */

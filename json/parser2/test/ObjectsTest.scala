@@ -1,6 +1,10 @@
 package io.github.maxkar
 package json.parser
 
+import fun.instances.Identity
+import fun.instances.Identity.given
+
+
 /** Tests for object-related functionality. */
 final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
   import NumbersTest.given
