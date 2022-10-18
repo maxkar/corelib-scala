@@ -1,5 +1,5 @@
 package io.github.maxkar
-package fun
+package fun.typeclass
 
 /**
  * Collector of multiple M-like operations into one M operation producing a sequence.

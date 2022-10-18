@@ -5,8 +5,8 @@ import json.attr.Json
 import json.query.Query
 import json.query.Path
 
-import fun.Collect
-import fun.Monad
+import fun.typeclass.Collect
+import fun.typeclass.Monad
 
 import scala.language.implicitConversions
 

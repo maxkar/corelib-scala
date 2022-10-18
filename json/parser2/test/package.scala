@@ -1,7 +1,7 @@
 package io.github.maxkar
 package json.parser
 
-import fun.Monad
+import fun.typeclass.Monad
 
 type Identity[T] = T
 

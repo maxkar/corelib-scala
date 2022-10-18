@@ -1,5 +1,5 @@
 package io.github.maxkar
-package fun
+package fun.typeclass
 
 /** Some tests for the monad/function syntax. */
 final class SyntaxTest extends org.scalatest.funsuite.AnyFunSuite:

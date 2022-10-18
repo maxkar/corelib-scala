@@ -1,8 +1,8 @@
 package io.github.maxkar
 package json.parser
 
-import fun.Functor
-import fun.Monad
+import fun.typeclass.Functor
+import fun.typeclass.Monad
 
 /** Generic value-related functionality. */
 object Values:

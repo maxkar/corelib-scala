@@ -1,5 +1,5 @@
 package io.github.maxkar
-package fun
+package fun.typeclass
 
 /** A general Functor typeclass. */
 trait Functor[M[_]]:

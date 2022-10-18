@@ -3,7 +3,7 @@ package json.parser.chunky
 
 import json.parser.factory
 
-import fun.Monad
+import fun.typeclass.Monad
 
 /**
  * Json value factory that works with "chunky" parser.

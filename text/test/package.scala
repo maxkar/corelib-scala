@@ -1,7 +1,7 @@
 package io.github.maxkar
 package text.input
 
-import fun.Monad
+import fun.typeclass.Monad
 
 /** Identity type for simplifying operations. */
 type Identity[T] = T

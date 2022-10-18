@@ -1,5 +1,5 @@
 package io.github.maxkar
-package fun
+package fun.typeclass
 
 import scala.annotation.targetName
 

@@ -1,7 +1,7 @@
 package io.github.maxkar
 package text.input
 
-import fun.Monad
+import fun.typeclass.Monad
 import java.nio.CharBuffer
 
 import java.io.StringReader

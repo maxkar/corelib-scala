@@ -1,8 +1,8 @@
 package io.github.maxkar
 package text.input
 
-import fun.Monad
-import fun.Applicative
+import fun.typeclass.Monad
+import fun.typeclass.Applicative
 
 /**
  * Stream of characters with look-ahead support.

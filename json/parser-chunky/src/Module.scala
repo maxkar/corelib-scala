@@ -4,7 +4,7 @@ package json.parser.chunky
 import json.parser.input.ParserInput
 import json.parser.input.ConsumerStatus
 
-import fun.Monad
+import fun.typeclass.Monad
 
 
 /**

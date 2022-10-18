@@ -1,7 +1,7 @@
 package io.github.maxkar
 package json.parser.input
 
-import fun.Monad
+import fun.typeclass.Monad
 
 /**
  * A flexible abstraction over an input stream for the parser.

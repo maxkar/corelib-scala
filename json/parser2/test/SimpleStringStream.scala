@@ -1,7 +1,7 @@
 package io.github.maxkar
 package json.parser
 
-import fun.Applicative
+import fun.typeclass.Applicative
 
 /**
  * Simple input implementation that reads the provided `data` string.

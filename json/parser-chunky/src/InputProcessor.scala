@@ -1,7 +1,7 @@
 package io.github.maxkar
 package json.parser.chunky
 
-import fun.Monad
+import fun.typeclass.Monad
 import json.parser.input.ConsumerStatus
 
 /**

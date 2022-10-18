@@ -1,5 +1,5 @@
 package io.github.maxkar
-package fun
+package fun.typeclass
 
 /** Standard Applicative typeclass. */
 trait Applicative[M[_]] extends Functor[M]:

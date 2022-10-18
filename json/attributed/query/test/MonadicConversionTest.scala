@@ -13,8 +13,8 @@ import json.parser.chunky.SourceLocation
 import json.attr.query.given
 import defaultConversions.given
 
-import fun.Monad
-import fun.Collect
+import fun.typeclass.Monad
+import fun.typeclass.Collect
 
 import scala.language.implicitConversions
 

@@ -9,7 +9,7 @@ import json.parser.factory.NumberFactory
 import json.parser.factory.ArrayFactory
 import json.parser.factory.ObjectFactory
 
-import fun.Monad
+import fun.typeclass.Monad
 
 /**
  * Json object/value factory compatible with the standard parser API.

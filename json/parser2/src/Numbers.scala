@@ -1,8 +1,8 @@
 package io.github.maxkar
 package json.parser
 
-import fun.Monad
-import fun.Applicative
+import fun.typeclass.Monad
+import fun.typeclass.Applicative
 
 /** Number-related parsing functionality. */
 object Numbers:

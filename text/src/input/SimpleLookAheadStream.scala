@@ -1,7 +1,7 @@
 package io.github.maxkar
 package text.input
 
-import fun.Applicative
+import fun.typeclass.Applicative
 
 /**
  * Implementation of the look-ahead stream that is based on the
