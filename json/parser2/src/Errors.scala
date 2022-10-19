@@ -14,7 +14,7 @@ object Errors:
    * Very simple error handler that just "raises" the error using
    * the provided error message and the context (stream) where it happened.
    */
-  trait SimpleHandler[M[_], S]:
+  trait SimpleHandler[M[_], -S]:
     /**
       * Raises (aka encodes) the error.
       *
