@@ -171,7 +171,7 @@ val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
     description := "Json model factories for use with the parsers provided by the platform.",
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonAttributedModel, libJsonParserChunky % "test", libJsonParser, libJsonParser2)
+  .dependsOn(libJsonAttributedModel, libJsonParser2)
 
 
 val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
