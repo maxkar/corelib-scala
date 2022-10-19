@@ -129,7 +129,7 @@ val libJsonSimpleFactory = project.in(file("json/simple/factory"))
     description := "Json model factories for use with the parsers provided by the platform.",
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonParser, libJsonSimpleModel, libJsonParser2, libJsonParserChunky % "test")
+  .dependsOn(libJsonSimpleModel, libJsonParser2)
 
 
 val libJsonSimpleWriter = project.in(file("json/simple/writer"))
