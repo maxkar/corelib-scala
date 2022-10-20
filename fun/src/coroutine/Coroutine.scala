@@ -87,11 +87,8 @@ object Coroutine:
   /** Encoding of the computation step(s). */
   abstract sealed class Routine[Sus[_], +V]
 
-  /** Basic routine - something that has "simple" non-map value. */
-  private abstract sealed class SimpleRoutine[Sus[_], +V] extends Routine[Sus, V]
-
   /** "Pure" value - used as input for next steps. */
-  private case class Pure[Sus[_], +V](value: V) extends SimpleRoutine[Sus, V]
+  private case class Pure[Sus[_], +V](value: V) extends Routine[Sus, V]
 
   /**
    * Suspension - an instruction for the client to perform coroutine-specific step.
@@ -106,17 +103,15 @@ object Coroutine:
    */
   private case class Suspend[Sus[_], V](
         suspender: Suspender[Sus, V],
-      ) extends SimpleRoutine[Sus, V]
+      ) extends Routine[Sus, V]
 
   /**
    * Flat map routine.
-   * @param base base computation. This is always a simple routine (i.e. value or suspension).
-   *   Monad implementation of the coroutine rewrites the code according to monad rules to
-   *   always have well-formed FlatMap nodes.
+   * @param base base computation.
    * @param fn function to execute on the base value.
    */
   private case class FlatMap[Sus[_], V, R](
-        base: SimpleRoutine[Sus, V],
+        base: Routine[Sus, V],
         fn: V => Routine[Sus, R],
       ) extends Routine[Sus, R]
 
@@ -174,12 +169,7 @@ object Coroutine:
       Coroutine.Pure(v)
 
     override def bind[S, R](v: Routine[Sus, S], fn: S => Routine[Sus, R]): Routine[Sus, R] =
-      v match
-        case a@Coroutine.Pure(_) => Coroutine.FlatMap(a, fn)
-        case a@Coroutine.Suspend(_) => Coroutine.FlatMap(a, fn)
-        case a@Coroutine.FlatMap(base, fn1) => Coroutine.FlatMap(base, x => bind(fn1(x), fn))
-      end match
-    end bind
+      Coroutine.FlatMap(v, fn)
   end monadInstance
 
 
@@ -204,6 +194,8 @@ object Coroutine:
            * encode `x => run(pure(x).flatMap(fn))` but this is just shorter.
            */
           return RunResult.Suspended(sus.encode(x => run(fn(x))))
+        case FlatMap(FlatMap(base, fn1), fn) =>
+          cur = FlatMap(base, x => FlatMap(fn1(x), fn))
       end match
     end while
     throw new Error("Uncheacheable code reached")

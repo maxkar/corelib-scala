@@ -10,6 +10,11 @@ final class UnnestTest extends org.scalatest.funsuite.AnyFunSuite:
     Monad.pure(x)
 
 
+  /** Some function - just add 1. */
+  def add1[M[_]: Monad](x: Int): M[Int] =
+    Monad.pure(x + 1)
+
+
   /** Some tail recursion with aggregate. */
   def badTailRec[M[_]: Monad](steps: Int, agg: Int): M[Int] =
     getV(steps) flatMap { v =>
@@ -32,6 +37,21 @@ final class UnnestTest extends org.scalatest.funsuite.AnyFunSuite:
 
     val res = Unnest.run(badTailRec(10000, 0))
     assert(res === (10000 / 2) * 10001)
+  }
+
+
+  test("Long chain of flatmaps don't cause Stack Overflow") {
+    import Unnest.given
+
+    var base: Unnest[Int] = Monad.pure(0)
+    val iterCount = 1000000
+
+    for
+      x <- 1 to iterCount
+    do
+      base = base.flatMap(add1)
+
+    assert(iterCount === Unnest.run(base))
   }
 
 end UnnestTest

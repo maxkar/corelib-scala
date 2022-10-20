@@ -98,18 +98,8 @@ object Unnest:
   /** "Just a value" without any computation. */
   private final case class Pure[+T](value: T) extends Unnest[T]
 
-  /**
-   * Flat map node (i.e. function that has to be applied to the pure value).
-   *
-   * Note that the base operation is **always** pure value and not an
-   * arbitrary `Unnest` instance. Dealing with arbitrary unnest may require extra
-   * computational stack for evaluating it and this is what we are trying to avoid.
-   * Monad instance for Unnest uses monad laws to re-write chains of
-   * `a.flatMap(fn1).flatMap(fn2)` into `a.flatMap{x => fn1(x).flatMap(fn2)}` which
-   * is supported by the computation and matches the predicate (`a` is either pure or
-   * more rewrite rules are applied).
-   */
-  private final case class FlatMap[S, +R](base: S, fn: S => Unnest[R]) extends Unnest[R]
+  /** Flat map node (i.e. function that has to be applied to the pure value). */
+  private final case class FlatMap[S, +R](base: Unnest[S], fn: S => Unnest[R]) extends Unnest[R]
 
 
   /** Implementation of the monad on the Unnest computation. */
@@ -117,11 +107,7 @@ object Unnest:
     override def pure[T](v: T): Unnest[T] = Pure(v)
 
     override def bind[S, R](v: Unnest[S], fn: S => Unnest[R]): Unnest[R] =
-      v match
-        case Pure(v) => FlatMap(v, fn)
-        case FlatMap(base, fn1) => FlatMap(base, x => bind(fn1(x), fn))
-      end match
-    end bind
+      FlatMap(v, fn)
   end unnestMonad
 
 
@@ -131,7 +117,38 @@ object Unnest:
     while true do
       cur match
         case Pure(v) => return v
-        case FlatMap(v, fn) => cur = fn(v)
+        case FlatMap(Pure(v), fn) => cur = fn(v)
+        case FlatMap(FlatMap(v, fn1), fn) =>
+          /* FlatMap rewrite is "lazy" - it is done at the time of evaluation and
+           * not at the time of bind. This is crucial for doing constant-stack evaluation
+           * as long chains of `x.flatMap.flatMap.flatMap` are transformed differently.
+           * "Eager" conversion (on bind) is **left-associative**. The conversions are as follows:
+
+           * ```
+           * a.flatMap(f1).flatMap(f2).flatMap(f3).flatMap(f4) ==>
+           * a.flatMap(y1 => f1(y1).flatMap(f2)).flatMap(f3).flatMap(f4) ==>
+           * a.flatMap(y2 => (y1 => f1(y1).flatMap(f2))(y2).flatMap(f3)).flatMap(f4) ==>
+           * a.flatMap(y3 => (y2 => (y1 => f1(y1).flatMap(f2))(y2).flatMap(f3))(y3).flatMap(f4))
+           * ```
+           * Eventually the `y3 => ...` function gets its argument and starts the evaluation.
+           * Due to the shape of the function, it immediately applies the `y2 => ...` function. That
+           * function in turn applies `y1 => ...` function. This chain uses stack and could grow
+           * arbitrarily long thus causing StackOverflow upon evaluation.
+           *
+           * "Lazy" conversion works as follows:
+           * ```
+           * a.flatMap(f1).flatMap(f2).flatMap(f3).flatMap(f4) ==>
+           * a.flatMap(f1).flatMap(f2).flatMap(y3 => f3(y3).flatMap(f4)) ==>
+           * a.flatMap(f1).flatMap(y2 => f2(y2).flatMap(y3 => f3(y3).flatMap(f4))) ==>
+           * a.flatMap(y1 => f1(y1).flatMap(y2 => f2(y2).flatMap(y3 => f3(y3).flatMap(f4))))
+           * ```
+           * The shape is much better. When `y1 => ...` function is evaluated, it only invokes
+           * the `f1` function and then constructs a new FlatMap(f1(y1), y2 => ...). It does not
+           * invoke the `y2 => ...` function inside the `y1 => ...` function but instead lets
+           * the next iteration of unwind to perform function invocation. This way the constant
+           * stack requirement for evaluation is satisfied.
+           */
+          cur = FlatMap(v, x => FlatMap(fn1(x), fn))
       end match
     end while
     throw new Error("Unreacheable code reached")
