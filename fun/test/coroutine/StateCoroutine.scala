@@ -78,14 +78,14 @@ object StateCoroutine:
   def runState[T](state: Int, routine: Routine[T]): T =
     /* Stackless (non-recursive) loop here. Just for fun and consistency. */
     var curState = state
-    var cont: (Int => RunResult[T]) = (_ => module.run(routine))
+    var nextRes = module.run(routine)
     while true do
-      cont(curState) match
+      nextRes match
         case Coroutine.RunResult.Suspended(StateSus.Read(otherCont)) =>
-          cont = otherCont
+          nextRes = otherCont(curState)
         case Coroutine.RunResult.Suspended(StateSus.Write(v, c)) =>
           curState = v
-          cont = _ => c(())
+          nextRes = c(())
         case Coroutine.RunResult.Finished(x) => return x
       end match
     end while

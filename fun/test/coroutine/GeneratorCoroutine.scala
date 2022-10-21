@@ -64,15 +64,16 @@ object GeneratorCoroutine:
   /** Runs the generator and returns both generated sequence and result. */
   def runGenerator[T](gen: Routine[T]): (Seq[Int], T) =
     var acc = new scala.collection.mutable.ArrayBuffer[Int]
-    var nextStep: Unit => RunResult[T] = _ => module.run(gen)
+    var nextRes = module.run(gen)
 
     /* Also "stackless" implementation. */
     while true do
-      nextStep(()) match
+      nextRes match
         case Coroutine.RunResult.Suspended(GeneratorSus(v, cont)) =>
           acc += v
-          nextStep = cont
-        case Coroutine.RunResult.Finished(v) => return (acc.toSeq, v)
+          nextRes = cont(())
+        case Coroutine.RunResult.Finished(v) =>
+          return (acc.toSeq, v)
       end match
     end while
     throw new Error("Please stop reaching unreacheable code")

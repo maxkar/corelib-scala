@@ -80,14 +80,15 @@ object IOCoroutine:
   def runIO[T](input: String, routine: Routine[T]): (String, T) =
     var ptr = 0
     var output = new StringBuilder()
-    var cont: Unit => RunResult[T] = _ => module.run(routine)
+    var nextRes = module.run(routine)
 
     /* Classical const-stack runner. Real IO (with async/nio streams) would probably
      * be const-stack as well but with results achieved by different means.
      */
     while true do
-      cont(()) match
-        case Coroutine.RunResult.Finished(x) => return (output.toString(), x)
+      nextRes match
+        case Coroutine.RunResult.Finished(x) =>
+          return (output.toString(), x)
         case Coroutine.RunResult.Suspended(IOSus.Read(c)) =>
           val iores =
             if ptr < input.length() then
@@ -97,10 +98,10 @@ object IOCoroutine:
             else
               None
             end if
-          cont = _ => c(iores)
+          nextRes = c(iores)
         case Coroutine.RunResult.Suspended(IOSus.Write(v, c)) =>
           output += v
-          cont = c
+          nextRes = c(())
       end match
     end while
     throw new Error("Please stop reaching unreacheable code")
