@@ -49,19 +49,6 @@ val libJsonClassic = project.in(file("json/classic"))
   )
 
 
-val libJsonParser = project.in(file("json/parser"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-parser",
-    description :=
-      """Generic JSON parser. Provides the syntactic rules for parsing
-      but abstracts from the rest of concepts like json model or input mechanism.""",
-    libraryDependencies += scalatest
-  ).dependsOn(
-    libFun
-  )
-
-
 val libJsonParser2 = project.in(file("json/parser2"))
   .settings(commonSettings)
   .settings(
@@ -193,7 +180,7 @@ val root = project.in(file("."))
     libFun,
     libText,
     libJsonClassic,
-    libJsonParser, libJsonParser2,
+    libJsonParser2,
     libJsonWriter, libJsonQuery,
     libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
