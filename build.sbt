@@ -76,21 +76,6 @@ val libJsonParser2 = project.in(file("json/parser2"))
   )
 
 
-val libJsonParserChunky = project.in(file("json/parser-chunky"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-parser-chunky",
-    description :=
-      """An implementation of the parser that supports operations on partial input (
-        i.e. "push" mode). This mode is useful for applications leveraging non-blocking
-        input. The parser implementation is non-recursive and thus could work with high
-        levels of json nesting.""",
-    libraryDependencies += scalatest
-  ).dependsOn(
-    libJsonParser
-  )
-
-
 val libJsonWriter = project.in(file("json/writer"))
   .settings(commonSettings)
   .settings(
@@ -193,7 +178,7 @@ val libJsonAttributedQuery = project.in(file("json/attributed/query"))
   )
   .dependsOn(
     libJsonAttributedModel, libJsonQuery, libFun,
-    libJsonAttributedFactory % Test, libJsonParserChunky % Test
+    libJsonAttributedFactory % Test
   )
 
 
@@ -208,7 +193,7 @@ val root = project.in(file("."))
     libFun,
     libText,
     libJsonClassic,
-    libJsonParser, libJsonParser2, libJsonParserChunky,
+    libJsonParser, libJsonParser2,
     libJsonWriter, libJsonQuery,
     libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
