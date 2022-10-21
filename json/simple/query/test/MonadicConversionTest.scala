@@ -8,8 +8,8 @@ import json.simple.Json
 import json.simple.query.given
 import defaultConversions.given
 
-import fun.Monad
-import fun.Collect
+import fun.typeclass.Monad
+import fun.typeclass.Collect
 
 import scala.language.implicitConversions
 
@@ -83,12 +83,12 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
 
   /** Parse inner object in a cool way. */
   def parseInner(q: Query[Json]): Md[Inner] =
-    Inner.apply ≻ q
+    Inner.apply ≻≻ q
 
 
   /** Parse outer dto in a cool way. */
   def parseDto(q: Query[Json]): Md[Dto] =
-    Dto.apply.curried ≻
+    Dto.apply.curried ≻≻
       q.x ≻
       q.y ≻
       q.z ≻

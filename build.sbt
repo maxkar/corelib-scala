@@ -26,6 +26,17 @@ val libFun = project.in(file("fun"))
   )
 
 
+val libText = project.in(file("text"))
+  .settings(commonSettings)
+  .settings(
+    name := "text",
+    description := "Generic text utilities (like text input/output, text location representation, etc...).",
+    libraryDependencies += scalatest,
+  ).dependsOn(
+    libFun
+  )
+
+
 val libJsonClassic = project.in(file("json/classic"))
   .settings(commonSettings)
   .settings(
@@ -45,24 +56,10 @@ val libJsonParser = project.in(file("json/parser"))
     description :=
       """Generic JSON parser. Provides the syntactic rules for parsing
       but abstracts from the rest of concepts like json model or input mechanism.""",
-    libraryDependencies += scalatest
+    libraryDependencies += scalatest,
   ).dependsOn(
-    libFun
-  )
-
-
-val libJsonParserChunky = project.in(file("json/parser-chunky"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-parser-chunky",
-    description :=
-      """An implementation of the parser that supports operations on partial input (
-        i.e. "push" mode). This mode is useful for applications leveraging non-blocking
-        input. The parser implementation is non-recursive and thus could work with high
-        levels of json nesting.""",
-    libraryDependencies += scalatest
-  ).dependsOn(
-    libJsonParser
+    libFun,
+    libText,
   )
 
 
@@ -104,7 +101,7 @@ val libJsonSimpleFactory = project.in(file("json/simple/factory"))
     description := "Json model factories for use with the parsers provided by the platform.",
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonParser, libJsonSimpleModel, libJsonParserChunky % "test")
+  .dependsOn(libJsonSimpleModel, libJsonParser)
 
 
 val libJsonSimpleWriter = project.in(file("json/simple/writer"))
@@ -146,7 +143,7 @@ val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
     description := "Json model factories for use with the parsers provided by the platform.",
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonParser, libJsonAttributedModel, libJsonParserChunky % "test")
+  .dependsOn(libJsonAttributedModel, libJsonParser)
 
 
 val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
@@ -168,7 +165,7 @@ val libJsonAttributedQuery = project.in(file("json/attributed/query"))
   )
   .dependsOn(
     libJsonAttributedModel, libJsonQuery, libFun,
-    libJsonAttributedFactory % Test, libJsonParserChunky % Test
+    libJsonAttributedFactory % Test
   )
 
 
@@ -181,8 +178,10 @@ val root = project.in(file("."))
   )
   .aggregate(
     libFun,
-    libJsonClassic, libJsonParser, libJsonParserChunky, libJsonWriter,
-    libJsonQuery,
+    libText,
+    libJsonClassic,
+    libJsonParser,
+    libJsonWriter, libJsonQuery,
     libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
   )
