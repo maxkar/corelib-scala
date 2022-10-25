@@ -1,9 +1,13 @@
 package io.github.maxkar
 package json.attr.writer
 
-import json.writer.Output
-import json.attr.Json
+import fun.instances.Identity
+import fun.instances.Identity.given
 
+import text.output.StringBuilderStream
+
+import json.writer.Values
+import json.attr.Json
 
 /**
  * Test for the writer (both json writer and writer for the attributed binding).
@@ -66,8 +70,8 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
    * @param v json to serialize.
    */
   private def checkCompact[T](expected: String, v: Json[T]): Unit =
-    val writer = Output.compact(v)
-    val result = writer.mkString("")
-    assert(expected === result)
+    val stream = new StringBuilderStream()
+    Values.writeCompact(v, stream)
+    assert(expected === stream.data)
   end checkCompact
 end AttributedWriterTest

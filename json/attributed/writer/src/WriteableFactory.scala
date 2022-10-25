@@ -2,15 +2,14 @@ package io.github.maxkar
 package json.attr.writer
 
 import json.attr.Json
-import json.writer.Writeable
-import json.writer.ValueVisitor
+import json.writer.Values
 
 /**
  * Implementation of the write protocol for the attributed JSON.
  */
-given WriteableFactory:  Writeable[Json[Any]] with
+given WriteableFactory:  Values.ValueClassifier[Json[Any]] with
 
-  override def decodeElement[R](jsonValue: Json[Any], visitor: ValueVisitor[Json[Any], R]): R =
+  override def classifyValue[R](jsonValue: Json[Any], visitor: Values.ValueCallback[Json[Any], R]): R =
     jsonValue match
       case Json.Null(_) => visitor.nullValue()
       case Json.True(_) => visitor.boolean(true)
@@ -23,5 +22,5 @@ given WriteableFactory:  Writeable[Json[Any]] with
           elts.view.mapValues(_.value).iterator
         )
       end match
-  end decodeElement
+  end classifyValue
 end WriteableFactory

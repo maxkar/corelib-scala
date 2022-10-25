@@ -2,14 +2,14 @@ package io.github.maxkar
 package json.simple.writer
 
 import json.simple.Json
-import json.writer.Writeable
-import json.writer.ValueVisitor
+import json.writer.Values
 
 /**
  * Implementation of the write protocol for the simple JSON.
  */
-given WriteableFactory:  Writeable[Json] with
-  override def decodeElement[R](jsonValue: Json, visitor: ValueVisitor[Json, R]): R =
+given WriteableFactory:  Values.ValueClassifier[Json] with
+
+  override def classifyValue[R](jsonValue: Json, visitor: Values.ValueCallback[Json, R]): R =
     jsonValue match
       case Json.Null => visitor.nullValue()
       case Json.True => visitor.boolean(true)
@@ -19,7 +19,7 @@ given WriteableFactory:  Writeable[Json] with
       case Json.Array(elts) => visitor.array(elts.iterator)
       case Json.Object(elts) => visitor.unorderedObject(elts.iterator)
       end match
-  end decodeElement
+  end classifyValue
 end WriteableFactory
 
 

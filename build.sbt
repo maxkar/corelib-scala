@@ -67,7 +67,11 @@ val libJsonWriter = project.in(file("json/writer"))
   .settings(commonSettings)
   .settings(
     name := "json-writer",
-    description := "Utilities for writing/outputting json (both ugly and pretty print)"
+    description := "Utilities for writing/outputting json (both ugly and pretty print)",
+    libraryDependencies += scalatest,
+  )
+  .dependsOn(
+    libFun, libText
   )
 
 
