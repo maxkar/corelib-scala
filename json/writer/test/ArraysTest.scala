@@ -2,6 +2,7 @@ package io.github.maxkar
 package json.writer
 
 import text.output.Stream
+import text.output.StringBuilderStream
 
 import fun.instances.Identity
 import fun.instances.Identity.given
@@ -51,7 +52,7 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   private def expect(expected: String, elems: Int): Unit =
-    val stream = SimpleStream()
+    val stream = StringBuilderStream()
     val w = Arrays.newWriter(spacing, Literals.writeBoolean, stream)
 
     var idx = elems

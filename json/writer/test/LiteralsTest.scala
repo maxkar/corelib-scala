@@ -2,6 +2,7 @@ package io.github.maxkar
 package json.writer
 
 import text.output.Stream
+import text.output.StringBuilderStream
 
 import fun.instances.Identity
 import fun.instances.Identity.given
@@ -27,7 +28,7 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
   private def expect(expected: String, writer: Stream[Identity] => Unit): Unit =
-    val stream = SimpleStream()
+    val stream = StringBuilderStream()
     writer(stream)
     assert(expected === stream.data)
   end expect

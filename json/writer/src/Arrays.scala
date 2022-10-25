@@ -224,4 +224,27 @@ object Arrays:
     }
   end newWriter
 
+
+  /** Writes the `data` as an array. */
+  def writeAll[M[_]: Monad, S <: Stream[M], T](
+        whitespaces: Whitespaces[M, S],
+        writeElement: (T, S) => M[Unit],
+        data: Iterator[T],
+        stream: S,
+      ): M[Unit] =
+    newWriter(whitespaces, writeElement, stream).flatMap { w =>
+      writeAllNext(data, w)
+    }
+
+
+  /** Pass rest of the data (one by one) to the writer. */
+  private def writeAllNext[M[_]: Monad, T](
+        data: Iterator[T],
+        writer: Writer[M, T],
+      ): M[Unit] =
+    if data.hasNext then
+      writer.element(data.next()).flatMap { _ => writeAllNext(data, writer) }
+    else
+      writer.end()
+  end writeAllNext
 end Arrays

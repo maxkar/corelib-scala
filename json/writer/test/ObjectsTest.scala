@@ -2,6 +2,7 @@ package io.github.maxkar
 package json.writer
 
 import text.output.Stream
+import text.output.StringBuilderStream
 
 import fun.instances.Identity
 import fun.instances.Identity.given
@@ -58,7 +59,7 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   private def expect(expected: String, keys: String*): Unit =
-    val stream = SimpleStream()
+    val stream = StringBuilderStream()
     val w = Objects.newWriter(spacing, Literals.writeBoolean, stream)
 
     for key <- keys do

@@ -18,6 +18,6 @@ object Literals:
     stream.write("null")
 
   /** Writes a boolean value. */
-  def writeBoolean[M[_]](v: Boolean, stream: Stream[M]): Unit =
+  def writeBoolean[M[_]](v: Boolean, stream: Stream[M]): M[Unit] =
     if v then writeTrue(stream) else writeFalse(stream)
 end Literals
