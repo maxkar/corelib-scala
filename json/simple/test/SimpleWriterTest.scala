@@ -1,13 +1,10 @@
 package io.github.maxkar
-package json.simple.writer
+package json.simple
 
 import fun.instances.Identity
 import fun.instances.Identity.given
 
-import text.output.StringBuilderStream
-
 import json.writer.Values
-import json.simple.Json
 
 
 /**
@@ -62,6 +59,19 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
 
+  test("Compact no-recursion does not cause stack ovefrlow on deeply nested objects") {
+    var base = Json.Array(Seq.empty)
+
+    val bigNum = 1000000
+
+    for i <- 1 until bigNum do
+      base = Json.Array(Seq(base))
+
+    val expected = ("[" * bigNum) ++ ("]" * bigNum)
+    assert(expected === base.toCompactString())
+  }
+
+
   /**
    * Checks that the json serialization provides expected result.
    *
@@ -69,8 +79,6 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
    * @param v json to serialize.
    */
   private def checkCompact(expected: String, v: Json): Unit =
-    val stream = new StringBuilderStream()
-    Values.writeCompact(v, stream)
-    assert(expected === stream.data)
+    assert(expected === v.toCompactString())
   end checkCompact
 end AttributedWriterTest

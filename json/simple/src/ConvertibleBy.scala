@@ -1,9 +1,13 @@
 package io.github.maxkar
-package json.simple.query
+package json.simple
 
 import json.simple.Json
 
 import json.query.Path
+
+import fun.instances.Identity
+import fun.typeclass.Applicative
+
 
 /**
  * Integration with conversion (and error) typeclass.
@@ -31,39 +35,45 @@ end ConvertibleBy
 
 object ConvertibleBy:
 
+  /** Simple error converters - it knows how to "raise" error given the message. */
+  trait SimpleErrors[M[_]]:
+    /** "Raises" the issue with the given message. */
+    def raise[T](message: String): M[T]
+  end SimpleErrors
+
+
+  object SimpleErrors:
+    /** An implementation that just raises IOException on the calling thread. */
+    def raiseIOException[M[_]]: SimpleErrors[M] =
+      new SimpleErrors[M] {
+        override def raise[T](message: String): M[T] =
+          throw new java.io.IOException(message)
+      }
+  end SimpleErrors
+
+
   /**
-   * Convertible implementation for identity type constructor. The implementation
-   * throws IOException on errors.
-   *
-   * It is supposed to be imported like
-   * {{{
-   *   import io.github.maxkar.json.simple.query.ConvertibleBy.Identity.given
-   * }}}
+   * Creates a new converter for the given execution with the provide
+   * error reporter.
    */
-  object Identity:
-    /** "Monad" type. */
-    type M[T] = T
-
-    /** Implementation of given in "general" execution. */
-    given identityConvertible: ConvertibleBy[M] with
-      import java.io.IOException
-
-      override def pure[T](v: T): M[T] = v
+  def apply[M[_]: Applicative](errors: SimpleErrors[M]): ConvertibleBy[M] =
+    new ConvertibleBy[M] {
+      override def pure[T](v: T): M[T] = Applicative.pure(v)
 
       override def accessError[T](validPath: Path, value: Json, invalidPath: Path): M[T] =
-        throw new IOException(
+        errors.raise(
           s"${validPath}: Value of type ${Json.typeName(value)} could not be navigate using the path ${invalidPath}"
         )
 
       override def fieldMissing[T](validPath: Path, value: Json, invalidPath: Path): M[T] =
-        throw new IOException(
+        errors.raise(
           s"${validPath}: Value does not have an element that matches the path ${invalidPath}"
         )
 
       override def invalidDomainValue[T](path: Path, value: Json, message: String): M[T] =
-        throw new IOException(
+        errors.raise(
           s"${path}: Could not convert JSON value into domain value: ${message}"
         )
-    end identityConvertible
-  end Identity
+    }
+  end apply
 end ConvertibleBy

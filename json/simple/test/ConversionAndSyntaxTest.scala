@@ -1,18 +1,23 @@
 package io.github.maxkar
-package json.simple.query
+package json.simple
+
+import fun.instances.Identity
+import fun.instances.Identity.given
 
 import json.query.Query
 import json.simple.Json
 
-import json.simple.query.given
+import json.simple.given
 import defaultConversions.given
-import ConvertibleBy.Identity.given
-
 
 /**
  * Tests for simple json conversion and navigation.
  */
 final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
+
+  /** Our conversion protocol. */
+  private given ConvertibleBy[Identity] =
+    ConvertibleBy(ConvertibleBy.SimpleErrors.raiseIOException)
 
   test("Basic query and navigation on json works") {
     val model =

@@ -6,7 +6,7 @@ import json.parser.Values.SimpleBuilder
 /**
  * Buidler of the simple JSON model.
  */
-object Builder extends SimpleBuilder[Json]:
+private object Builder extends SimpleBuilder[Json]:
   override def fromBoolean(v: Boolean): Json =
     if v then Json.True else Json.False
 

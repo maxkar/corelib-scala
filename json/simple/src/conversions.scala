@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.simple.query
+package json.simple
 
 import json.simple.Json
 import json.query.Query
@@ -7,7 +7,6 @@ import json.query.Path
 
 import fun.typeclass.Collect
 import fun.typeclass.Monad
-import io.github.maxkar.json.simple.query.ConvertibleBy.Identity
 
 import scala.language.implicitConversions
 

@@ -1,15 +1,12 @@
 package io.github.maxkar
-package json.simple.writer
+package json.simple
 
 import fun.instances.Identity
 import fun.instances.Identity.given
 
-import text.output.StringBuilderStream
-
 import json.writer.Values
 import json.writer.PrettyPrintOptions
 import json.writer.PrettyPrintOptions._
-import json.simple.Json
 
 import scala.collection.SeqMap
 
@@ -434,8 +431,6 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
    * @param v json to serialize.
    */
   private def checkPretty(expected: String, v: Json)(using opts: PrettyPrintOptions): Unit =
-    val stream = new StringBuilderStream()
-    Values.writePretty(opts, v, stream)
-    assert(expected === stream.data)
+    assert(expected === v.toPrettyString(opts))
   end checkPretty
 end AttributedPrettyWriterTest

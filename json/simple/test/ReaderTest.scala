@@ -82,6 +82,6 @@ class AttributeParsingTest extends org.scalatest.funsuite.AnyFunSuite:
     val reader = new java.io.StringReader(input)
     val filler = BufferLookAheadStream.Filler[Identity](reader, (), x => throw x)
     val inputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
-    Reader.read(inputStream)
+    Json.read(inputStream)
   end parse
 end AttributeParsingTest

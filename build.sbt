@@ -90,42 +90,16 @@ val libJsonQuery = project.in(file("json/query"))
   )
 
 
-val libJsonSimpleModel = project.in(file("json/simple/model"))
+val libJsonSimple = project.in(file("json/simple"))
   .settings(commonSettings)
   .settings(
-    name := "json-simple-model",
+    name := "json-simple",
     description :=
-      """Very basic json object model that is "just a tree"."""
-  )
-
-val libJsonSimpleFactory = project.in(file("json/simple/factory"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-simple-factory",
-    description := "Json model factories for use with the parsers provided by the platform.",
+      """Simple json model (natural JSON tree) with corresponding input,
+         |output and query facilities""".stripMargin,
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonSimpleModel, libJsonParser)
-
-
-val libJsonSimpleWriter = project.in(file("json/simple/writer"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-simple-writer",
-    description := "Bindings to the JSON writer for the simple model.",
-    libraryDependencies += scalatest
-  )
-  .dependsOn(libJsonWriter, libJsonSimpleModel)
-
-
-val libJsonSimpleQuery = project.in(file("json/simple/query"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-simple-query",
-    description := "Query integration for the simple JSON",
-    libraryDependencies += scalatest
-  )
-  .dependsOn(libJsonSimpleModel, libJsonQuery, libFun)
+  .dependsOn(libFun, libJsonParser, libJsonWriter, libJsonQuery)
 
 
 val libJsonAttributedModel = project.in(file("json/attributed/model"))
@@ -184,8 +158,7 @@ val root = project.in(file("."))
     libFun,
     libText,
     libJsonClassic,
-    libJsonParser,
-    libJsonWriter, libJsonQuery,
-    libJsonSimpleModel, libJsonSimpleFactory, libJsonSimpleWriter, libJsonSimpleQuery,
+    libJsonParser, libJsonWriter, libJsonQuery,
+    libJsonSimple,
     libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
   )

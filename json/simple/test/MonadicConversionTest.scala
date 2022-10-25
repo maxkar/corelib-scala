@@ -1,11 +1,11 @@
 package io.github.maxkar
-package json.simple.query
+package json.simple
 
 import json.query.Query
 import json.query.Path
 import json.simple.Json
 
-import json.simple.query.given
+import json.simple.given
 import defaultConversions.given
 
 import fun.typeclass.Monad

@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.simple.query
+package json.simple
 
 import json.simple.Json
 import json.query.ModelNavigation
