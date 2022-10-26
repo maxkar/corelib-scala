@@ -26,7 +26,7 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
         "b" -> Json.Number("23")
       ))
 
-    val q = Query(model)
+    val q = Query(model: Json)
     assert(q.b.as[Int] === 23)
     assert(q.a.as[Boolean] === true)
     assert(q.c.as[Option[String]] === None)
@@ -38,7 +38,7 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
 
   test("Array derivations work") {
     val model1 = Json.Array(Seq(Json.True, Json.True, Json.False))
-    val q1 = Query(model1)
+    val q1 = Query(model1: Json)
 
     assert(q1.as[Seq[Boolean]] === Seq(true, true, false))
 
@@ -48,7 +48,7 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
         Json.Array(Seq.empty),
         Json.Array(Seq(Json.Number("44.5"), Json.Number("22.5")))
       ))
-    val q2 = Query(model2)
+    val q2 = Query(model2: Json)
     val expected2 =
       Seq(
         Seq(BigDecimal("22")),
@@ -63,7 +63,7 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
     val model1 = Json.Object(Map(
       "a" -> Json.True, "b" -> Json.True, "c" -> Json.False
     ))
-    val q1 = Query(model1)
+    val q1 = Query(model1: Json)
 
     assert(q1.as[Map[String, Boolean]] === Map("a" -> true, "b" -> true, "c" -> false))
 
@@ -73,7 +73,7 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
         "b" -> Json.Object(Map.empty),
         "c" -> Json.Object(Map("ff" -> Json.Number("44.5"), "tt" -> Json.Number("22.5")))
       ))
-    val q2 = Query(model2)
+    val q2 = Query(model2: Json)
     val expected2 =
       Map(
         "a" -> Map("tt" -> BigDecimal("22")),

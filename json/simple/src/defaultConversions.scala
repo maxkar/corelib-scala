@@ -17,6 +17,13 @@ given jsonToBoolean: Function[Json, Either[String, Boolean]] with
 end jsonToBoolean
 
 
+/** Conversion from boolean to json. */
+given booleanToJson: Conversion[Boolean, Json] with
+  override def apply(x: Boolean): Json =
+    if x then Json.True else Json.False
+end booleanToJson
+
+
 /**
  * Conversion from JSON to string value.
  */
@@ -28,6 +35,12 @@ given jsonToString: Function[Json, Either[String, String]] with
     end match
   end apply
 end jsonToString
+
+
+/** Conversion from string to json. */
+given stringToJson: Conversion[String, Json] with
+  override def apply(x: String): Json = Json.String(x)
+end stringToJson
 
 
 /**
@@ -48,6 +61,11 @@ given jsonToInt: Function[Json, Either[String, Int]] with
   end apply
 end jsonToInt
 
+/** Converts int to json. */
+given intToJson: Conversion[Int, Json] with
+  override def apply(x: Int): Json = Json.Number(x.toString())
+end intToJson
+
 
 /**
  * Conversion from JSON to long value.
@@ -66,6 +84,11 @@ given jsonToLong: Function[Json, Either[String, Long]] with
     end match
   end apply
 end jsonToLong
+
+/** Converts long to json. */
+given longToJson: Conversion[Long, Json] with
+  override def apply(x: Long): Json = Json.Number(x.toString())
+end longToJson
 
 
 /**
@@ -86,6 +109,10 @@ given jsonToFloat: Function[Json, Either[String, Float]] with
   end apply
 end jsonToFloat
 
+/** Converts float to json. */
+given floatToJson: Conversion[Float, Json] with
+  override def apply(x: Float): Json = Json.Number(x.toString())
+end floatToJson
 
 /**
  * Conversion from JSON to double value.
@@ -105,9 +132,14 @@ given jsonToDouble: Function[Json, Either[String, Double]] with
   end apply
 end jsonToDouble
 
+/** Converts double to json. */
+given doubleToJson: Conversion[Double, Json] with
+  override def apply(x: Double): Json = Json.Number(x.toString())
+end doubleToJson
+
 
 /**
- * Conversion from JSON to BigDecimal.
+ * Conversion from JSON to BigInt.
  */
 given jsonToBigInt: Function[Json, Either[String, BigInt]] with
   override def apply(v: Json): Either[String, BigInt] =
@@ -124,6 +156,10 @@ given jsonToBigInt: Function[Json, Either[String, BigInt]] with
   end apply
 end jsonToBigInt
 
+/** Converts BigInt to json. */
+given bigIntToJson: Conversion[BigInt, Json] with
+  override def apply(x: BigInt): Json = Json.Number(x.toString())
+end bigIntToJson
 
 /**
  * Conversion from JSON to BigDecimal.
@@ -143,6 +179,10 @@ given jsonToBigDecimal: Function[Json, Either[String, BigDecimal]] with
   end apply
 end jsonToBigDecimal
 
+/** Converts BigDecimal to json. */
+given bigDecimalToJson: Conversion[BigDecimal, Json] with
+  override def apply(x: BigDecimal): Json = Json.Number(x.toString())
+end bigDecimalToJson
 
 /**
  * Noop conversion. Could be used to derive JSON value or optional JSON value

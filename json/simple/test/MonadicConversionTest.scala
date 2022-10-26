@@ -147,10 +147,10 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
 
     val expectedDto = Right(Dto(45, "Hello, Monad", false, Inner(Seq(1, 2, 3))))
 
-    val maybeDto1 = parseDto(Query(stupid)("map", 0))
+    val maybeDto1 = parseDto(Query(stupid: Json)("map", 0))
     assert(maybeDto1 === expectedDto)
 
-    val maybeDto2 = parseDto(Query(stupid) / "map" / 0)
+    val maybeDto2 = parseDto(Query(stupid: Json) / "map" / 0)
     assert(maybeDto2 === expectedDto)
 
 
@@ -161,7 +161,7 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
         ))
       ))
 
-    val maybeDto3 = parseDto(Query(lessStupid).data(0))
+    val maybeDto3 = parseDto(Query(lessStupid: Json).data(0))
     assert(maybeDto3 === expectedDto)
   }
 
