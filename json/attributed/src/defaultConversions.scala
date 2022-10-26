@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.attr.query.defaultConversions
+package json.attr.defaultConversions
 
 import json.attr.Json
 

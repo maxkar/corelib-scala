@@ -102,49 +102,18 @@ val libJsonSimple = project.in(file("json/simple"))
   .dependsOn(libFun, libJsonParser, libJsonWriter, libJsonQuery)
 
 
-val libJsonAttributedModel = project.in(file("json/attributed/model"))
+val libJsonAttributed = project.in(file("json/attributed"))
   .settings(commonSettings)
   .settings(
-    name := "json-attributed-model",
+    name := "json-attributed-query",
     description :=
       """Json object model with support for non-json model attributes.
          | The attributes may define "auxilary" information like source location where element
          | was defined.
-         |""".stripMargin
-  )
-
-
-val libJsonAttributedFactory = project.in(file("json/attributed/factory"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-attributed-factory",
-    description := "Json model factories for use with the parsers provided by the platform.",
+         |""".stripMargin,
     libraryDependencies += scalatest
   )
-  .dependsOn(libJsonAttributedModel, libJsonParser)
-
-
-val libJsonAttributedWriter = project.in(file("json/attributed/writer"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-attributed-writer",
-    description := "Bindings to the JSON writer for the attributed model.",
-    libraryDependencies += scalatest
-  )
-  .dependsOn(libJsonWriter, libJsonAttributedModel)
-
-
-val libJsonAttributedQuery = project.in(file("json/attributed/query"))
-  .settings(commonSettings)
-  .settings(
-    name := "json-attributed-query",
-    description := "Query integration for the attributed JSON",
-    libraryDependencies += scalatest
-  )
-  .dependsOn(
-    libJsonAttributedModel, libJsonQuery, libFun,
-    libJsonAttributedFactory % Test
-  )
+  .dependsOn(libFun, libJsonParser, libJsonWriter, libJsonQuery)
 
 
 val root = project.in(file("."))
@@ -159,6 +128,5 @@ val root = project.in(file("."))
     libText,
     libJsonClassic,
     libJsonParser, libJsonWriter, libJsonQuery,
-    libJsonSimple,
-    libJsonAttributedModel, libJsonAttributedFactory, libJsonAttributedWriter, libJsonAttributedQuery,
+    libJsonSimple, libJsonAttributed,
   )

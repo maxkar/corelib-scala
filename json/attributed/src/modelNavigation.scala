@@ -1,10 +1,8 @@
 package io.github.maxkar
-package json.attr.query
+package json.attr
 
-import json.attr.Json
 import json.query.ModelNavigation
 import json.query.ModelStepResult
-
 
 /**
  * Implementation of the simple model navigation.

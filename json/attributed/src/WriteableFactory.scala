@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.attr.writer
+package json.attr
 
 import json.attr.Json
 import json.writer.Values

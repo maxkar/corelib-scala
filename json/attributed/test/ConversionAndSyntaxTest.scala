@@ -1,11 +1,9 @@
 package io.github.maxkar
-package json.attr.query
+package json.attr
 
 import json.query.Query
 import json.query.ModelNavigation
-import json.attr.Json
 
-import json.attr.query.given
 import defaultConversions.given
 
 

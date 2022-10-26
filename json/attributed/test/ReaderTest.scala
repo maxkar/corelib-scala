@@ -14,7 +14,8 @@ import text.input.LocationLookAheadStream
 
 import json.parser.Values.AllErrors
 import json.parser.Errors
-import io.github.maxkar.json.attr.Json.ObjectEntry
+import Json.ObjectEntry
+
 
 /** Tests for attributed parsing reader. */
 class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:

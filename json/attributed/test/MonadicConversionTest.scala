@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.attr.query
+package json.attr
 
 import java.nio.CharBuffer
 
@@ -15,7 +15,6 @@ import json.attr.AttributeFactory
 
 import json.parser.Errors
 
-import json.attr.query.given
 import defaultConversions.given
 
 import fun.typeclass.Monad

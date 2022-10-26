@@ -1,6 +1,18 @@
 package io.github.maxkar
 package json.attr
 
+import fun.typeclass.Monad
+
+import text.input.LookAheadStream
+import text.output.{Stream => OutStream}
+import text.output.StringBuilderStream
+
+import json.parser.Values
+import json.parser.EndOfFile
+
+import json.writer.{Values => JsonWriter}
+import json.writer.PrettyPrintOptions
+
 /**
  * Single node in the JSON tree model.
  * @tparam A type of the attributes that are applied to json.
@@ -16,6 +28,36 @@ abstract sealed class Json[+A]:
    * @param fn function to apply to json attributes.
    */
   def mapAttributes[R](fn: A => R): Json[R]
+
+
+  /** Outputs this JSON into the given stream in the compact form. */
+  inline def writeCompact[M[_]: Monad](stream: OutStream[M]): M[Unit] =
+    Json.writeCompact(this, stream)
+
+
+  /** Outputs this JSON into the given stream in the pretty form. */
+  inline def writePretty[M[_]: Monad](
+        stream: OutStream[M],
+        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+      ): M[Unit] =
+    Json.writePretty(this, stream, format)
+
+  /**
+   * Returns pretty string representation of this value.
+   * This function is recursive and may cause stack overflow on large objects.
+   */
+  inline def toCompactString(): java.lang.String =
+    Json.toCompactString(this)
+
+
+  /**
+   * Returns pretty string representation of this value.
+   * This function is recursive and may cause stack overflow on large objects.
+   */
+  inline def toPrettyString(
+        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+      ): java.lang.String =
+    Json.toPrettyString(this, format)
 end Json
 
 
@@ -122,4 +164,80 @@ object Json:
       case Json.Object(_, _) => "object"
     end match
   end typeName
+
+
+  /**
+   * Reads a single value from the stream and stops after the value was read.
+   *
+   * @param stream data stream to read.
+   * @param attributeFactory factory used to create JSON attributes from data
+   *   available through the given stream.
+   */
+  inline def readOneValue[M[_]: Monad, S <: LookAheadStream[M], A](
+        stream: S,
+        attributeFactory: AttributeFactory[M, S, A]
+      )(using
+        errs: Values.AllErrors[M, S],
+        attrErrors: Reader.Errors[M, S, A]
+      ): M[Json[A]] =
+    Reader.readOneValue(stream, attributeFactory)
+
+  /**
+   * Reads value from the stream ensuring that no other data is contained in
+   * the `stream`. In other words, it reads the **whole** stream as a single
+   * JSON value.
+   *
+   * @param stream data stream to read.
+   * @param attributeFactory factory used to create JSON attributes from data
+   *   available through the given stream.
+   */
+  inline def read[M[_]: Monad, S <: LookAheadStream[M], A](
+        stream: S,
+        attributeFactory: AttributeFactory[M, S, A]
+      )(using
+        errs: Values.AllErrors[M, S],
+        attrErrors: Reader.Errors[M, S, A],
+        eofErrors: EndOfFile.Errors[M, S],
+      ): M[Json[A]] =
+    Reader.read(stream, attributeFactory)
+
+
+  /** Outputs JSON into the given stream in the compact form. */
+  def writeCompact[M[_]: Monad, A](v: Json[A], stream: OutStream[M]): M[Unit] =
+    JsonWriter.writeCompact(v, stream)
+
+
+  /** Outputs JSON into the given stream in the pretty form. */
+  def writePretty[M[_]: Monad, A](
+        v: Json[A],
+        stream: OutStream[M],
+        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+      ): M[Unit] =
+    JsonWriter.writePretty(format, v, stream)
+
+
+  /** Returns compact string representation of the given JSON. */
+  def toCompactString(v: Json[_]): java.lang.String =
+    import fun.instances.Unnest
+    import fun.instances.Unnest.given
+
+    val stream = new StringBuilderStream()
+    Unnest.run(writeCompact(v, stream))
+    stream.data
+  end toCompactString
+
+
+  /** Returns pretty string representation of the given JSON. */
+  def toPrettyString(
+        v: Json[_],
+        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+      ): java.lang.String =
+    import fun.instances.Unnest
+    import fun.instances.Unnest.given
+
+    val stream = new StringBuilderStream()
+    Unnest.run(writePretty(v, stream, format))
+    stream.data
+  end toPrettyString
+
 end Json

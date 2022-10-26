@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.attr.writer
+package json.attr
 
 import fun.instances.Identity
 import fun.instances.Identity.given
@@ -7,7 +7,6 @@ import fun.instances.Identity.given
 import text.output.StringBuilderStream
 
 import json.writer.Values
-import json.attr.Json
 
 /**
  * Test for the writer (both json writer and writer for the attributed binding).

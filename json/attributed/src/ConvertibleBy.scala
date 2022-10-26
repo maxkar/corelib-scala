@@ -1,7 +1,5 @@
 package io.github.maxkar
-package json.attr.query
-
-import json.attr.Json
+package json.attr
 
 import json.query.Path
 
