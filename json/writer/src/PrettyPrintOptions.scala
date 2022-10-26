@@ -71,4 +71,16 @@ object PrettyPrintOptions:
    * Always wrap empty objects.
    */
   val alwaysWrapEmpty = WrapEmptyOptions(wrapInObjects = true, wrapInArrays = true, wrapAtTopLevel = true)
+
+
+  /**
+   * Some default options. Arbitrary, opinionated and subject to change without warning.
+   */
+  val defaultOptions =
+    PrettyPrintOptions(
+      indent = "  ",
+      sortObjectKeys = false,
+      emptyObjectWrap = noWrapEmpty,
+      emptyArrayWrap = noWrapEmpty
+    )
 end PrettyPrintOptions
