@@ -69,8 +69,6 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
    * @param v json to serialize.
    */
   private def checkCompact[T](expected: String, v: Json[T]): Unit =
-    val stream = new StringBuilderStream()
-    Values.writeCompact(v, stream)
-    assert(expected === stream.data)
+    assert(expected === v.toCompactString())
   end checkCompact
 end AttributedWriterTest

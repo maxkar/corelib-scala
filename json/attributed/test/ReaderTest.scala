@@ -141,6 +141,6 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:
     val filler = BufferLookAheadStream.Filler[Identity](reader, (), x => throw x)
     val baseInputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
     val inputStream = LocationLookAheadStream(baseInputStream)
-    Reader.read(inputStream, attrFactory)
+    Json.read(inputStream, attrFactory)
   end runParser
 end ReaderTest
