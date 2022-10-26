@@ -73,6 +73,21 @@ inline given optionalIdConversion[T](
 
 
 /**
+ * Automatic conversion from optional value to MaybeValue that could
+ * be used in update/construct operations for JSON objects and arrays.
+ */
+given optionalConstruction[T, S <: MaybeJson](using c: Conversion[T, S])
+    : Conversion[Option[T], MaybeJson] with
+  override def apply(x: Option[T]): MaybeJson =
+    x match
+      case None => Json.Empty
+      case Some(x) => c(x)
+    end match
+  end apply
+end optionalConstruction
+
+
+/**
  * Automatic conversion Query -> Seq[T] based on conversions
  * Query -> T and Query -> Seq[Query].
  */
@@ -96,6 +111,14 @@ inline given sequenceIdConversion[T](
   override def apply(v: Query[Json]): Seq[T] =
     seqConv(v).map(eltConv)
 end sequenceIdConversion
+
+
+/** Automatic construction of JSON arrays (values) from simple values. */
+given sequenceConstruction[T <: MaybeJson]: Conversion[Seq[T], Json.Array] with
+  override def apply(x: Seq[T]): Json.Array =
+    Json.array(x: _*)
+end sequenceConstruction
+
 
 /**
  * Automatic conversion Query -> Map[String, T] based on conversions
@@ -130,9 +153,16 @@ given mapIdConversion[T](
     mapConv(v).view.mapValues(eltConv).toMap
 end mapIdConversion
 
-/**
- * Conversion from Query to optional query.
- */
+
+/** Automatic construction of JSON objects from the appropriate scala maps. */
+given mapConstruction[T <: MaybeJson]: Conversion[Map[String, T], Json.Object] with
+  override def apply(x: Map[String, T]): Json.Object =
+    Json.makeFrom(x.iterator)
+end mapConstruction
+
+
+
+/** Conversion from Query to optional query. */
 given queryToOptionalQuery: Conversion[Query[Json], Option[Query[Json]]] with
   override def apply(v: Query[Json]): Option[Query[Json]] =
     v match
@@ -172,6 +202,14 @@ inline given queryToSequenceIdConversion(
     : Conversion[Query[Json], Seq[Query[Json]]] =
   queryToSequenceConversion
 
+/** Automatic construction of JSON arrays (values) from convertible values. */
+given deepSequenceConstruction[T, S <: MaybeJson](
+      using c: Conversion[T, S])
+    : Conversion[Seq[T], Json.Array] with
+  override def apply(x: Seq[T]): Json.Array =
+    x.map(c)
+end deepSequenceConstruction
+
 
 /**
  * Conversion from Query to map with queries as values.
@@ -202,3 +240,11 @@ inline given queryToMapIdConversion(
       using mcb: ConvertibleBy[({type Id[T] = T})#Id])
     : Conversion[Query[Json], Map[String, Query[Json]]] =
   queryToMapConversion
+
+/** Automatic construction of JSON objects (values) from convertible maps. */
+given deepObjectConstruction[T, S <: MaybeJson](
+      using c: Conversion[T, S])
+    : Conversion[Map[String, T], Json.Object] with
+  override def apply(x: Map[String, T]): Json.Object =
+    Json.makeFrom(x.view.mapValues(c).iterator)
+end deepObjectConstruction

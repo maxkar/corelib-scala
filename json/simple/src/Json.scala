@@ -17,26 +17,16 @@ import json.writer.Values.ValueClassifier
 import json.writer.Values.ValueCallback
 
 
+/** Instruction on how to update specific object element. */
+abstract sealed class ObjectUpdateInstruction
+
+/** An "optional" value that may be present or absent. */
+abstract sealed class MaybeJson extends ObjectUpdateInstruction
+
 /**
  * Single node in the JSON tree model.
  */
-enum Json:
-  /** Json `null` literal. */
-  case Null
-  /** True literal. */
-  case True
-  /** False literal. */
-  case False
-  /** Json String value. */
-  case String(value: java.lang.String)
-  /** Json number (with the given numeric representation). */
-  case Number(repr: java.lang.String)
-  /** Json Array. */
-  case Array(elements: Seq[Json])
-  /** Json Object. */
-  case Object(elements: Map[java.lang.String, Json])
-
-
+abstract sealed class Json extends MaybeJson:
   /** Outputs this JSON into the given stream in the compact form. */
   inline def writeCompact[M[_]: Monad](stream: OutStream[M]): M[Unit] =
     Json.writeCompact(this, stream)
@@ -69,6 +59,113 @@ end Json
 
 
 object Json:
+  /** Instruction to remove JSON element with the given name. */
+  case object Remove extends ObjectUpdateInstruction
+
+  /** "No value" in the context that accepts optional JSON values. */
+  case object Empty extends MaybeJson
+
+  /** Json `null` literal. */
+  case object Null extends Json
+
+  /** True literal. */
+  case object True extends Json
+
+  /** False literal. */
+  case object False extends Json
+
+  /** Json String value. */
+  case class String(value: java.lang.String) extends Json
+
+  /** Json number (with the given numeric representation). */
+  case class Number(repr: java.lang.String) extends Json
+
+  /** Json Array. */
+  case class Array(elements: Seq[Json]) extends Json:
+    /** Creates an array that is concatenation of this array and another array. */
+    def ++(another: Array): Array =
+      Array(elements ++ another.elements)
+
+    /** Creates an array that is concatenation of this array and `items`. */
+    def concat(items: Seq[Json]): Array =
+      Array(elements ++ items)
+
+    /**
+     * Updates the array with the new contents. This is mostly similar to concat
+     * but takes varargs and supports optional elements:
+     * ```
+     * val arr: Json.Array = generateSomeArray()
+     * val newArr =
+     *   arr.update(
+     *     1,
+     *     2,
+     *     createOptElement(),
+     *     3,
+     *   )
+     *
+     *
+     * def createOptElement(): MaybeJson = Json.Empty
+     * ```
+     *
+     * This way values 1, 2 and 3 will be appended. Empty elements are skipped.
+     */
+    def update(items: MaybeJson*): Array =
+      Array(
+        elements ++ (items.collect { case x: Json => x})
+      )
+  end Array
+
+  /** Json Object. */
+  case class Object(elements: Map[java.lang.String, Json]) extends Json:
+    /**
+     * Creates an array that is "concatenation" of this object and another object.
+     * Values from `another` object will take precedence over values present in this object.
+     */
+    def ++(another: Object): Object =
+      Object(elements ++ another.elements)
+
+
+    /**
+     * Creates an object that is concatenation of this object and `items`.
+     * Elements in the `items` takes precedence over elements in this object.
+     */
+    def concat(items: Map[java.lang.String, Json]): Object =
+      Object(elements ++ items)
+
+
+    /**
+     * Creates an object that is concatenation of this object and `items`.
+     * Elements in the `items` takes precedence over elements in this object.
+     */
+    def concatSeq(items: Seq[(java.lang.String, Json)]): Object =
+      Object(elements ++ items)
+
+
+    /**
+     * Updates the object according to the given instructions. The instructions are
+     * treated as follows:
+     *  * Regular JSON value updates (or creates) value of the given key.
+     *  * The `Json.Empty` value does not update anything. The instruction is still useful
+     *    when update is generated automatically from an "optional" update value.
+     *  * The `Json.Remove` value removes the key from the resulting object.
+     *
+     * Instructions are processed in the order provided.
+     */
+    def update(instructions: (java.lang.String, ObjectUpdateInstruction)*): Object =
+      var res = elements
+      val itr = instructions.iterator
+
+      while itr.hasNext do
+        val (key, instruction) = itr.next()
+        instruction match
+          case Remove => res = res - key
+          case Empty => ()
+          case other: Json => res = res + ((key -> other))
+        end match
+      end while
+      Object(res)
+    end update
+  end Object
 
   /**
    * An implementation of the JSON builder from the given dispatch over the model.
@@ -140,6 +237,43 @@ object Json:
     end match
   end typeName
 
+
+  /**
+   * Constructs JSON array from individual elements.
+   *
+   * Usage:
+   * ```
+   * val x: Json = Json.array(1, 2, 3)
+   * ```
+   */
+  def array(elements: MaybeJson*): Json.Array =
+    Json.Array(
+      elements.collect { case x: Json => x }
+    )
+
+
+  /**
+   * Creates a new object from json elements.
+   * Usage:
+   * ```
+   * val x: Json =
+   *   Json.make(
+   *     "a" -> 25,
+   *     "b" -> "test"
+   *   )
+   * ```
+   */
+  def make(entries: (java.lang.String, MaybeJson)*): Json.Object =
+    makeFrom(entries.iterator)
+
+
+  /** Creates a new object from json elements provided by the iterator. */
+  def makeFrom(entries: Iterator[(java.lang.String, MaybeJson)]): Json.Object =
+    Json.Object(
+      entries
+        .collect { case (key, value: Json) => (key -> value) }
+        .toMap
+    )
 
   /** Reads a simple value from the stream and stops after the value was read. */
   def readOneValue[M[_]: Monad, S <: LookAheadStream[M]](
