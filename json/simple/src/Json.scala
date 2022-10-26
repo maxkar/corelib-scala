@@ -2,6 +2,7 @@ package io.github.maxkar
 package json.simple
 
 import fun.typeclass.Monad
+import fun.instances.Unnest
 
 import text.input.LookAheadStream
 import text.output.{Stream => OutStream}
@@ -12,6 +13,8 @@ import json.parser.Values.AllErrors
 import json.parser.EndOfFile
 import json.writer.{Values => JsonWriter}
 import json.writer.PrettyPrintOptions
+import json.writer.Values.ValueClassifier
+import json.writer.Values.ValueCallback
 
 
 /**
@@ -66,6 +69,63 @@ end Json
 
 
 object Json:
+
+  /**
+   * An implementation of the JSON builder from the given dispatch over the model.
+   */
+  private final class FromBuilder[T](
+        dispatch: ValueClassifier[T],
+      )
+      extends ValueCallback[T, Unnest[Json]]:
+    import Unnest.given
+
+    /** Converts value to json. */
+    def convert(x: T): Unnest[Json] = dispatch.classifyValue(x, this)
+
+    override def nullValue(): Unnest[Json] =
+      Monad.pure(Json.Null)
+
+    override def boolean(v: Boolean): Unnest[Json] =
+      Monad.pure(if (v) then Json.True else Json.False)
+
+    override def number(representation: CharSequence): Unnest[Json] =
+      Monad.pure(Json.Number(representation.toString()))
+
+    override def string(v: CharSequence): Unnest[Json] =
+      Monad.pure(Json.String(v.toString()))
+
+
+    override def array(iter: Iterator[T]): Unnest[Json] =
+      arrayAgg(iter, List.empty)
+
+
+    override def unorderedObject(iter: Iterator[(java.lang.String, T)]): Unnest[Json] =
+      objectAgg(iter, List.empty)
+
+
+    /** Aggregates array in the monadic way. */
+    private def arrayAgg(iter: Iterator[T], agg: List[Json]): Unnest[Json] =
+      if iter.hasNext then
+        convert(iter.next()).flatMap { x => arrayAgg(iter, x :: agg) }
+      else
+        Monad.pure(Json.Array(agg.reverseIterator.toSeq))
+    end arrayAgg
+
+
+    /** Aggregates object in the monadic way. */
+    private def objectAgg(
+          iter: Iterator[(java.lang.String, T)],
+          agg: List[(java.lang.String, Json)]
+        ):  Unnest[Json] =
+      if iter.hasNext then
+        val (k, v) = iter.next()
+        convert(v).flatMap { x => objectAgg(iter, (k -> x) :: agg) }
+      else
+        Monad.pure(Json.Object(agg.toMap))
+    end objectAgg
+  end FromBuilder
+
+
   /**
    * Retruns simple name of the json type (i.e. boolean, number, etc...).
    */
@@ -107,6 +167,16 @@ object Json:
       _ <- EndOfFile.expectNoValues(stream)
     } yield res
   end read
+
+
+  /**
+   * Creates an instance of JSON from another (writeable) model.
+   * @tparam T another JSON model.
+   * @param other another instance to create the data from.
+   * @return JSON representation of the `other` value.
+   */
+  def from[T](other: T)(implicit format: ValueClassifier[T]): Json =
+    Unnest.run(new FromBuilder(format).convert(other))
 
 
   /** Outputs JSON into the given stream in the compact form. */
