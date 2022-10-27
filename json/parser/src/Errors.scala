@@ -61,7 +61,7 @@ object Errors:
           if lookAhead.length() <= 0 then
             s"Unexpected end of stream, expected ${entityName}"
           else
-            getContext(lookAhead, contextLength)
+            buildMessage(getContext(lookAhead, contextLength))
         handler.raise(stream, msg)
       }
 

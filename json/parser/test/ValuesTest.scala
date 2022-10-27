@@ -17,6 +17,7 @@ final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite:
       "true" -> java.lang.Boolean.TRUE,
       "false" -> java.lang.Boolean.FALSE,
       "645.5" -> BigDecimal("645.5"),
+      "-645.5" -> BigDecimal("-645.5"),
       "[]" -> Seq.empty,
       "null" -> null,
       "{}" -> Map.empty,

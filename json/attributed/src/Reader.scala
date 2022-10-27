@@ -217,7 +217,7 @@ object Reader:
 
       /** Reads a value. */
       def readValue(stream: S): M[Json[A]] =
-        Monad.flatten(Values.expectedValue(stream, this, errs.valueErrors.illegalValue(stream)))
+        Values.expectedValue(stream, this)
     end reader
 
     Whitespaces.skipAll(stream) flatMap { _ => reader.readValue(stream) }

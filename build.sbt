@@ -13,6 +13,12 @@ val commonSettings = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
+val appSettings = Seq(
+  run / fork := true,
+  run / connectInput := true,
+  outputStrategy := Some(StdoutOutput),
+)
+
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 
 
@@ -116,6 +122,23 @@ val libJsonAttributed = project.in(file("json/attributed"))
   .dependsOn(libFun, libJsonParser, libJsonWriter, libJsonQuery)
 
 
+val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-formatter"))
+  .settings(commonSettings)
+  .settings(appSettings)
+  .settings(
+    name := "json-streaming-formatter",
+    description :=
+      """Sample JSON prettifier/compacter that relies on "asynchronous" (coroutine-based)
+        | input-output. This demonstrates how JSON modules could be used to process data without
+        | building in-memory tree. It also illustrates "heap-based" recursion (limited by memory and
+        | not stack size) and "coroutines". The app relies on synchronous readers/writers but the
+        | same approach could be used to integrate with non-blocking NIO input/output facilities.
+      """.stripMargin,
+    libraryDependencies += scalatest
+  )
+  .dependsOn(libJsonParser, libJsonWriter)
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -129,4 +152,5 @@ val root = project.in(file("."))
     libJsonClassic,
     libJsonParser, libJsonWriter, libJsonQuery,
     libJsonSimple, libJsonAttributed,
+    sampleJsonStreamingFormatter,
   )
