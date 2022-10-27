@@ -10,12 +10,12 @@ trait Functor[M[_]]:
     inline def map[R](fn: S => R): M[R] =
       Functor.this.fmap(x, fn)
 
-    inline infix def ≺[R](fn: S => R): M[R]  =
+    inline infix def <|[R](fn: S => R): M[R]  =
       Functor.this.fmap(x, fn)
 
 
   extension [S, R](fn: S => R)
-    inline infix def ≻≻ (v: M[S]): M[R] =
+    inline infix def ||> (v: M[S]): M[R] =
       Functor.this.fmap(v, fn)
 
 end Functor

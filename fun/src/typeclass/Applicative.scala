@@ -16,7 +16,7 @@ trait Applicative[M[_]] extends Functor[M]:
 
 
   extension [S, R](fn: M[S => R])
-    inline infix def ≻(v: M[S]): M[R] =
+    inline infix def |>(v: M[S]): M[R] =
       Applicative.this.aapply(v, fn)
 
 end Applicative

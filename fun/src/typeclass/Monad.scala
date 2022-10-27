@@ -29,18 +29,18 @@ trait Monad[M[_]] extends Applicative[M]:
         (vv: S) => if fn(vv) then vv else throw new Exception("No match in monad for comprehension")
       )
 
-    inline infix def ≼[R](fn: S => M[R]) =
+    inline infix def <|||[R](fn: S => M[R]) =
       Monad.this.bind(v, fn)
 
 
 
   extension [S, R](fn: S => M[R])
-    inline infix def ≽(v: M[S]): M[R] =
+    inline infix def |||>(v: M[S]): M[R] =
       Monad.this.bind(v, fn)
 
 
   extension [S, R](fn: M[S => M[R]])
-    inline infix def ≽(v: M[S]): M[R] =
+    inline infix def |||>(v: M[S]): M[R] =
       Monad.this.flatten(Monad.this.aapply(v, fn))
 end Monad
 

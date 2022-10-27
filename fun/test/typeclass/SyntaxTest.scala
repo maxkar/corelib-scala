@@ -38,7 +38,7 @@ final class SyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
     def calc[M[_]: Monad](x: Int)(y: Int): M[Int] =
       Monad.pure(x + y)
 
-    assert((calc ≻≻ a ≽ b) === Some(7))
+    assert((calc ||> a |||> b) === Some(7))
   }
 
 
