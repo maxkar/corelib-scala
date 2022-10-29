@@ -107,7 +107,7 @@ object Values:
       case '"' => callback.onString()
       case '{' => callback.onObject()
       case '[' => callback.onArray()
-      case '-' => callback.onNull()
+      case '-' => callback.onNumber()
       case x if '0' <= x && x <= '9' => callback.onNumber()
       case _ => noMatch
     end match
@@ -122,12 +122,17 @@ object Values:
    *   first character of **any** json value.
    * @return one of the values returned by the `callback` or `noMatch`.
    */
-  def expectedValue[T, M[_]: Functor](stream: LookAheadStream[M], callback: ValueCallback[T], noMatch: => T): M[T] =
-    stream.peek(1) map { lookAhead =>
+  def expectedValue[T, M[_]: Monad, S <: LookAheadStream[M]](
+          stream: S,
+          callback: ValueCallback[M[T]],
+        )(implicit
+          errs: Errors[M, S],
+        ) : M[T] =
+    stream.peek(1) flatMap { lookAhead =>
       if lookAhead.length() <= 0 then
-        noMatch
+        errs.illegalValue(stream)
       else
-        expectedValue(lookAhead.charAt(0), callback, noMatch)
+        expectedValue(lookAhead.charAt(0), callback, errs.illegalValue(stream))
     }
   end expectedValue
 
@@ -180,7 +185,7 @@ object Values:
 
       /** Reads a value. */
       def readValue(stream: S): M[T] =
-        Monad.flatten(expectedValue(stream, this, errs.valueErrors.illegalValue(stream)))
+        expectedValue(stream, this)
     end reader
 
     Whitespaces.skipAll(stream) flatMap { _ => reader.readValue(stream) }
