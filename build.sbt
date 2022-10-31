@@ -139,6 +139,22 @@ val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-forma
   .dependsOn(libJsonParser, libJsonWriter)
 
 
+val httpServerApi = project.in(file("http/server/api"))
+  .settings(commonSettings)
+  .settings(
+    name := "http-server-api",
+    description :=
+      """Server-related classes, typeclasses and utilites. This module defines a (server-agnostic)
+        | general-purpose API that could be leveraged by an HTTP server. For example, this includes:
+        | * Routing request based on the request-path.
+        | * Accessing request methods and headers
+        | * Returning HTTP response. This includes aborting processing early (for example, when
+        |   user is not authorized to access the API).
+        | * Emiting some side-effects during processing like setting cookies or adding headers.
+      """.stripMargin
+  )
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -153,4 +169,6 @@ val root = project.in(file("."))
     libJsonParser, libJsonWriter, libJsonQuery,
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
+
+    httpServerApi,
   )
