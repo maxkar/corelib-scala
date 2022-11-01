@@ -153,6 +153,21 @@ val httpServerApi = project.in(file("http/server/api"))
         | * Emiting some side-effects during processing like setting cookies or adding headers.
       """.stripMargin
   )
+  .dependsOn(libFun)
+
+
+val httpServerToolkit = project.in(file("http/server/toolkit"))
+  .settings(commonSettings)
+  .settings(
+    name := "http-server-toolkit",
+    description :=
+      """Server toolkit - a set of clasess and utilties that makes writing server API
+        | implementations easy. These clasess do not form the client API (i.e. business logic
+        | is not expected to use them) but are very handy on the server side as they solve
+        | very common problems in the standard way.
+      """.stripMargin
+  )
+  .dependsOn(httpServerApi)
 
 
 val root = project.in(file("."))
@@ -170,5 +185,5 @@ val root = project.in(file("."))
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
 
-    httpServerApi,
+    httpServerApi, httpServerToolkit,
   )

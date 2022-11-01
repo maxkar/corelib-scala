@@ -1,7 +1,7 @@
 package io.github.maxkar
 package http.server.api
 
-import scala.collection.immutable.Range.Partial
+import java.nio.charset.Charset
 
 /**
  * Routing-related functionality. "Routing" is loosely defined as "making
@@ -177,14 +177,22 @@ trait Route[M[_]]:
    * exceeds the allowed limit.
    * @param limit limit on the payload size.
    */
-  def getBodyAsByteStream(limit: Long): M[ByteStream[M]]
+  def getBodyAsByteStream(limit: Long): M[ByteInputStream[M]]
 
   /**
    * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
    * exceeds the allowed limit. Encoding detection uses server-specific logic.
    * @param limit limit on the payload size.
    */
-  def getBodyAsCharStream(limit: Long): M[CharStream[M]]
+  def getBodyAsCharStream(limit: Long, charset: Charset): M[CharInputStream[M]]
+
+
+  /**
+   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
+   * exceeds the allowed limit. Encoding detection uses server-specific logic.
+   * @param limit limit on the payload size.
+   */
+  def getBodyAsCharStream(limit: Long, charsetName: String): M[CharInputStream[M]]
 
 
   /**
@@ -568,7 +576,7 @@ object Route:
    * exceeds the allowed limit.
    * @param limit limit on the payload size.
    */
-  inline def getBodyAsByteStream[M[_]](limit: Long)(using rt: Route[M]): M[ByteStream[M]] =
+  inline def getBodyAsByteStream[M[_]](limit: Long)(using rt: Route[M]): M[ByteInputStream[M]] =
     rt.getBodyAsByteStream(limit)
 
 
@@ -577,8 +585,27 @@ object Route:
    * exceeds the allowed limit. Encoding detection uses server-specific logic.
    * @param limit limit on the payload size.
    */
-  inline def getBodyAsCharStream[M[_]](limit: Long)(using rt: Route[M]): M[CharStream[M]] =
-    rt.getBodyAsCharStream(limit)
+  inline def getBodyAsCharStream[M[_]](
+          limit: Long,
+          charset: Charset,
+        )(using
+          rt: Route[M]
+        ): M[CharInputStream[M]] =
+    rt.getBodyAsCharStream(limit, charset)
+
+
+  /**
+   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
+   * exceeds the allowed limit. Encoding detection uses server-specific logic.
+   * @param limit limit on the payload size.
+   */
+  inline def getBodyAsCharStream[M[_]](
+          limit: Long,
+          charsetName: String,
+        )(using
+          rt: Route[M]
+        ): M[CharInputStream[M]] =
+    rt.getBodyAsCharStream(limit, charsetName)
 
 
   /**

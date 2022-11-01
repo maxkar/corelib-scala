@@ -1,10 +1,10 @@
 package io.github.maxkar
 package http.server.api
 
-import java.nio.ByteBuffer
+import java.nio.CharBuffer
 
-/** Reader of the "stream of bytes". The read operations may happen asynchronously. */
-trait ByteStream[M[_]]:
+/** Reader of the "stream of characters". The read operations may happen asynchronously. */
+trait CharInputStream[M[_]]:
   /**
    * Reads the next portion of the input as the (server-managed) byte buffer.
    *
@@ -21,5 +21,5 @@ trait ByteStream[M[_]]:
    *   of the stream was reached. In particular, the returned buffer will have `remaining() == 0`
    *   if consumer always consumes all the data returned.
    */
-  def read(minSize: Int): M[ByteBuffer]
-end ByteStream
+  def read(minSize: Int): M[CharBuffer]
+end CharInputStream
