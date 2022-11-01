@@ -158,6 +158,5 @@ object Errors:
       Response.text(413, "Max-Char-Length" -> length.toString())(
         s"Request size exceedes the maximum allowed size of ${length} characters"
       )
-
   end SimpleText
 end Errors
