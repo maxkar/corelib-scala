@@ -3,9 +3,6 @@ package http.server.api
 
 /**
  * Writer of stream of bytes.
- * Unlike readers and other writes this stream operates on the arrays and
- * not nio buffers. This is due to the lower-level APIs that operate on
- * arrays and have no buffer compatibility layer.
  */
 trait ByteOutputStream[M[_]]:
   /** Writes the given portion of the array into the output stream. */

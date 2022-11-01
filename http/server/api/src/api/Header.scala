@@ -22,4 +22,12 @@ trait Header[T]:
 
   /** Encodes (domain) value of the header into the transport form. */
   def toTransport(value: T): String
+
+
+  /**
+   * A nice syntax arrow for those who would like to use "rich headers"
+   * to generate output values.
+   */
+  final def -->(value: T): (String, String) =
+    name -> toTransport(value)
 end Header

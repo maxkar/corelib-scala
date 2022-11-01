@@ -197,21 +197,7 @@ trait Route[M[_]]:
 
   /**
    * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
-   * @param header header used to extract the data.
-   * @param fn function that handles the selection. It would be tried on every entity returned
-   *   by the header in the **decreasing** order.
-   */
-  def negotiate[H: Ordering, T](header: Header[Seq[H]], fn: PartialFunction[H, M[T]]): M[T]
-
-
-  /**
-   * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
+   *
    * @param header header used to extract the data.
    * @param fn function that handles the selection. It would be tried on every entity returned
    *   by the header in the **decreasing** order.
@@ -226,26 +212,6 @@ trait Route[M[_]]:
 
   /**
    * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
-   * @param header header used to extract the data.
-   * @param weight function used to calculate (relative) weight of the given option.
-   * @param fn function that handles the selection. It would be tried on every entity returned
-   *   by the header in the **decreasing** order.
-   */
-  def negotiateBy[H, W: Ordering, T](
-        header: Header[Seq[H]],
-        weight: H => W,
-        fn: PartialFunction[H, M[T]])
-      : M[T]
-
-
-  /**
-   * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
    * @param header header used to extract the data.
    * @param weight function used to calculate (relative) weight of the given option.
    * @param fn function that handles the selection. It would be tried on every entity returned
@@ -608,40 +574,9 @@ object Route:
     rt.getBodyAsCharStream(limit, charsetName)
 
 
-  /**
-   * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
-   *
-   * It may be used like
-   * ```
-   * Route.negotiate(Headers.Accept) {
-   *   case Accept("application/json", params, _) if parms.has("v" -> "1") => produceJsonV1()
-   *   case Accept("application/json", params, _) if parms.has("v" -> "2") => produceJsonV2()
-   *   case Accept("application/xml", params, _) if parms.has("v" -> "1") => produceXmlV1()
-   * }
-   * ```
-   *
-   * @param header header used to extract the data.
-   * @param fn function that handles the selection. It would be tried on every entity returned
-   *   by the header in the **decreasing** order.
-   */
-  inline def negotiate[M[_], H: Ordering, T](
-        header: Header[Seq[H]]
-      )(
-        fn: PartialFunction[H, M[T]],
-      )(using
-        rt: Route[M]
-      ): M[T] =
-    rt.negotiate(header, fn)
-
 
   /**
    * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
    *
    * It may be used like
    * ```
@@ -669,31 +604,6 @@ object Route:
 
   /**
    * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
-   *
-   * @param header header used to extract the data.
-   * @param weight function used to calculate (relative) weight of the given option.
-   * @param fn function that handles the selection. It would be tried on every entity returned
-   *   by the header in the **decreasing** order.
-   */
-  inline def negotiateBy[M[_], H, W: Ordering, T](
-        header: Header[Seq[H]],
-        weight: H => W,
-      )(
-        fn: PartialFunction[H, M[T]],
-      )(
-        using rt: Route[M]
-      ): M[T] =
-    rt.negotiateBy(header, weight, fn)
-
-
-  /**
-   * Negotiates the option (like response content representation) from the value of the given header.
-   * Fails if the request could not be negatiated. Usually this is `406 Not Acceptable` for the
-   * `Accept` header, `415 Unsupported Media Type` for the `Content-Type` header and
-   * `400 Bad Request` for any other header.
    * @param header header used to extract the data.
    * @param weight function used to calculate (relative) weight of the given option.
    * @param fn function that handles the selection. It would be tried on every entity returned
