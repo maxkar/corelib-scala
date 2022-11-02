@@ -233,6 +233,16 @@ class ValueParser(data: String):
 
     Right(buf.toSeq)
   end readParameters
+
+
+  /** Ensures the parser is at the end of the stream. */
+  def expectEof(): Either[String, Unit] =
+    skipWhitespaces()
+    if offset < data.length() then
+      return raise("Extra data in the header")
+    Right(())
+  end expectEof
+
 end ValueParser
 
 
