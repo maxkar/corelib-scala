@@ -264,10 +264,20 @@ object ValueParser:
   def isValidStringCharacter(char: Char): Boolean =
     char match
       case '\t' => true  // explicitly allowed
-      case '\\' => false // should be treated as escape
+      case '\\' | '\"' => false
       case x if 0x20 <= x && x <= 0x7E => true
       case x if 0x80 <= x && x <= 0xFF => true
       case other => false
     end match
   end isValidStringCharacter
+
+  /** Checks if the character is valid escaped character (i.e. could occur inside the string escape). */
+  def isValidEscapeCharacter(char: Char): Boolean =
+    char match
+      case '\t' | '\\' => true  // explicitly allowed
+      case x if 0x20 <= x && x <= 0x7E => true
+      case x if 0x80 <= x && x <= 0xFF => true
+      case other => false
+    end match
+  end isValidEscapeCharacter
 end ValueParser
