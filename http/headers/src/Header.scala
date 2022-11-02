@@ -1,5 +1,5 @@
 package io.github.maxkar
-package http.server.api
+package http.headers
 
 /**
  * Handler of some specific header that could be represented by a "native" scala type.
@@ -17,11 +17,11 @@ trait Header[T]:
    * @return `Right(value)` if parsing was successfull or `Left(error)`
    *   if parsing was not successful.
    */
-  def fromTransport(values: Seq[String]): Either[String, T]
+  def decodeFromString(values: Seq[String]): Either[String, T]
 
 
   /** Encodes (domain) value of the header into the transport form. */
-  def toTransport(value: T): String
+  def encodeToString(value: T): String
 
 
   /**
@@ -29,5 +29,5 @@ trait Header[T]:
    * to generate output values.
    */
   final def -->(value: T): (String, String) =
-    name -> toTransport(value)
+    name -> encodeToString(value)
 end Header

@@ -139,6 +139,20 @@ val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-forma
   .dependsOn(libJsonParser, libJsonWriter)
 
 
+val httpHeaders = project.in(file("http/headers"))
+  .settings(commonSettings)
+  .settings(
+    name := "http-headers",
+    description :=
+      """Common utilities for managing HTTP headers usable for both HTTP clients
+        | and servers. The module provides utilities for:
+        |  * Dealing with collections of headers
+        |  * Converting individual headers to and from domain model.
+      """,
+    libraryDependencies += scalatest
+  )
+
+
 val httpServerApi = project.in(file("http/server/api"))
   .settings(commonSettings)
   .settings(
@@ -153,7 +167,7 @@ val httpServerApi = project.in(file("http/server/api"))
         | * Emiting some side-effects during processing like setting cookies or adding headers.
       """.stripMargin
   )
-  .dependsOn(libFun)
+  .dependsOn(libFun, httpHeaders)
 
 
 val httpServerToolkit = project.in(file("http/server/toolkit"))
@@ -185,5 +199,5 @@ val root = project.in(file("."))
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
 
-    httpServerApi, httpServerToolkit,
+    httpHeaders, httpServerApi, httpServerToolkit,
   )

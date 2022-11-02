@@ -1,6 +1,8 @@
 package io.github.maxkar
 package http.server.api
 
+import http.headers.Header
+
 import java.nio.charset.Charset
 
 /**
