@@ -14,10 +14,10 @@ trait Header[T]:
    * Attempts to parse request value(s) into the actual epresentation type.
    * This method **may** be called with an empty sequence.
    *
-   * @return `Right(value)` if parsing was successfull or `Left(error)`
-   *   if parsing was not successful.
+   * @return value of the parsed header.
+   * @throws HeaderFormatException if values do not denote proper header.
    */
-  def decodeFromString(values: Seq[String]): Either[String, T]
+  def decodeFromString(values: Seq[String]): T
 
 
   /** Encodes (domain) value of the header into the transport form. */

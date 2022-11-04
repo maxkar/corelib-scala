@@ -80,25 +80,23 @@ final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Checks parsing of the given string. */
-  def check[T](expected: T, input: String)(parse: ValueParser => Either[String, T]): Unit =
+  def check[T](expected: T, input: String)(parse: ValueParser => T): Unit =
     withClue(input) {
       val parser = new ValueParser(input)
-      parse(parser) match
-        case Left(err) => fail(s"Unexpected parse failure ${err}")
-        case Right(x) => assert(expected === x)
-      end match
+      assert(expected === parse(parser))
     }
 
 
   /** Checks that parsing fails for the given string. */
-  def checkFail(failOffset: Int, input: String)(parse: ValueParser => Either[String, _]): Unit =
+  def checkFail(failOffset: Int, input: String)(parse: ValueParser => _): Unit =
     withClue(input) {
       val parser = new ValueParser(input)
-      parse(parser) match
-        case Left(err) =>
-          assert(parser.offset === failOffset)
-        case Right(x) => fail(s"Unexpected success ${x}")
-      end match
+      try
+        parse(parser)
+        fail("Expected header format exception, got nothing")
+      catch
+        case e: HeaderFormatException => ()
+      assert(parser.offset === failOffset)
     }
 
 

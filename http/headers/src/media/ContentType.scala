@@ -4,6 +4,7 @@ package http.headers.media
 import http.headers.Header
 import http.headers.ValueParser
 import http.headers.ValueWriter
+import http.headers.HeaderFormatException
 
 /** Content type header implementation. */
 object ContentType extends Header[MediaType]:
@@ -19,22 +20,19 @@ object ContentType extends Header[MediaType]:
   end encodeToString
 
 
-  override def decodeFromString(values: Seq[String]): Either[String, MediaType] =
+  override def decodeFromString(values: Seq[String]): MediaType =
     if values.isEmpty then
-      return Left("Missing Content-Type header")
-
+      throw new HeaderFormatException("No Content-Type header was provided")
     if values.length > 1 then
-      return Left("More than one Content-Type header")
+      throw new HeaderFormatException("More than one Content-Type header")
 
     var reader = new ValueParser(values(0))
     reader.skipWhitespaces()
-    for
-      category <- reader.readToken()
-      _ <- reader.expectAndRead('/')
-      subtype <- reader.readToken()
-      params <- reader.readParameters()
-      _ <- reader.expectEof()
-    yield
-      MediaType(category, subtype, params*)
+    val category = reader.readToken()
+    reader.expectAndRead('/')
+    val subtype = reader.readToken()
+    val params = reader.readParameters()
+    reader.expectEof()
+    MediaType(category, subtype, params*)
   end decodeFromString
 end ContentType

@@ -27,8 +27,8 @@ class ValueParser(data: String):
    * so the (external) users have hard time exfiltrating the data (the headers may
    * be adjusted/mangled by the middleware).
    */
-  private def raise(message: String): Either[String, Nothing] =
-    Left(s"${offset}: ${message} (context: ${getContext()})")
+  private def raise[T](message: String): T =
+    throw new HeaderFormatException(s"${offset}: ${message} (context: ${getContext()})")
 
 
   /**
@@ -47,7 +47,7 @@ class ValueParser(data: String):
    * Checks if there is a first list element. Supports optional "empty" elements. Raises
    * an error if there are commas and whitespaces but no value.
    */
-  def hasFirstListElement(): Either[String, Boolean] =
+  def hasFirstListElement(): Boolean =
     var ptr = offset
     var hasComma = false
     while ptr < data.length() do
@@ -59,7 +59,7 @@ class ValueParser(data: String):
           ptr += 1
         case _ =>
           offset = ptr
-          return Right(true)
+          return true
       end match
     end while
 
@@ -67,14 +67,14 @@ class ValueParser(data: String):
     if hasComma then
       raise("Header contains comma but no values")
     else
-      Right(false)
+      false
   end hasFirstListElement
 
 
   /**
    * Checks if there is a next list element.
    */
-  def hasNextListElement(): Either[String, Boolean] =
+  def hasNextListElement(): Boolean =
     var ptr = offset
     var hasComma = false
     while ptr < data.length() do
@@ -91,35 +91,34 @@ class ValueParser(data: String):
            */
           if (hasComma)
             offset = ptr
-            return Right(true)
+            return true
           else
             offset = ptr
-            return raise("Expecting ',' before next list element")
+            raise("Expecting ',' before next list element")
       end match
     end while
     offset = ptr
     /* Fall-through. We are looking for "next" element so presumably list
      * is non-empty and we could ignore "empty" entries.
      */
-    Right(false)
+    false
   end hasNextListElement
 
 
   /** Expects (and reads) a specific character. */
-  def expectAndRead(c: Char): Either[String, Unit] =
+  def expectAndRead(c: Char): Unit =
     val ptr = offset
     if ptr >= data.length() then
-      return raise(s"Expecting '${c}' but got end of header")
+      raise(s"Expecting '${c}' but got end of header")
     val hdrData = data.charAt(ptr)
     if hdrData != c then
-      return raise(s"Expecting '${c}' but got '${hdrData}'")
+      raise(s"Expecting '${c}' but got '${hdrData}'")
     offset = ptr + 1
-    Right(())
   end expectAndRead
 
 
   /** Reads the token. */
-  def readToken(): Either[String, String] =
+  def readToken(): String =
     val start = offset
     var ptr = start
 
@@ -127,20 +126,20 @@ class ValueParser(data: String):
       ptr += 1
 
     if ptr == start then
-      return raise("Token expected")
+      raise("Token expected")
     offset = ptr
-    Right(data.substring(start, ptr))
+    data.substring(start, ptr)
   end readToken
 
 
   /** Reads a quoted string (the position should be at the opening quote char). */
-  def readString(): Either[String, String] =
+  def readString(): String =
     var ptr = offset
 
     if ptr >= data.length() then
-      return raise("Expecting '\"' but got end of header")
+      raise("Expecting '\"' but got end of header")
     if data.charAt(ptr) != '"' then
-      return raise(s"Expecting '\"' but got '${data.charAt(ptr)}'")
+      raise(s"Expecting '\"' but got '${data.charAt(ptr)}'")
 
     ptr += 1
     var sectionStart = ptr
@@ -151,9 +150,9 @@ class ValueParser(data: String):
         case '"' =>
           offset = ptr + 1
           if agg == null then
-            return Right(data.substring(sectionStart, ptr))
+            return data.substring(sectionStart, ptr)
           agg.append(data.subSequence(sectionStart, ptr))
-          return Right(agg.toString())
+          return agg.toString()
         case '\\' =>
           val sectionEnd = ptr
 
@@ -185,10 +184,10 @@ class ValueParser(data: String):
 
 
   /** Reads token or string, depending on what is in the stream. */
-  def readTokenOrString(): Either[String, String] =
+  def readTokenOrString(): String =
     var ptr = offset
     if ptr >= data.length() then
-      return raise("End of header when token or string is expected")
+      raise("End of header when token or string is expected")
     if data.charAt(ptr) == '"' then
       readString()
     else
@@ -201,46 +200,34 @@ class ValueParser(data: String):
    * This method returns keys and values as-is, the client will have to convert
    * parameters to the proper case for matching.
    */
-  def readParameters(): Either[String, Seq[(String, String)]] =
+  def readParameters(): Seq[(String, String)] =
     skipWhitespaces()
 
     if offset >= data.length() || data.charAt(offset) != ';' then
-      return Right(Seq.empty)
+      return Seq.empty
 
     val buf = new scala.collection.mutable.ArrayBuffer[(String, String)]
 
     while offset < data.length() && data.charAt(offset) == ';' do
       offset += 1
       skipWhitespaces()
-      val token =
-        readToken() match
-          case Left(err) => return Left(err)
-          case Right(v) => v
-        end match
+      val token = readToken()
       skipWhitespaces()
-      expectAndRead('=') match
-        case Left(err) => return Left(err)
-        case Right(_) => ()
-      end match
-      val value =
-        readTokenOrString() match
-          case Left(err) => return Left(err)
-          case Right(v) => v
-        end match
+      expectAndRead('=')
+      val value = readTokenOrString()
       buf += ((token, value))
       skipWhitespaces()
     end while
 
-    Right(buf.toSeq)
+    buf.toSeq
   end readParameters
 
 
   /** Ensures the parser is at the end of the stream. */
-  def expectEof(): Either[String, Unit] =
+  def expectEof(): Unit =
     skipWhitespaces()
     if offset < data.length() then
-      return raise("Extra data in the header")
-    Right(())
+      raise("Extra data in the header")
   end expectEof
 
 end ValueParser

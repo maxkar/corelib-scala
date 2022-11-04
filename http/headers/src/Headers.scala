@@ -68,24 +68,16 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
   /**
    * Returns the data decoded from the stored values or an error description.
    */
-  def get[T](header: Header[T]): Either[String, T] =
+  def get[T](header: Header[T]): T =
     header.decodeFromString(get(header.name))
 
 
   /**
-   * Returns an optional header. Does not fail when header is present and
-   * returns None if parser can't handle this case.
+   * Returns an optional header.  Returns None if the header is not set otherwise
+   * attempts to parse the data into the string.
    */
-  def getOpt[T](header: Header[T]): Either[String, Option[T]] =
-    data.get(header.name.toLowerCase()) match
-      case Some((_, x)) => header.decodeFromString(x).map(Some.apply)
-      case None =>
-        header.decodeFromString(Seq.empty) match
-          case Left(_) => Right(None)
-          case Right(v) => Right(Some(v))
-        end match
-    end match
-  end getOpt
+  def getOpt[T](header: Header[T]): Option[T] =
+    data.get(header.name.toLowerCase()).map(v => header.decodeFromString(v._2))
 
 
   /**
