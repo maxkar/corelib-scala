@@ -79,4 +79,17 @@ object MediaSelector:
     val effectiveParams = parameters.map((k, v) => (k.toLowerCase(), v))
     new MediaSelector(category, subtype, parameters, weight, new FullMatcher(category, subtype, effectiveParams))
   end full
+
+
+  /**
+   * Ordering on the selector objects. Selectors with higher weight come earlier
+   * than selectors with lower weight.
+   */
+  given selectorOrdering: Ordering[MediaSelector] with
+    override def compare(a: MediaSelector, b: MediaSelector): Int =
+      if a.weight > b.weight then -1
+      else if a.weight < b.weight then 1
+      else 0
+    end compare
+  end selectorOrdering
 end MediaSelector
