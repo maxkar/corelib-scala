@@ -45,7 +45,11 @@ object Accept extends Header[Seq[MediaSelector]]:
     into.append(selector.category)
     into.append('/')
     into.append(selector.subtype)
-    val allParameters = selector.parameters :+ "q" -> encodeQ(selector.weight / 10)
+    val allParameters =
+      if (selector.weight >= 1000_00)
+        selector.parameters
+      else
+        selector.parameters :+ "q" -> encodeQ(selector.weight / 100)
     ValueWriter.writeParameters(allParameters, into)
   end encodeSelector
 
@@ -58,25 +62,26 @@ object Accept extends Header[Seq[MediaSelector]]:
     if !parser.hasFirstListElement() then
       return
 
-
     var hasMore = true
     while hasMore do
       val category = parser.readToken()
       parser.expectAndRead('/')
       val subtype = parser.readToken()
-      if category != "*" && subtype == "*" then
+      if category == "*" && subtype != "*" then
         throw new HeaderFormatException("Wildcard type must have wildcard category")
       val params = parser.readParameters()
-      val (notQ, q) = params.partition { p => p._1.equalsIgnoreCase("q") }
+      val (q, notQ) = params.partition { p => p._1.equalsIgnoreCase("q") }
       val baseWeight = parseQ(q)
       val selector =
         if category == "*" then
-          MediaSelector.wildcard(baseWeight * 10 + 1)
+          MediaSelector.wildcard(baseWeight * 100 + 1)
         else if subtype == "*" then
-          MediaSelector.category(category, baseWeight * 10 + 2)
+          MediaSelector.category(category, baseWeight * 100 + 2)
         else
-          MediaSelector.full(category, subtype, notQ, baseWeight * 10 + 3)
+          val extraWeight = Math.min(notQ.length, 99 - 3)
+          MediaSelector.full(category, subtype, notQ, baseWeight * 100 + 3 + extraWeight)
       into.append(selector)
+      hasMore = parser.hasNextListElement()
     end while
   end decodeOneHeader
 
@@ -133,8 +138,15 @@ object Accept extends Header[Seq[MediaSelector]]:
   private def encodeQ(q: Int): String =
     if q < 0 then "0"
     else if q < 10 then "0.00" + q.toString()
-    else if q < 100 then "0.0" + q.toString()
-    else if q < 1000 then "0." + q.toString()
+    else if q < 100 then
+      val tl = if q % 10 == 0 then q / 10 else q
+      "0.0" + tl.toString()
+    else if q < 1000 then
+      val tl =
+        if q % 100 == 0 then q / 100
+        else if q % 10 == 0 then q / 10
+        else q
+      "0." + tl.toString()
     else "1"
   end encodeQ
 end Accept
