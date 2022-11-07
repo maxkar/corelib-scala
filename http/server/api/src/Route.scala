@@ -164,31 +164,38 @@ trait Route[M[_]]:
   /**
    * Returns name of all the request parameters (which may be extracted from query and request body).
    */
-   def getParameterNames(): M[Seq[String]]
+  def getParameterNames(): M[Seq[String]]
 
 
   /**
-   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
-   * exceeds the allowed limit.
-   * @param limit limit on the payload size.
+   * Returns a reader that puts data into a byte array. Raises an error if the
+   * request body size is longer than the limit.
+   * @param limit maximal body size after which an exception will be raised.
    */
-  def getBodyAsByteStream(limit: Long): M[ByteInputStream[M]]
+  def getByteArrayReader(limit: Long): M[ByteArrayReader[M]]
 
 
   /**
-   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
-   * exceeds the allowed limit. Encoding detection uses server-specific logic.
-   * @param limit limit on the payload size.
+   * Returns a reader that puts data into a byte buffer. Raises an error if the
+   * request body size is longer than the limit.
+   * @param limit maximal body size after which an exception will be raised.
    */
-  def getBodyAsCharStream(limit: Long, charset: Charset): M[CharInputStream[M]]
+  def getByteBufferReader(limit: Long): M[ByteBufferReader[M]]
+
+  /**
+   * Returns a reader that puts data into a char array. Raises an error if the
+   * request body size is longer than the limit.
+   * @param limit maximal body size after which an exception will be raised.
+   */
+  def getCharArrayReader(limit: Long, charset: Charset): M[CharArrayReader[M]]
 
 
   /**
-   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
-   * exceeds the allowed limit. Encoding detection uses server-specific logic.
-   * @param limit limit on the payload size.
+   * Returns a reader that puts data into a char buffer. Raises an error if the
+   * request body size is longer than the limit.
+   * @param limit maximal body size after which an exception will be raised.
    */
-  def getBodyAsCharStream(limit: Long, charsetName: String): M[CharInputStream[M]]
+  def getCharBufferReader(limit: Long, charset: Charset): M[CharBufferReader[M]]
 
 
   /**
@@ -509,41 +516,57 @@ object Route:
 
 
   /**
-   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
-   * exceeds the allowed limit.
-   * @param limit limit on the payload size.
+   * Returns reader of the request body.
    */
-  inline def getBodyAsByteStream[M[_]](limit: Long)(using rt: Route[M]): M[ByteInputStream[M]] =
-    rt.getBodyAsByteStream(limit)
+  inline def getByteArrayReader[M[_]](limit: Long)(using rt: Route[M]): M[ByteArrayReader[M]] =
+    rt.getByteArrayReader(limit)
 
 
   /**
-   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
-   * exceeds the allowed limit. Encoding detection uses server-specific logic.
-   * @param limit limit on the payload size.
+   * Returns reader of the request body.
    */
-  inline def getBodyAsCharStream[M[_]](
-          limit: Long,
-          charset: Charset,
-        )(using
-          rt: Route[M]
-        ): M[CharInputStream[M]] =
-    rt.getBodyAsCharStream(limit, charset)
+  inline def getByteBufferReader[M[_]](limit: Long)(using rt: Route[M]): M[ByteBufferReader[M]] =
+    rt.getByteBufferReader(limit)
 
 
-  /**
-   * Returns reader of the request body. The reader should return 413 Entity too large if (when) data
-   * exceeds the allowed limit. Encoding detection uses server-specific logic.
-   * @param limit limit on the payload size.
-   */
-  inline def getBodyAsCharStream[M[_]](
-          limit: Long,
-          charsetName: String,
-        )(using
-          rt: Route[M]
-        ): M[CharInputStream[M]] =
-    rt.getBodyAsCharStream(limit, charsetName)
+  /** Returns reader of the request body. */
+  inline def getCharArrayReader[M[_]](
+        limit: Long,
+        charset: Charset
+      )(using
+        rt: Route[M]
+      ): M[CharArrayReader[M]] =
+    rt.getCharArrayReader(limit, charset)
 
+
+  /** Returns reader of the request body. */
+  def getCharArrayReader[M[_]](
+        limit: Long,
+        charset: String
+      )(using
+        rt: Route[M]
+      ): M[CharArrayReader[M]] =
+    getCharArrayReader(limit, Charset.forName(charset))
+
+
+  /** Returns reader of the request body. */
+  inline def getCharBufferReader[M[_]](
+        limit: Long,
+        charset: Charset
+      )(using
+        rt: Route[M]
+      ): M[CharBufferReader[M]] =
+    rt.getCharBufferReader(limit, charset)
+
+
+  /** Returns reader of the request body. */
+  def getCharBufferReader[M[_]](
+        limit: Long,
+        charset: String
+      )(using
+        rt: Route[M]
+      ): M[CharBufferReader[M]] =
+    getCharBufferReader(limit, Charset.forName(charset))
 
 
   /**

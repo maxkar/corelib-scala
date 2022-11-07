@@ -114,7 +114,7 @@ final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Err
    */
   def byteLengthExceeded(
         accept: Seq[String],
-        length: Int,
+        length: Long,
       ): Response =
     negotiate(accept).byteLengthExceeded(length)
 
@@ -129,7 +129,7 @@ final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Err
    */
   def charLengthExceeded(
         accept: Seq[String],
-        length: Int,
+        length: Long,
       ): Response =
     negotiate(accept).charLengthExceeded(length)
 

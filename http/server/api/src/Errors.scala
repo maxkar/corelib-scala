@@ -60,14 +60,14 @@ trait Errors:
 
 
   /** Length of the input stream content exceedes the one allowed by the API. */
-  def byteLengthExceeded(length: Int): Response
+  def byteLengthExceeded(length: Long): Response
 
 
   /**
    * Length of the input stream content exceedes the one allowed by the API. The
    * length is measured by the characters and not bytes.
    */
-  def charLengthExceeded(length: Int): Response
+  def charLengthExceeded(length: Long): Response
 
 
   /**
@@ -103,9 +103,9 @@ object Errors:
     override def unsupportedMethod(method: String, supportedMethods: Iterable[String]): Response =
       Response(405, "Allow" -> supportedMethods.mkString(","))()
 
-    override def byteLengthExceeded(length: Int): Response = Response(413)()
+    override def byteLengthExceeded(length: Long): Response = Response(413)()
 
-    override def charLengthExceeded(length: Int): Response = Response(413)()
+    override def charLengthExceeded(length: Long): Response = Response(413)()
 
     override def internalError(ref: String): Response = Response(500)()
 
@@ -149,12 +149,12 @@ object Errors:
     override def internalError(ref: String): Response =
       Response.text(500)(s"An internal error has occured. If the error persists, please provide support team with the following code: ${ref}")
 
-    override def byteLengthExceeded(length: Int): Response =
+    override def byteLengthExceeded(length: Long): Response =
       Response.text(413, "Max-Byte-Length" -> length.toString())(
         s"Request size exceedes the maximum allowed size of ${length} bytes"
       )
 
-    override def charLengthExceeded(length: Int): Response =
+    override def charLengthExceeded(length: Long): Response =
       Response.text(413, "Max-Char-Length" -> length.toString())(
         s"Request size exceedes the maximum allowed size of ${length} characters"
       )
