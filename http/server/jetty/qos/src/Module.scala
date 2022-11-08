@@ -2,7 +2,7 @@ package io.github.maxkar
 package http.server.jetty.qos
 
 import fun.typeclass.Monad
-import fun.coroutine.Tokentine
+import fun.coroutine.Coroutine
 
 import http.server.api.Cookie
 import http.server.api.Response
@@ -19,10 +19,10 @@ final class Module[Qos]:
    * Type of the evaluation/execution in this module. Typeclass instances
    * like monad or process are defined for this type constructor.
    */
-  opaque type Step[T] = Tokentine.Routine[Suspension, T]
+  opaque type Step[T] = Coroutine.Routine[Suspension, T]
 
   /** Result of the execution. */
-  private type StepResult[T] = Tokentine.RunResult[Suspension, T]
+  private type StepResult[T] = Coroutine.RunResult[Suspension, T]
 
 
   /** How to suspend execution and what to do next. */
@@ -53,8 +53,8 @@ final class Module[Qos]:
   end Suspension
 
 
-  /** Tokentine module with all the typeclasses, etc... */
-  private val routine = new Tokentine[Suspension]
+  /** Coroutine module with all the typeclasses, etc... */
+  private val routine = new Coroutine[Suspension]
 
   /** Implementation of the monad for the Step. */
   given monadInstance: Monad[Step] = routine.monadInstance

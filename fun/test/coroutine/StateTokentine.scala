@@ -3,8 +3,8 @@ package fun.coroutine
 
 
 /** Implementation of the "State" monad using coroutine and some tests of the combination. */
-final class StateTokentine extends org.scalatest.funsuite.AnyFunSuite:
-  import StateTokentine._
+final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite:
+  import StateCoroutine._
 
 
   /** Returns double of the state. */
@@ -37,12 +37,12 @@ final class StateTokentine extends org.scalatest.funsuite.AnyFunSuite:
     assert(30812 === runState(3, doSomething))
   }
 
-end StateTokentine
+end StateCoroutine
 
 
-object StateTokentine:
+object StateCoroutine:
   /** Coroutine module. */
-  val module = new Tokentine[StateSus]
+  val module = new Coroutine[StateSus]
   import module._
 
   export module.given
@@ -72,15 +72,15 @@ object StateTokentine:
     var proc = routine
     while true do
       module.run(proc) match
-        case Tokentine.RunResult.Suspended(StateSus.Read, cont) =>
+        case Coroutine.RunResult.Suspended(StateSus.Read, cont) =>
           proc = cont(curState)
-        case Tokentine.RunResult.Suspended(StateSus.Write(v), cont) =>
+        case Coroutine.RunResult.Suspended(StateSus.Write(v), cont) =>
           curState = v
           proc = cont(())
-        case Tokentine.RunResult.Finished(x) => return x
+        case Coroutine.RunResult.Finished(x) => return x
       end match
     end while
     throw new Error("Please stop reaching unreacheable code")
   end runState
 
-end StateTokentine
+end StateCoroutine

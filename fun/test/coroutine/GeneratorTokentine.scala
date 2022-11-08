@@ -5,8 +5,8 @@ import fun.typeclass.Monad
 
 
 /** Implementation of the generator coroutine (yield-method from C#/Javascript). */
-final class GeneratorTokentine extends org.scalatest.funsuite.AnyFunSuite:
-  import GeneratorTokentine._
+final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite:
+  import GeneratorCoroutine._
 
   /** Recursive (yep!) implementation of the sequence generator. */
   def genSeq(from: Int, to: Int, step: Int = 1): Routine[Unit] =
@@ -39,16 +39,16 @@ final class GeneratorTokentine extends org.scalatest.funsuite.AnyFunSuite:
     assert((fwd, ()) === runGenerator(genSeq(1, limit)))
     assert((fwd ++ rwd, ()) === runGenerator(genBackAndForth(1, limit)))
   }
-end GeneratorTokentine
+end GeneratorCoroutine
 
 
-object GeneratorTokentine:
+object GeneratorCoroutine:
 
   /** Type of the suspension. */
   abstract sealed class GeneratorSus[T]
   case class Yield(v: Int) extends GeneratorSus[Unit]
 
-  val module = new Tokentine[GeneratorSus]
+  val module = new Coroutine[GeneratorSus]
   import module.*
 
   export module.given
@@ -68,14 +68,14 @@ object GeneratorTokentine:
     /* Also "stackless" implementation. */
     while true do
       module.run(routine) match
-        case Tokentine.RunResult.Suspended(Yield(v), cont) =>
+        case Coroutine.RunResult.Suspended(Yield(v), cont) =>
           acc += v
           routine = cont(())
-        case Tokentine.RunResult.Finished(v) =>
+        case Coroutine.RunResult.Finished(v) =>
           return (acc.toSeq, v)
       end match
     end while
     throw new Error("Please stop reaching unreacheable code")
   end runGenerator
 
-end GeneratorTokentine
+end GeneratorCoroutine

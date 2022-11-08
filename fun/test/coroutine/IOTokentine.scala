@@ -8,8 +8,8 @@ import fun.typeclass.Monad
  * Implementation of the Input/Output coroutine.
  * Illustrates potential IO as coroutine (where IO may be asynchronous).
  */
-final class IOTokentine extends org.scalatest.funsuite.AnyFunSuite:
-  import IOTokentine._
+final class IOCoroutine extends org.scalatest.funsuite.AnyFunSuite:
+  import IOCoroutine._
 
 
   /**
@@ -41,12 +41,12 @@ final class IOTokentine extends org.scalatest.funsuite.AnyFunSuite:
 
     assert((hugeO, hugeNum + 2) === runIO(hugeI, incrIO))
   }
-end IOTokentine
+end IOCoroutine
 
 
-object IOTokentine:
+object IOCoroutine:
   /** Coroutine module. */
-  val module = new Tokentine[IOSus]
+  val module = new Coroutine[IOSus]
   import module._
 
   export module.given
@@ -79,9 +79,9 @@ object IOTokentine:
      */
     while true do
       module.run(proc) match
-        case Tokentine.RunResult.Finished(x) =>
+        case Coroutine.RunResult.Finished(x) =>
           return (output.toString(), x)
-        case Tokentine.RunResult.Suspended(IOSus.Read, c) =>
+        case Coroutine.RunResult.Suspended(IOSus.Read, c) =>
           val iores =
             if ptr < input.length() then
               val r = input.charAt(ptr)
@@ -91,11 +91,11 @@ object IOTokentine:
               None
             end if
           proc = c(iores)
-        case Tokentine.RunResult.Suspended(IOSus.Write(v), c) =>
+        case Coroutine.RunResult.Suspended(IOSus.Write(v), c) =>
           output += v
           proc = c(())
       end match
     end while
     throw new Error("Please stop reaching unreacheable code")
   end runIO
-end IOTokentine
+end IOCoroutine

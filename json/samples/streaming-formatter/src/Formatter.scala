@@ -1,7 +1,8 @@
 package io.github.maxkar
 package json.sample.formatter.streaming
 
-import fun.coroutine.Tokentine
+import fun.coroutine.Coroutine
+import fun.coroutine.Coroutine.RunResult
 
 import java.io.Reader
 import java.io.Writer
@@ -14,12 +15,10 @@ import text.input.LocationLookAheadStream
 import text.output.{Stream => OutStream}
 
 import json.parser.Errors
-
-import io.github.maxkar.json.parser.Errors.SimpleHandler
-import io.github.maxkar.fun.coroutine.Tokentine.RunResult
+import json.parser.Errors.SimpleHandler
 
 object Formatter:
-  private val module = new Tokentine[Suspension]
+  private val module = new Coroutine[Suspension]
   import module._
   import module.given
 
