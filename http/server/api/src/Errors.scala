@@ -9,15 +9,6 @@ import scala.language.implicitConversions
 /** Simple encoders for server-side errors. */
 trait Errors:
   /**
-   * Encodes illegal input character (for the given input charset).
-   * @param charset charset being
-   * @param bytes bytes being parsed.
-   * @param length length of the invalid character.
-   */
-  def illegalInputCharacter(charset: Charset, bytes: ByteBuffer, length: Int): Response
-
-
-  /**
    * Encodes "path not found" error.
    * @param fullPath full request path (but only path) that was received.
    * @param unconsumed the section of the path that was won consumed by the
@@ -64,13 +55,6 @@ trait Errors:
 
 
   /**
-   * Length of the input stream content exceedes the one allowed by the API. The
-   * length is measured by the characters and not bytes.
-   */
-  def charLengthExceeded(length: Long): Response
-
-
-  /**
    * Internal server error occured.
    * @param ref unique reference that could be used to look-up error details on the server.
    */
@@ -85,9 +69,6 @@ object Errors:
 
   /** Minimal errors - just set the code but no explanation behind it. */
   object Minimal extends Errors:
-    override def illegalInputCharacter(charset: Charset, bytes: ByteBuffer, length: Int): Response =
-      Response(400)()
-
     override def pathNotFound(fullPath: List[String], unconsumed: List[String]): Response =
       Response(404)()
 
@@ -105,8 +86,6 @@ object Errors:
 
     override def byteLengthExceeded(length: Long): Response = Response(413)()
 
-    override def charLengthExceeded(length: Long): Response = Response(413)()
-
     override def internalError(ref: String): Response = Response(500)()
 
   end Minimal
@@ -114,20 +93,6 @@ object Errors:
 
   /** Simple text errors - just provide a text message and nothing else. */
   object SimpleText extends Errors:
-    override def illegalInputCharacter(charset: Charset, bytes: ByteBuffer, length: Int): Response =
-      val buf = new StringBuilder("Illegal ")
-      buf.append(charset.name())
-      buf.append(" character ")
-      var ptr = 0
-      while ptr < length do
-        val c = bytes.get(ptr)
-        buf.append(hexChars.charAt((c >> 4) & 0x0F))
-        buf.append(hexChars.charAt(c & 0x0F))
-        ptr += 1
-      end while
-      Response.text(400)(buf.toString())
-    end illegalInputCharacter
-
     override def pathNotFound(fullPath: List[String], unconsumed: List[String]): Response =
       Response.text(404)("The requested path was not found on this server")
 
@@ -152,11 +117,6 @@ object Errors:
     override def byteLengthExceeded(length: Long): Response =
       Response.text(413, "Max-Byte-Length" -> length.toString())(
         s"Request size exceedes the maximum allowed size of ${length} bytes"
-      )
-
-    override def charLengthExceeded(length: Long): Response =
-      Response.text(413, "Max-Char-Length" -> length.toString())(
-        s"Request size exceedes the maximum allowed size of ${length} characters"
       )
   end SimpleText
 end Errors

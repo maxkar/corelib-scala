@@ -1,9 +1,6 @@
 package io.github.maxkar
 package http.server.toolkit
 
-import java.nio.ByteBuffer
-import java.nio.charset.Charset
-
 import fun.typeclass.Monad
 
 import http.headers.Header
@@ -12,10 +9,6 @@ import http.headers.HeaderFormatException
 import http.server.api.Route
 import http.server.api.Response
 import http.server.api.NegotiableErrors
-import io.github.maxkar.http.server.api.ByteArrayReader
-import io.github.maxkar.http.server.api.ByteBufferReader
-import io.github.maxkar.http.server.api.CharArrayReader
-import io.github.maxkar.http.server.api.CharBufferReader
 
 
 /**
@@ -32,7 +25,7 @@ import io.github.maxkar.http.server.api.CharBufferReader
  * * `getCookies`
  * * `getParameters`
  * * `getParameterNames`
- * * `getRawByteArrayReader`
+ * * `getBodyAsBytes`
  *
  * Utility methods provided:
  *  * `doRoute` - routing logic implementation
@@ -60,13 +53,6 @@ abstract class BaseRoute[M[_]: Monad]
    * dependency (only the `abort` method is used by this implementation).
    */
   protected def abort[T](response: Response): M[T]
-
-
-  /**
-   * Returns a low-level "byte-array" reader - a natural integration point
-   * with servlet APIs.
-   */
-  protected def getRawByteArrayReader(): M[ByteArrayReader[M]]
 
 
   override def method[T](fn: PartialFunction[String, M[T]]): M[T] =
@@ -189,32 +175,6 @@ abstract class BaseRoute[M[_]: Monad]
     }
 
 
-  override def getByteArrayReader(limit: Long): M[ByteArrayReader[M]] =
-    getRawByteArrayReader() map { s =>
-      new LimitedByteArrayReader(s, limit, () => raiseByteLengthExceeded(limit))
-    }
-
-  override def getByteBufferReader(limit: Long): M[ByteBufferReader[M]] =
-    getByteArrayReader(limit) map { new ByteBufferReaderFromArray(_) }
-
-
-  override def getCharBufferReader(limit: Long, charset: Charset): M[CharBufferReader[M]] =
-    getRawByteArrayReader() map { br =>
-      val bufReader = new ByteBufferReaderFromArray(br)
-      val decoder =
-        DecoderCharBufferReader(
-          peer = bufReader,
-          badChar = (buf, len) => raiseIllegalInputCharacter(charset, buf, len),
-          charset = charset,
-        )
-      new LimitedCharBufferReader(decoder, limit, () => raiseCharLengthExceeded(limit))
-    }
-
-
-  override def getCharArrayReader(limit: Long, charset: Charset): M[CharArrayReader[M]] =
-    getCharBufferReader(limit, charset) map { new CharArrayReaderFromBuffer(_) }
-
-
   override def negotiate[H: Ordering, T](
         header: Header[Seq[H]],
         fn: PartialFunction[H, M[T]],
@@ -299,19 +259,4 @@ abstract class BaseRoute[M[_]: Monad]
     getHeaders(contentNegotiationHeader) flatMap { acc =>
       abort(errors.byteLengthExceeded(acc, length))
     }
-
-
-  /** Raises "char body length exceeded". */
-  protected def raiseCharLengthExceeded[T](length: Long): M[T] =
-    getHeaders(contentNegotiationHeader) flatMap { acc =>
-      abort(errors.charLengthExceeded(acc, length))
-    }
-
-
-  /** Raises "invalid character" error. */
-  protected def raiseIllegalInputCharacter[T](charset: Charset, buf: ByteBuffer, length: Int): M[T] =
-    getHeaders(contentNegotiationHeader) flatMap { acc =>
-      abort(errors.illegalInputCharacter(acc, charset, buf, length))
-    }
-
 end BaseRoute

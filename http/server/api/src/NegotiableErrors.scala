@@ -20,22 +20,6 @@ import java.nio.charset.Charset
  */
 final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Errors):
   /**
-   * Encodes illegal input character (for the given input charset).
-   * @param accept accept specification(s) describing client's format preferences.
-   * @param charset charset being
-   * @param bytes bytes being parsed.
-   * @param length length of the invalid character.
-   */
-  def illegalInputCharacter(
-        accept: Seq[String],
-        charset: Charset,
-        bytes: ByteBuffer,
-        length: Int,
-      ): Response =
-    negotiate(accept).illegalInputCharacter(charset, bytes, length)
-
-
-  /**
    * Encodes "path not found" error.
    * @param accept accept specification(s) describing client's format preferences.
    * @param fullPath full request path (but only path) that was received.
@@ -117,21 +101,6 @@ final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Err
         length: Long,
       ): Response =
     negotiate(accept).byteLengthExceeded(length)
-
-
-  /**
-   * Length of the input stream content exceedes the one allowed by the API. The
-   * length is measured by the characters and not bytes.
-   * @param accept accept specification(s) describing client's format preferences.
-   * @param length maximum accepted length in characters in some expected encoding. The encoding
-   *   may be implicit for the given content type (for example, JSON assumes UTF-8), implied from
-   *   the content intself (XML encoding delcaration) or passed in some other way (like header).
-   */
-  def charLengthExceeded(
-        accept: Seq[String],
-        length: Long,
-      ): Response =
-    negotiate(accept).charLengthExceeded(length)
 
 
   /**

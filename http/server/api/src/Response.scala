@@ -8,7 +8,7 @@ import http.headers.Headers
 class Response(
       val status: Int,
       val headers: Headers = Headers.empty,
-      val content: Content = Content.Empty,
+      val content: Array[Byte] = null,
     )
 
 
@@ -19,7 +19,7 @@ object Response:
         status: Int,
         headers: (String, String)*
       )(
-        content: Content = Content.Empty
+        content: Array[Byte] = null
       ): Response =
     new Response(status, Headers(headers*), content)
 
@@ -32,20 +32,18 @@ object Response:
         status: Int = 204,
         headers: (String, String)*
       ): Response =
-    new Response(status, Headers(headers*), Content.Empty)
+    new Response(status, Headers(headers*), null)
 
 
-  /**
-   * Creates a simple text response.
-   */
+  /** Creates a simple text response in the UTF-8 encoding. */
   def text(
         status: Int = 200,
         headers: (String, String)*
       )(
-        content: Content
+        content: String
       ) :Response =
     var hdr = Headers(headers*)
-    hdr.addIfNotSet("Content-Type" -> "text/plain")
-    new Response(status, hdr, content)
+    hdr.addIfNotSet("Content-Type" -> "text/plain;charset=UTF-8")
+    new Response(status, hdr, content.getBytes("UTF-8"))
   end text
 end Response

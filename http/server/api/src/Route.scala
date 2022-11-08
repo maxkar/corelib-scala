@@ -168,34 +168,11 @@ trait Route[M[_]]:
 
 
   /**
-   * Returns a reader that puts data into a byte array. Raises an error if the
-   * request body size is longer than the limit.
-   * @param limit maximal body size after which an exception will be raised.
+   * Reads and returns request content as bytes (that are limited by the `limit` length).
+   * Aborts process with HTTP code 413 "Request entity too large" if
+   * data sent by the client exceeded `limit`.
    */
-  def getByteArrayReader(limit: Long): M[ByteArrayReader[M]]
-
-
-  /**
-   * Returns a reader that puts data into a byte buffer. Raises an error if the
-   * request body size is longer than the limit.
-   * @param limit maximal body size after which an exception will be raised.
-   */
-  def getByteBufferReader(limit: Long): M[ByteBufferReader[M]]
-
-  /**
-   * Returns a reader that puts data into a char array. Raises an error if the
-   * request body size is longer than the limit.
-   * @param limit maximal body size after which an exception will be raised.
-   */
-  def getCharArrayReader(limit: Long, charset: Charset): M[CharArrayReader[M]]
-
-
-  /**
-   * Returns a reader that puts data into a char buffer. Raises an error if the
-   * request body size is longer than the limit.
-   * @param limit maximal body size after which an exception will be raised.
-   */
-  def getCharBufferReader(limit: Long, charset: Charset): M[CharBufferReader[M]]
+  def getBodyAsBytes(limit: Long): M[Array[Byte]]
 
 
   /**
@@ -516,57 +493,14 @@ object Route:
 
 
   /**
-   * Returns reader of the request body.
+   * Reads the request body as an array of bytes that should not exceed
+   * the `limit` length. Aborts processing with HTTP code 413 "Request entity
+   * too large" if the data sent by the client exceeded `limit`.
+   * @param limit maximal expected request length.
+   * @return array of read bytes that is no longer than `length`.
    */
-  inline def getByteArrayReader[M[_]](limit: Long)(using rt: Route[M]): M[ByteArrayReader[M]] =
-    rt.getByteArrayReader(limit)
-
-
-  /**
-   * Returns reader of the request body.
-   */
-  inline def getByteBufferReader[M[_]](limit: Long)(using rt: Route[M]): M[ByteBufferReader[M]] =
-    rt.getByteBufferReader(limit)
-
-
-  /** Returns reader of the request body. */
-  inline def getCharArrayReader[M[_]](
-        limit: Long,
-        charset: Charset
-      )(using
-        rt: Route[M]
-      ): M[CharArrayReader[M]] =
-    rt.getCharArrayReader(limit, charset)
-
-
-  /** Returns reader of the request body. */
-  def getCharArrayReader[M[_]](
-        limit: Long,
-        charset: String
-      )(using
-        rt: Route[M]
-      ): M[CharArrayReader[M]] =
-    getCharArrayReader(limit, Charset.forName(charset))
-
-
-  /** Returns reader of the request body. */
-  inline def getCharBufferReader[M[_]](
-        limit: Long,
-        charset: Charset
-      )(using
-        rt: Route[M]
-      ): M[CharBufferReader[M]] =
-    rt.getCharBufferReader(limit, charset)
-
-
-  /** Returns reader of the request body. */
-  def getCharBufferReader[M[_]](
-        limit: Long,
-        charset: String
-      )(using
-        rt: Route[M]
-      ): M[CharBufferReader[M]] =
-    getCharBufferReader(limit, Charset.forName(charset))
+  inline def getBodyAsBytes[M[_]](limit: Long)(using rt: Route[M]): M[Array[Byte]] =
+    rt.getBodyAsBytes(limit)
 
 
   /**
