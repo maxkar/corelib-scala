@@ -22,22 +22,8 @@ trait Processing[M[_]]:
    * The cookie would be sent if request was completed naturally or aborted.
    * It may be not sent if handler raised an exception during processing.
    *
-   * @param name name of the cookie to set.
-   * @param value value of the cookie to set.
-   * @param maxAge max cookie validity time.
-   * @param path path for which the cookie will be applied.
-   * @param secure if the cookie is only available over HTTPs (or other secure channel).
-   * @param httpOnly set to true if cookie should be present in the
-   *   HTTP exchange with the server but not available to JavaScript.
    */
-  def setCookie(
-      name: String,
-      value: String,
-      maxAge: Option[Int] = None,
-      path: Option[String] = None,
-      secure: Option[Boolean] = None,
-      httpOnly: Option[Boolean] = None,
-    ): M[Unit]
+  def setCookie(cookie: Cookie): M[Unit]
 
 
   /**
@@ -63,7 +49,7 @@ trait Processing[M[_]]:
    *
    * The cleanup method is a natuaral way to manage pooled resources like memory buffers.
    */
-  def cleanup[T](cleaner: => Unit): M[ResourceCleaner[M]]
+  def cleanup(cleaner: => Unit): M[ResourceCleaner[M]]
 
   /**
    * Registers resource cleanup and returns the initial resource.
@@ -127,7 +113,7 @@ object Processing:
    * @param httpOnly set to true if cookie should be present in the
    *   HTTP exchange with the server but not available to JavaScript.
    */
-  inline def setCookie[M[_]](
+  def setCookie[M[_]](
         name: String,
         value: String,
         maxAge: Option[Int] = None,
@@ -137,7 +123,19 @@ object Processing:
       )(
         using p: Processing[M]
       ): M[Unit] =
-    p.setCookie(name, value, maxAge, path, secure, httpOnly)
+    p.setCookie(Cookie(name, value, maxAge, path, secure, httpOnly))
+
+
+  /**
+   * Sets a cookie to be sent to the client when request is complete.
+   *
+   * The cookie would be sent if request was completed naturally or aborted.
+   * It may be not sent if handler raised an exception during processing.
+   *
+   * @param cookie cookie to set.
+   */
+  inline def setCookie[M[_]](cookie: Cookie)(using p: Processing[M]): M[Unit] =
+    p.setCookie(cookie)
 
 
   /**

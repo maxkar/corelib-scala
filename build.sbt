@@ -21,6 +21,8 @@ val appSettings = Seq(
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 
+val jettyVersion = "9.4.49.v20220914"
+
 
 val libFun = project.in(file("fun"))
   .settings(commonSettings)
@@ -184,6 +186,14 @@ val httpServerToolkit = project.in(file("http/server/toolkit"))
   .dependsOn(httpServerApi)
 
 
+val httpServerJettyQoS = project.in(file("http/server/jetty/qos"))
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies += "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+  )
+  .dependsOn(libFun, httpServerToolkit)
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -200,4 +210,5 @@ val root = project.in(file("."))
     sampleJsonStreamingFormatter,
 
     httpHeaders, httpServerApi, httpServerToolkit,
+    httpServerJettyQoS,
   )
