@@ -2,7 +2,7 @@ package io.github.maxkar
 package http.server.jetty.qos
 
 import fun.typeclass.Monad
-import fun.coroutine.Coroutine
+import fun.coroutine.Tokentine
 
 import http.server.api.Cookie
 import http.server.api.Response
@@ -19,10 +19,10 @@ final class Module[Qos]:
    * Type of the evaluation/execution in this module. Typeclass instances
    * like monad or process are defined for this type constructor.
    */
-  opaque type Step[T] = Coroutine.Routine[Suspension, T]
+  opaque type Step[T] = Tokentine.Routine[Suspension, T]
 
   /** Result of the execution. */
-  private type StepResult[T] = Coroutine.RunResult[Suspension, T]
+  private type StepResult[T] = Tokentine.RunResult[Suspension, T]
 
 
   /** How to suspend execution and what to do next. */
@@ -31,31 +31,30 @@ final class Module[Qos]:
     case Abort(resp: Response)
 
     /** Adds headers to the resulting request. */
-    case AddHeaders(headers: Seq[(String, String)], next: Unit => StepResult[T])
+    case AddHeaders(headers: Seq[(String, String)]) extends Suspension[Unit]
 
     /** Sets a given cookie to the response. */
-    case SetCookie(cookie: Cookie, next: Unit => StepResult[T])
+    case SetCookie(cookie: Cookie) extends Suspension[Unit]
 
     /** Invokes the given cleaner. */
-    case InvokeCleaner(cleaner: Cleaner, next: Unit => StepResult[T])
+    case InvokeCleaner(cleaner: Cleaner) extends Suspension[Unit]
 
     /** Adds the cleaner into the processing chaing. */
-    case AddCleaner(cleaner: Cleaner, next: ResourceCleaner[Step] => StepResult[T])
+    case AddCleaner(cleaner: ResourceCleaner[Step]) extends Suspension[ResourceCleaner[Step]]
 
     /** Adds the resource (ignoring cleaner). */
-    case AddResource[R, T](cleaner: Cleaner, resource: R, next: R => StepResult[T]) extends Suspension[T]
+    case AddResource(cleaner: Cleaner, resource: T) extends Suspension[T]
 
     /** Adds the resource command. */
-    case AddResourceCleaner[R, T](
-          cleaner: Cleaner,
-          resource: R,
-          next: ((R, ResourceCleaner[Step])) => StepResult[T]
-        ) extends Suspension[T]
+    case AddResourceCleaner(
+          cleaner: ResourceCleaner[Step],
+          resource: T,
+        ) extends Suspension[(T, ResourceCleaner[Step])]
   end Suspension
 
 
-  /** Coroutine module with all the typeclasses, etc... */
-  private val routine = new Coroutine[Suspension]
+  /** Tokentine module with all the typeclasses, etc... */
+  private val routine = new Tokentine[Suspension]
 
   /** Implementation of the monad for the Step. */
   given monadInstance: Monad[Step] = routine.monadInstance
@@ -68,10 +67,8 @@ final class Module[Qos]:
 
     final override def clean(): Step[Unit] =
       if cleaned then return Monad.pure(())
-      routine.suspend(new routine.Suspender[Unit] {
-        override def encode[V](cont: Unit => routine.RunResult[V]): Suspension[V] =
-          Suspension.InvokeCleaner(Cleaner.this, cont)
-      })
+      routine.suspend(Suspension.InvokeCleaner(this))
+    end clean
 
   end Cleaner
 
@@ -92,39 +89,24 @@ final class Module[Qos]:
   /** Request processing instance. */
   given processingInstance: Processing[Step] with
     override def abort[T](resp: Response): Step[T] =
-      routine.suspend(new routine.Suspender[T] {
-        override def encode[V](continue: T => routine.RunResult[V]): Suspension[V] =
-          Suspension.Abort(resp)
-      })
+      routine.suspend(Suspension.Abort(resp))
 
     override def addHeaders(headers: Seq[(String, String)]): Step[Unit] =
-      routine.suspend(new routine.Suspender[Unit] {
-        override def encode[V](cont: Unit => routine.RunResult[V]): Suspension[V] =
-          Suspension.AddHeaders(headers, cont)
-      })
-
+      routine.suspend(Suspension.AddHeaders(headers))
 
     override def setCookie(cookie: Cookie): Step[Unit] =
-      routine.suspend(new routine.Suspender[Unit] {
-        override def encode[V](cont: Unit => routine.RunResult[V]): Suspension[V] =
-          Suspension.SetCookie(cookie, cont)
-      })
-
+      routine.suspend(Suspension.SetCookie(cookie))
 
     override def cleanup(cleaner: => Unit): Step[ResourceCleaner[Step]] =
       val c = new SimpleCleaner(() => cleaner)
-      routine.suspend(new routine.Suspender[ResourceCleaner[Step]] {
-        override def encode[V](cont: ResourceCleaner[Step] => routine.RunResult[V]): Suspension[V] =
-          Suspension.AddCleaner(c, cont)
-      })
+      routine.suspend(Suspension.AddCleaner(c))
+    end cleanup
 
 
     override def withResource[R](resource: R, cleanup: R => Unit): Step[R] =
       val c = new InstanceCleaner(resource, cleanup)
-      routine.suspend(new routine.Suspender[R] {
-        override def encode[V](cont: R => routine.RunResult[V]): Suspension[V] =
-          Suspension.AddResource(c, resource, cont)
-      })
+      routine.suspend(Suspension.AddResource(c, resource))
+    end withResource
 
 
     override def withCleanableResource[R](
@@ -132,11 +114,8 @@ final class Module[Qos]:
           cleanup: R => Unit,
         ): Step[(R, ResourceCleaner[Step])] =
       val c = new InstanceCleaner(resource, cleanup)
-      routine.suspend(new routine.Suspender[(R, ResourceCleaner[Step])] {
-        override def encode[V](cont: ((R, ResourceCleaner[Step])) => routine.RunResult[V]): Suspension[V] =
-          Suspension.AddResourceCleaner(c, resource, cont)
-      })
-
+      routine.suspend(Suspension.AddResourceCleaner(c, resource))
+    end withCleanableResource
 
   end processingInstance
 
