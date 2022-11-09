@@ -7,14 +7,25 @@ import fun.coroutine.Coroutine
 import http.server.api.Cookie
 import http.server.api.Response
 import http.server.api.Processing
+import http.server.api.Route
 import http.server.api.ResourceCleaner
+import http.server.api.NegotiableErrors
+
+import http.server.toolkit.BaseRoute
 
 
 /**
  * Module with quality-of-service support for requests.
  * @tparam Qos User-defineable quality-of-service parameter.
  */
-final class Module[Qos]:
+final class Module[Qos] private(
+      errors: NegotiableErrors,
+      knownMethods: Iterable[String],
+    ):
+
+  /** Suspension - how the execution could be paused. */
+  private type Suspension[T] = Operation[Qos, T]
+
   /**
    * Type of the evaluation/execution in this module. Typeclass instances
    * like monad or process are defined for this type constructor.
@@ -24,35 +35,6 @@ final class Module[Qos]:
   /** Result of the execution. */
   private type StepResult[T] = Coroutine.RunResult[Suspension, T]
 
-
-  /** How to suspend execution and what to do next. */
-  private enum Suspension[T]:
-    /** Abort execution and do nothing else. */
-    case Abort(resp: Response)
-
-    /** Adds headers to the resulting request. */
-    case AddHeaders(headers: Seq[(String, String)]) extends Suspension[Unit]
-
-    /** Sets a given cookie to the response. */
-    case SetCookie(cookie: Cookie) extends Suspension[Unit]
-
-    /** Invokes the given cleaner. */
-    case InvokeCleaner(cleaner: Cleaner) extends Suspension[Unit]
-
-    /** Adds the cleaner into the processing chaing. */
-    case AddCleaner(cleaner: ResourceCleaner[Step]) extends Suspension[ResourceCleaner[Step]]
-
-    /** Adds the resource (ignoring cleaner). */
-    case AddResource(cleaner: Cleaner, resource: T) extends Suspension[T]
-
-    /** Adds the resource command. */
-    case AddResourceCleaner(
-          cleaner: ResourceCleaner[Step],
-          resource: T,
-        ) extends Suspension[(T, ResourceCleaner[Step])]
-  end Suspension
-
-
   /** Coroutine module with all the typeclasses, etc... */
   private val routine = new Coroutine[Suspension]
 
@@ -60,52 +42,27 @@ final class Module[Qos]:
   given monadInstance: Monad[Step] = routine.monadInstance
 
 
-  /** Resource cleaner - how to clean resource. */
-  private abstract class Cleaner
-      extends Module.CleanupNode
-      with ResourceCleaner[Step]:
-
-    final override def clean(): Step[Unit] =
-      if cleaned then return Monad.pure(())
-      routine.suspend(Suspension.InvokeCleaner(this))
-    end clean
-
-  end Cleaner
-
-
-  /** Simple cleaner - how to clean some resource. */
-  private final class SimpleCleaner(cleanFn: () => Unit) extends Cleaner:
-    override def cleanImpl(): Unit = cleanFn()
-  end SimpleCleaner
-
-
-  /** Cleaner of the given resource (uses instance and function). */
-  private final class InstanceCleaner[R](instance: R, fn: R => Unit) extends Cleaner:
-    override def cleanImpl(): Unit = fn(instance)
-  end InstanceCleaner
-
-
-
   /** Request processing instance. */
   given processingInstance: Processing[Step] with
     override def abort[T](resp: Response): Step[T] =
-      routine.suspend(Suspension.Abort(resp))
+      routine.suspend(Operation.Abort(resp))
 
     override def addHeaders(headers: Seq[(String, String)]): Step[Unit] =
-      routine.suspend(Suspension.AddHeaders(headers))
+      routine.suspend(Effects.AddHeaders(headers))
 
     override def setCookie(cookie: Cookie): Step[Unit] =
-      routine.suspend(Suspension.SetCookie(cookie))
+      routine.suspend(Effects.AddCookie(cookie))
 
     override def cleanup(cleaner: => Unit): Step[ResourceCleaner[Step]] =
-      val c = new SimpleCleaner(() => cleaner)
-      routine.suspend(Suspension.AddCleaner(c))
+      val c = new Cleaner(() => cleaner)
+      val ret = new ResourceCleanerImpl(routine.suspend(Effects.InvokeCleaner(c)))
+      routine.suspend(Effects.AddCleaner(c, ret))
     end cleanup
 
 
     override def withResource[R](resource: R, cleanup: R => Unit): Step[R] =
-      val c = new InstanceCleaner(resource, cleanup)
-      routine.suspend(Suspension.AddResource(c, resource))
+      val c = new Cleaner(() => cleanup(resource))
+      routine.suspend(Effects.AddCleaner(c, resource))
     end withResource
 
 
@@ -113,70 +70,78 @@ final class Module[Qos]:
           resource: R,
           cleanup: R => Unit,
         ): Step[(R, ResourceCleaner[Step])] =
-      val c = new InstanceCleaner(resource, cleanup)
-      routine.suspend(Suspension.AddResourceCleaner(c, resource))
+      val c = new Cleaner(() => cleanup(resource))
+      val ret = new ResourceCleanerImpl(routine.suspend(Effects.InvokeCleaner(c)))
+      routine.suspend(Effects.AddCleaner(c, (resource, ret)))
     end withCleanableResource
-
   end processingInstance
 
 
+  /** Implementation of the route typeclass for our monad. */
+  given routeInstance: Route[Step] = new BaseRoute[Step]:
+    override protected def abort[T](response: Response): Step[T] =
+      processingInstance.abort(response)
+
+    override protected val errors: NegotiableErrors = Module.this.errors
+
+    override protected val knownMethods: Iterable[String] = Module.this.knownMethods
+
+    override def path[T](fn: PartialFunction[List[String], Step[T]]): Step[T] =
+      routine.suspend(new Operation.ComplexContextOperation[Qos, T] {
+        override def perform(context: RequestContext[Qos]): Step[T] =
+          doRoute(context.initialRequestPath, context.effectivePath, fn)
+      })
+
+    override def continue[T](unconsumedPath: List[String], handler: Step[T]): Step[T] =
+      routine.suspend(new Operation.ComplexContextOperation[Qos, T] {
+        override def perform(context: RequestContext[Qos]): Step[T] =
+          context.effectivePath = unconsumedPath
+          handler
+        end perform
+      })
+
+
+    /** Cached implementation of the "get method" functionality. */
+    private val getMethodInstance: Step[String] = routine.suspend(Effects.GetMethod())
+    override def getMethod(): Step[String] = getMethodInstance
+
+
+    /** Cached instance of "get all header names". */
+    private val getHeadersInstance: Step[Seq[String]] = routine.suspend(Effects.GetHeaderNames())
+    override def getHeaderNames(): Step[Seq[String]] = getHeadersInstance
+
+
+    override def getHeaders(name: String): Step[Seq[String]] =
+      routine.suspend(Effects.GetHeader(name))
+
+    override def getCookies(name: String): Step[Seq[String]] =
+      routine.suspend(Effects.GetCookies(name))
+
+
+    /** Cached instance of "get all parameters names". */
+    private val getParametersInstance: Step[Seq[String]] = routine.suspend(Effects.GetParameterNames())
+    override def getParameterNames(): Step[Seq[String]] =  getParametersInstance
+
+    override def getParameters(name: String): Step[Seq[String]] =
+      routine.suspend(Effects.GetParameter(name))
+
+    override def getBodyAsBytes(limit: Long): Step[Array[Byte]] =
+      routine.suspend(Operation.ReadInputBytes(limit))
+  end routeInstance
 end Module
 
 
 object Module:
-
-  /** A node in the cleanup handler chain. */
-  private[qos] abstract class CleanupNode:
-    /** Next cleaner in the chain. */
-    private[Module] var next: CleanupNode = null
-
-    /** Private cleaner in the chain. */
-    private[Module] var prev: CleanupNode = null
-
-    /** If cleaning was already performed. */
-    protected final var cleaned: Boolean = false
-
-    /** Cleans resource associated with this module. */
-    private[Module] def cleanResource(): Unit =
-      if cleaned then return
-      cleaned = true
-      cleanImpl()
-    end cleanResource
-
-
-    /**
-     * Removes the cleaner from the list of the cleaners registered
-     * for the request.
-     */
-    private[Module] def unlink(owner: RequestContext[_]): Unit =
-      if next != null then
-        next.prev = prev
-
-      if prev == null then
-        owner.cleaner = next
-      else
-        prev.next = next
-    end unlink
-
-
-    /** Adds the node into the list of all cleanup handlers. */
-    private[Module] def link(owner: RequestContext[_]): Unit =
-      next = owner.cleaner
-      if next != null then next.prev = this
-      owner.cleaner = this
-    end link
-
-
-    /** Performs actual cleanup logic. */
-    def cleanImpl(): Unit
-  end CleanupNode
-
-
   /**
    * Creates a new module with Quality-of-service support.
    * @tparam Qos user-driven way to describe quality of service.
+   * @param errors error handlers used by this server.
+   * @param knownMethods server-wide HTTP methods (the ones that
+   *   may be reasonably expected from any handler).
    */
   def apply[Qos: Ordering](
+        errors: NegotiableErrors,
+        knownMethods: Iterable[String] = Route.defaultMethod,
       ): Module[Qos] =
-    new Module()
+    new Module(errors, knownMethods)
 end Module
