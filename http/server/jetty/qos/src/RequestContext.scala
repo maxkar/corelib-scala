@@ -1,7 +1,10 @@
 package io.github.maxkar
 package http.server.jetty.qos
 
+import fun.coroutine.Coroutine
+
 import http.server.api.Cookie
+import http.server.api.Response
 
 import org.eclipse.jetty.server.Request
 
@@ -16,8 +19,9 @@ import org.eclipse.jetty.server.Request
  * @param effectivePath effective path used for Route.path routing.
  * @param extraHeaders extra headers that should be added to the response (side effect).
  * @param cleaner a node in the "cleanup" chain.
+ * @param nextSteps next steps to execute for request processing.
  */
-final class RequestContext[Qos](
+private[qos] final class RequestContext[Qos](
       val baseRequest: Request,
       val serial: Long,
       var qos: Qos,
@@ -25,11 +29,12 @@ final class RequestContext[Qos](
       var effectivePath: List[String],
       var extraHeaders: Seq[(String, String)] = Seq.empty,
       var cookies: Seq[Cookie] = Seq.empty,
-      var cleaner: Cleaner = null
+      var cleaner: Cleaner = null,
+      var nextSteps: Coroutine.Routine[({type Op[T] = Operation[Qos, T]})#Op, Response] = null
     )
 
 
-object RequestContext:
+private[qos] object RequestContext:
   /** Ordering for context based on the Qos ordering. */
   given requestOrdering[Qos](using qorder: Ordering[Qos]): Ordering[RequestContext[Qos]] with
     override def compare(x: RequestContext[Qos], y: RequestContext[Qos]): Int =

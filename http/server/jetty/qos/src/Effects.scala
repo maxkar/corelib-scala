@@ -91,4 +91,18 @@ private[qos] object Effects:
     override def perform(context: RequestContext[Qos]): Seq[String] =
       context.baseRequest.getParameterValues(name).toSeq
   end GetParameter
+
+
+  /** Retrieves QoS parameter. */
+  final class GetQos[Qos] extends Operation.ContextOperation[Qos, Qos]:
+    override def perform(context: RequestContext[Qos]): Qos =
+      context.qos
+  end GetQos
+
+
+  /** Sets a new QoS parameter. */
+  final class SetQos[Qos](newQos: Qos) extends Operation.ContextOperation[Qos, Unit]:
+    override def perform(context: RequestContext[Qos]): Unit =
+      context.qos = newQos
+  end SetQos
 end Effects

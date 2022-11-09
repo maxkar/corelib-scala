@@ -18,7 +18,7 @@ private[qos] final class Cleaner(private var fn: () => Unit):
    * Next cleaner in the linked list of cleaners. Set to `null`
    * when last or is already cleaned.
    */
-  private var next: Cleaner = null
+  private[qos] var next: Cleaner = null
 
 
   /**
