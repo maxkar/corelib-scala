@@ -8,6 +8,7 @@ import fun.coroutine.Coroutine.RunResult
 import java.util.Queue
 import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.ThreadFactory
+import java.util.concurrent.atomic.AtomicLong
 
 import http.server.api.Cookie
 import http.server.api.Response
@@ -20,6 +21,7 @@ import http.server.toolkit.BaseRoute
 
 import scala.jdk.CollectionConverters.*
 
+import org.eclipse.jetty.server.Request
 
 /**
  * Module with quality-of-service support for requests.
@@ -28,6 +30,7 @@ import scala.jdk.CollectionConverters.*
 final class Module[Qos] private(
       errors: NegotiableErrors,
       knownMethods: Iterable[String],
+      defaultQos: Qos,
       sensor: Module.ErrorSensor,
       queue: Queue[RequestContext[Qos]],
     ):
@@ -46,6 +49,10 @@ final class Module[Qos] private(
 
   /** Coroutine module with all the typeclasses, etc... */
   private val routine = new Coroutine[Suspension]
+
+  /** Counter for generating request IDs. */
+  private val requestSerial = new AtomicLong()
+
 
   /** Implementation of the monad for the Step. */
   given monadInstance: Monad[Step] = routine.monadInstance
@@ -153,6 +160,26 @@ final class Module[Qos] private(
     routine.suspend(Effects.SetQos(newQos))
 
 
+  /**
+   * Accepts a new jetty request for processing.
+   * @param req request to process.
+   * @param path request path that should be used for routing.
+   * @param proc request handling routine.
+   */
+  private[qos] def processRequest(req: Request, path: List[String], proc: Step[Response]): Unit =
+    val ctx =
+      new RequestContext[Qos](
+        baseRequest = req,
+        serial = requestSerial.incrementAndGet(),
+        qos = defaultQos,
+        initialRequestPath = path,
+        effectivePath = path,
+        nextSteps = proc
+      )
+    continueRequest(ctx)
+  end processRequest
+
+
   /** Runs the main loop. */
   private def runAll(): Unit =
     while true do
@@ -162,6 +189,7 @@ final class Module[Qos] private(
         case e: Throwable =>
           sensor.genericError(e)
     end while
+  end runAll
 
 
   /**
@@ -500,6 +528,8 @@ object Module:
    * @param errors error handlers used by this server.
    * @param knownMethods server-wide HTTP methods (the ones that
    *   may be reasonably expected from any handler).
+   * @param defaultQos default Quality of Service level that set for every
+   *   new incoming request.
    * @param threadFactory thread factory used to create workers.
    * @param workThreads number of work threads to start for request processing.
    * @param sensor error sensor that is notified about execution errors.
@@ -507,6 +537,7 @@ object Module:
   def apply[Qos: Ordering](
         errors: NegotiableErrors,
         knownMethods: Iterable[String] = Route.defaultMethod,
+        defaultQos: Qos,
         threadFactory: ThreadFactory,
         workThreads: Int,
         sensor: ErrorSensor,
@@ -518,7 +549,7 @@ object Module:
         RequestContext.requestOrdering[Qos],
       )
 
-    val module = new Module(errors, knownMethods, sensor, queue)
+    val module = new Module(errors, knownMethods, defaultQos, sensor, queue)
     val handler = new Runnable() {
       override def run(): Unit =
         module.runAll()
