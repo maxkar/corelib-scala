@@ -186,9 +186,25 @@ val httpServerToolkit = project.in(file("http/server/toolkit"))
   .dependsOn(httpServerApi)
 
 
+val httpServerJettyGateway = project.in(file("http/server/jetty/gateway"))
+  .settings(commonSettings)
+  .settings(
+    name := "jetty-server-gateway",
+    description :=
+        """Jetty server main configuration point and very basic handlers.
+          | This module is rarely used alone. At least one another module
+          | (like jetty-server-qos) should be used for actual business logic
+          | implementation.
+        """,
+    libraryDependencies += "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+  )
+
+
 val httpServerJettyQoS = project.in(file("http/server/jetty/qos"))
   .settings(commonSettings)
   .settings(
+    name := "jetty-server-qos",
+    description := """Jetty handler with Quality-of-service support.""",
     libraryDependencies += "org.eclipse.jetty" % "jetty-server" % jettyVersion,
   )
   .dependsOn(libFun, httpServerToolkit)
@@ -210,5 +226,5 @@ val root = project.in(file("."))
     sampleJsonStreamingFormatter,
 
     httpHeaders, httpServerApi, httpServerToolkit,
-    httpServerJettyQoS,
+    httpServerJettyGateway, httpServerJettyQoS,
   )
