@@ -98,11 +98,4 @@ private[qos] object Effects:
     override def perform(context: RequestContext[Qos]): Qos =
       context.qos
   end GetQos
-
-
-  /** Sets a new QoS parameter. */
-  final class SetQos[Qos](newQos: Qos) extends Operation.ContextOperation[Qos, Unit]:
-    override def perform(context: RequestContext[Qos]): Unit =
-      context.qos = newQos
-  end SetQos
 end Effects

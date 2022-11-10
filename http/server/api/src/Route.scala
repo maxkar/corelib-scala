@@ -212,7 +212,7 @@ object Route:
    * Default methods that are commonly used by servers and are supported by
    * many http client libraries.
    */
-  val defaultMethod: Iterable[String] =
+  val defaultMethods: Iterable[String] =
     Seq(
       "GET",
       "PUT",

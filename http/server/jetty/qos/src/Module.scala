@@ -5,7 +5,7 @@ import fun.typeclass.Monad
 import fun.coroutine.Coroutine
 import fun.coroutine.Coroutine.RunResult
 
-import java.util.Queue
+import java.util.concurrent.BlockingQueue
 import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicLong
@@ -32,7 +32,7 @@ final class Module[Qos] private(
       knownMethods: Iterable[String],
       defaultQos: Qos,
       sensor: Module.ErrorSensor,
-      queue: Queue[RequestContext[Qos]],
+      queue: BlockingQueue[RequestContext[Qos]],
     ):
 
   /** Suspension - how the execution could be paused. */
@@ -157,7 +157,7 @@ final class Module[Qos] private(
    *   processing is being scheduled.
    */
   def setQos(newQos: Qos): Step[Unit] =
-    routine.suspend(Effects.SetQos(newQos))
+    routine.suspend(Operation.SetQos(newQos))
 
 
   /**
@@ -184,7 +184,7 @@ final class Module[Qos] private(
   private def runAll(): Unit =
     while true do
       try
-        runContext(queue.poll())
+        runContext(queue.take())
       catch
         case e: Throwable =>
           sensor.genericError(e)
@@ -209,10 +209,22 @@ final class Module[Qos] private(
         routine.run(md) match
           case RunResult.Finished(resp) =>
             completeWithResponse(context, resp)
+            return
           case RunResult.Suspended(Operation.Abort(resp), _) =>
             completeWithResponse(context, resp)
+            return
           case RunResult.Suspended(Operation.ReadInputBytes(limit), cont) =>
             doInput(context, limit, cont)
+            return
+          case RunResult.Suspended(Operation.SetQos(qos), cont) =>
+            context.qos = qos
+            /* Bind this as "cont(x)" may be heavy computation. */
+            context.nextSteps = monadInstance.bind(monadInstance.pure(()), cont)
+            /* Re-schedule the request with new QoS. This may de-prioritize
+             * the current one and give some other request a chance to be executed.
+             */
+            continueRequest(context)
+            return
           case RunResult.Suspended(x: Operation.ContextOperation[Qos, _], cont) =>
             md = cont(x.perform(context))
           case RunResult.Suspended(x: Operation.ComplexContextOperation[Qos, _], cont) =>
@@ -536,7 +548,7 @@ object Module:
    */
   def apply[Qos: Ordering](
         errors: NegotiableErrors,
-        knownMethods: Iterable[String] = Route.defaultMethod,
+        knownMethods: Iterable[String] = Route.defaultMethods,
         defaultQos: Qos,
         threadFactory: ThreadFactory,
         workThreads: Int,

@@ -205,9 +205,12 @@ val httpServerJettyQoS = project.in(file("http/server/jetty/qos"))
   .settings(
     name := "jetty-server-qos",
     description := """Jetty handler with Quality-of-service support.""",
-    libraryDependencies += "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+    libraryDependencies ++= Seq(
+      "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+      scalatest,
+    )
   )
-  .dependsOn(libFun, httpServerToolkit)
+  .dependsOn(libFun, httpServerToolkit, httpServerJettyGateway % Test)
 
 
 val root = project.in(file("."))

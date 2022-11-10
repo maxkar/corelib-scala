@@ -25,6 +25,10 @@ object Operation:
   private[qos] case class ReadInputBytes[Qos](maxSize: Long) extends Operation[Qos, Array[Byte]]
 
 
+  /** Sets QoS value. */
+  private[qos] case class SetQos[Qos](qos: Qos) extends Operation[Qos, Unit]
+
+
   /**
    * An operation that is performed on the given request context and
    * consists of modifying request or retrieving data from it.

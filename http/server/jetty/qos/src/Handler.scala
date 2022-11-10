@@ -26,7 +26,7 @@ object Handler:
             response: HttpServletResponse,
           ): Unit =
         var path = target.split("/").toList
-        if path.head == "" then path = path.tail
+        if path.headOption.contains("") then path = path.tail
         baseRequest.setHandled(true)
         baseRequest.startAsync()
         module.processRequest(baseRequest, path, handler)

@@ -105,7 +105,7 @@ object Gateway:
 
     val connFactory = new HttpConnectionFactory(conf)
     val conn = new ServerConnector(server, 1, 1, connFactory)
-    conn.setName("@port" + port)
+    conn.setName("port" + port)
     conn.setPort(port)
     conn
   end createConnector
