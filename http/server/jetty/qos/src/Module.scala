@@ -3,6 +3,11 @@ package http.server.jetty.qos
 
 import fun.typeclass.Monad
 import fun.coroutine.Coroutine
+import fun.coroutine.Coroutine.RunResult
+
+import java.util.Queue
+import java.util.concurrent.PriorityBlockingQueue
+import java.util.concurrent.ThreadFactory
 
 import http.server.api.Cookie
 import http.server.api.Response
@@ -14,7 +19,7 @@ import http.server.api.NegotiableErrors
 import http.server.toolkit.BaseRoute
 
 import scala.jdk.CollectionConverters.*
-import org.eclipse.jetty.http.MetaData.Request
+
 
 /**
  * Module with quality-of-service support for requests.
@@ -24,6 +29,7 @@ final class Module[Qos] private(
       errors: NegotiableErrors,
       knownMethods: Iterable[String],
       sensor: Module.ErrorSensor,
+      queue: Queue[RequestContext[Qos]],
     ):
 
   /** Suspension - how the execution could be paused. */
@@ -147,19 +153,60 @@ final class Module[Qos] private(
     routine.suspend(Effects.SetQos(newQos))
 
 
+  /** Runs the main loop. */
+  private def runAll(): Unit =
+    while true do
+      try
+        runContext(queue.poll())
+      catch
+        case e: Throwable =>
+          sensor.genericError(e)
+    end while
+
+
   /**
    * Continues processing of the given monad according to all the defined rules.
    * This method may be called from **any** thread.
    */
-  private def continueRequest(context: RequestContext[Qos]): Unit = ???
+  private def continueRequest(context: RequestContext[Qos]): Unit =
+    queue.add(context)
+
+
+  /** Runs the next steps of the processing. */
+  private def runContext(context: RequestContext[Qos]): Unit =
+    var md = context.nextSteps
+    context.nextSteps = null
+    try
+      while true do
+        routine.run(md) match
+          case RunResult.Finished(resp) =>
+            completeWithResponse(context, resp)
+          case RunResult.Suspended(Operation.Abort(resp), _) =>
+            completeWithResponse(context, resp)
+          case RunResult.Suspended(Operation.ReadInputBytes(limit), cont) =>
+            doInput(context, limit, cont)
+          case RunResult.Suspended(x: Operation.ContextOperation[Qos, _], cont) =>
+            md = cont(x.perform(context))
+          case RunResult.Suspended(x: Operation.ComplexContextOperation[Qos, _], cont) =>
+            md = monadInstance.bind(x.perform(context), cont)
+        end match
+      end while
+    catch
+      case e: Throwable => raiseInternalError(context, e)
+  end runContext
 
 
   /** Performs (asynchronous) input for the given request. */
-  private def doInput(context: RequestContext[Qos], next: Array[Byte] => Step[Response]): Unit =
+  private def doInput(
+        context: RequestContext[Qos],
+        limit: Long,
+        next: Array[Byte] => Step[Response],
+      ): Unit =
     val baos = new java.io.ByteArrayOutputStream()
     val buf = new Array[Byte](4096)
     val is = context.baseRequest.getInputStream()
     var finished = false
+    var remaining = limit
 
     is.setReadListener(new javax.servlet.ReadListener() {
       override def onAllDataRead(): Unit =
@@ -184,6 +231,16 @@ final class Module[Qos] private(
               onAllDataRead()
             else
               baos.write(buf, 0, read)
+              remaining -= read
+              if remaining < 0 then
+                context.nextSteps =
+                  processingInstance.abort(
+                    errors.byteLengthExceeded(context.baseRequest.getHeaders("Accept").asScala.toSeq, limit)
+                  )
+                continueRequest(context)
+                return
+            end if
+          end while
         catch
           case e: Throwable => raiseInternalError(context, e)
       end onDataAvailable
@@ -402,6 +459,13 @@ object Module:
      */
     def invisibleError(requestId: Long, error: Throwable): Unit =
       internalError(requestId, error)
+
+
+    /**
+     * General error happened in the executor. Quite often - not related
+     * to a specific request.
+     */
+    def genericError(t: Throwable): Unit
   end ErrorSensor
 
 
@@ -410,6 +474,8 @@ object Module:
     object Noop extends ErrorSensor:
       override def internalError(requestId: Long, error: Throwable): String =
         "1GN0RED"
+
+      override def genericError(t: Throwable): Unit = ()
     end Noop
 
     /**
@@ -421,8 +487,12 @@ object Module:
       override def internalError(requestId: Long, error: Throwable): String =
         error.printStackTrace()
         "REG1STERD-L066ED"
+
+      override def genericError(t: Throwable): Unit =
+        t.printStackTrace()
     end PrintStack
   end ErrorSensor
+
 
   /**
    * Creates a new module with Quality-of-service support.
@@ -430,11 +500,32 @@ object Module:
    * @param errors error handlers used by this server.
    * @param knownMethods server-wide HTTP methods (the ones that
    *   may be reasonably expected from any handler).
+   * @param threadFactory thread factory used to create workers.
+   * @param workThreads number of work threads to start for request processing.
+   * @param sensor error sensor that is notified about execution errors.
    */
   def apply[Qos: Ordering](
         errors: NegotiableErrors,
         knownMethods: Iterable[String] = Route.defaultMethod,
+        threadFactory: ThreadFactory,
+        workThreads: Int,
         sensor: ErrorSensor,
       ): Module[Qos] =
-    new Module(errors, knownMethods, sensor)
+
+    val queue =
+      new PriorityBlockingQueue[RequestContext[Qos]](
+        50,
+        RequestContext.requestOrdering[Qos],
+      )
+
+    val module = new Module(errors, knownMethods, sensor, queue)
+    val handler = new Runnable() {
+      override def run(): Unit =
+        module.runAll()
+    }
+
+    for i <- 1 to workThreads do
+      threadFactory.newThread(handler).start()
+    module
+  end apply
 end Module

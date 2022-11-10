@@ -22,7 +22,7 @@ object Operation:
 
 
   /** Request to read the input up to the given size. */
-  private[qos] case class ReadInputBytes[Qos, T](maxSize: Long) extends Operation[Qos, T]
+  private[qos] case class ReadInputBytes[Qos](maxSize: Long) extends Operation[Qos, Array[Byte]]
 
 
   /**
