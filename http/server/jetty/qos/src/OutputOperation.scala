@@ -17,7 +17,7 @@ import javax.servlet.http.{Cookie => ServletCookie}
  * @param data data that has to be written.
  */
 private final class OutputOperation[Qos](
-      module: Module[Qos],
+      module: RoutineExecutor[Qos],
       context: RequestContext[Qos],
       stream: ServletOutputStream,
       data: Array[Byte],
@@ -56,7 +56,7 @@ end OutputOperation
 private[qos] object OutputOperation:
   /** Outputs response into the given context. */
   def apply[Qos](
-        module: Module[Qos],
+        module: RoutineExecutor[Qos],
         context: RequestContext[Qos],
         response: Response,
       ): Unit =

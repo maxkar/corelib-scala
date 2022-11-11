@@ -18,11 +18,11 @@ import http.server.api.Response
  * @param nextSteps next steps to perform on the given request.
  */
 private class InputOperation[QoS](
-      module: Module[QoS],
+      module: RoutineExecutor[QoS],
       context: RequestContext[QoS],
       stream: ServletInputStream,
       limit: Long,
-      nextSteps: Array[Byte] => module.Step[Response]
+      nextSteps: Array[Byte] => HQ.Step[QoS][Response]
     ) extends ReadListener:
   /** Collector for the request data. */
   private var baos = new ByteArrayOutputStream()
@@ -103,10 +103,10 @@ private[qos] object InputOperation:
    * @param nextSteps next steps to perform on the given request.
    */
   def apply[Qos](
-        module: Module[Qos],
+        module: RoutineExecutor[Qos],
         context: RequestContext[Qos],
         limit: Long,
-        nextSteps: Array[Byte] => module.Step[Response],
+        nextSteps: Array[Byte] => HQ.Step[Qos][Response],
       ): Unit =
     val stream = context.baseRequest.getInputStream()
     val handler = new InputOperation(module, context, stream, limit, nextSteps)
