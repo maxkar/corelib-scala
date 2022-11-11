@@ -31,7 +31,7 @@ final class Module[Qos] private(
       errors: NegotiableErrors,
       knownMethods: Iterable[String],
       defaultQos: Qos,
-      sensor: Module.ErrorSensor,
+      private[qos] val sensor: Sensor,
       queue: BlockingQueue[RequestContext[Qos]],
     ):
 
@@ -208,13 +208,13 @@ final class Module[Qos] private(
       while true do
         routine.run(md) match
           case RunResult.Finished(resp) =>
-            completeWithResponse(context, resp)
+            OutputOperation(this, context, resp)
             return
           case RunResult.Suspended(Operation.Abort(resp), _) =>
-            completeWithResponse(context, resp)
+            OutputOperation(this, context, resp)
             return
           case RunResult.Suspended(Operation.ReadInputBytes(limit), cont) =>
-            doInput(context, limit, cont)
+            InputOperation(this, context, limit, cont)
             return
           case RunResult.Suspended(Operation.SetQos(qos), cont) =>
             context.qos = qos
@@ -236,61 +236,25 @@ final class Module[Qos] private(
   end runContext
 
 
-  /** Performs (asynchronous) input for the given request. */
-  private def doInput(
+  /** Raises the "request size too large" response for the given request. */
+  private[qos] def raiseRequestSizeTooLarge(context: RequestContext[Qos], limit: Long): Unit =
+    context.nextSteps =
+      processingInstance.abort(
+        errors.byteLengthExceeded(context.baseRequest.getHeaders("Accept").asScala.toSeq, limit)
+      )
+    continueRequest(context)
+  end raiseRequestSizeTooLarge
+
+
+  /** Completes input operation for the given request. */
+  private[qos] def completeInput(
         context: RequestContext[Qos],
-        limit: Long,
-        next: Array[Byte] => Step[Response],
+        data: Array[Byte],
+        nextFun: Array[Byte] => Step[Response],
       ): Unit =
-    val baos = new java.io.ByteArrayOutputStream()
-    val buf = new Array[Byte](4096)
-    val is = context.baseRequest.getInputStream()
-    var finished = false
-    var remaining = limit
-
-    is.setReadListener(new javax.servlet.ReadListener() {
-      override def onAllDataRead(): Unit =
-        baos.close()
-
-        if finished then return
-        finished = true
-
-        try
-          context.nextSteps = next(baos.toByteArray())
-          continueRequest(context)
-        catch
-          case e: Throwable => raiseInternalError(context, e)
-      end onAllDataRead
-
-
-      override def onDataAvailable(): Unit =
-        try
-          while is.isReady() do
-            val read = is.read(buf)
-            if (read < 0) then
-              onAllDataRead()
-            else
-              baos.write(buf, 0, read)
-              remaining -= read
-              if remaining < 0 then
-                context.nextSteps =
-                  processingInstance.abort(
-                    errors.byteLengthExceeded(context.baseRequest.getHeaders("Accept").asScala.toSeq, limit)
-                  )
-                continueRequest(context)
-                return
-            end if
-          end while
-        catch
-          case e: Throwable => raiseInternalError(context, e)
-      end onDataAvailable
-
-
-      override def onError(t: Throwable): Unit =
-        raiseInternalError(context, t)
-      end onError
-    })
-  end doInput
+    context.nextSteps = monadInstance.bind(monadInstance.pure(data), nextFun)
+    continueRequest(context)
+  end completeInput
 
 
 
@@ -298,7 +262,7 @@ final class Module[Qos] private(
    * Raises an internal error and aborts request processing.
    * This may be called from **any** thread.
    */
-  private def raiseInternalError(context: RequestContext[Qos], e: Throwable): Unit =
+  private[qos] def raiseInternalError(context: RequestContext[Qos], e: Throwable): Unit =
     /* First, try to generate response.
      * Everything may fail so we are trying to be extra careful. */
     val errResponse =
@@ -320,129 +284,29 @@ final class Module[Qos] private(
      * coroutine evaluation). We handle both failures on the same thread where
      * it happened.
      */
-    completeWithResponse(context, errResponse)
+    OutputOperation(this, context, errResponse)
   end raiseInternalError
 
 
-  /** Completes the request by sending the response to it. */
-  private def completeWithResponse(context: RequestContext[Qos], resp: Response): Unit =
+  /** Handles an issue with the context output. */
+  private[qos] def outputError(context: RequestContext[Qos], e: Throwable): Unit =
     try
-      var r = context.baseRequest.getResponse()
-      r.setStatus(resp.status)
-
-      val headers1 = context.extraHeaders.iterator
-      while headers1.hasNext do
-        val (header, value) = headers1.next()
-        r.addHeader(header, value)
-      end while
-
-      val headers2 = resp.headers.entriesIterator
-      while headers2.hasNext do
-        val (header, values) = headers2.next()
-        val viter = values.iterator
-        while viter.hasNext do
-          r.addHeader(header, viter.next())
-      end while
-
-      val cookies = context.cookies.iterator
-      while cookies.hasNext do
-        val cookie = cookies.next()
-        val c = new javax.servlet.http.Cookie(cookie.name, cookie.value)
-        cookie.maxAge match
-          case None => ()
-          case Some(v) => c.setMaxAge(v)
-        cookie.path match
-          case None => c
-          case Some(value) => c.setPath(value)
-        cookie.secure match
-          case None => ()
-          case Some(value) => c.setSecure(value)
-        cookie.httpOnly match
-          case None => ()
-          case Some(value) => c.setHttpOnly(value)
-        r.addCookie(c)
-      end while
-
-      /** Mark as complete. */
-      if resp.content == null then
-        finish(context)
-      else
-        writeBytesAsync(context, resp.content)
-
-    catch
-      /* If nothing works - we log the error and just mark the request as complete. */
-      case e: Throwable =>
-        try
-          sensor.invisibleError(context.serial, e)
-        catch
-          case e: Throwable => ()
-        end try
-        finish(context)
-    end try
-  end completeWithResponse
-
-
-  /**
-   * Performs asynchronous output of the buffer. Why asynchronous?
-   * Because writing 2GB of data does not seem to be non-blocking operation
-   * and Servlet spec does not discuss data ownership so writing large
-   * chunks is expected to block (at least sometimes).
-   */
-  private def writeBytesAsync(context: RequestContext[Qos], bytes: Array[Byte]): Unit =
-    var ptr = 0
-    val stream = context.baseRequest.getResponse().getOutputStream()
-
-    try
-      stream.setWriteListener(new javax.servlet.WriteListener {
-        override def onError(t: Throwable): Unit =
-          try
-            sensor.invisibleError(context.serial, t)
-          finally
-            finish(context)
-          end try
-        end onError
-
-
-        override def onWritePossible(): Unit =
-          try
-            while stream.isReady() do
-              val start = ptr
-              if start >= bytes.length then
-                finish(context)
-                return
-              val toWrite = Math.min(bytes.length - start, 2048)
-              ptr = start + toWrite
-              stream.write(bytes, start, toWrite)
-            end while
-          catch
-            case e: Throwable => onError(e)
-          end try
-        end onWritePossible
-      })
-    catch
-      /* If nothing works - we log the error and just mark the request as complete. */
-      case e: Throwable =>
-        try
-          sensor.invisibleError(context.serial, e)
-        catch
-          case e: Throwable => ()
-        end try
-        finish(context)
-    end try
-  end writeBytesAsync
+      sensor.invisibleError(context.serial, e)
+    finally
+      finish(context)
+  end outputError
 
 
   /**
    * "Finishes" processing the context by notifying servlet about processing being
    * complete and runs the cleaners associated with the request.
    */
-  private def finish(context: RequestContext[Qos]): Unit =
+  private[qos] def finish(context: RequestContext[Qos]): Unit =
     try
       context.baseRequest.getAsyncContext().complete()
     finally
       cleanup(context)
   end finish
-
 
 
   /**
@@ -472,68 +336,10 @@ final class Module[Qos] private(
       cleaner = nextCleaner
     end while
   end cleanup
-
-
 end Module
 
 
 object Module:
-  /** Sensor for internal errors. */
-  trait ErrorSensor:
-    /**
-     * Registers internal error and returns user-visible code that
-     * @param requestId server-specific ID of the request.
-     * @param error error that happened during request processing.
-     * @return error ID that could be returned to end user and that
-     *   could later be used by the support team to look-up the issue.
-     */
-    def internalError(requestId: Long, error: Throwable): String
-
-    /**
-     * Registers internal error that could not be seen by end user. For
-     * example, resource clean-up issue or input/output error during reading
-     * request body will be recorded as such errors.
-     *
-     * @param requestId server-specific ID of the request.
-     * @param error error that happened during request processing.
-     */
-    def invisibleError(requestId: Long, error: Throwable): Unit =
-      internalError(requestId, error)
-
-
-    /**
-     * General error happened in the executor. Quite often - not related
-     * to a specific request.
-     */
-    def genericError(t: Throwable): Unit
-  end ErrorSensor
-
-
-  object ErrorSensor:
-    /** No-operation sensor. Not recommended. */
-    object Noop extends ErrorSensor:
-      override def internalError(requestId: Long, error: Throwable): String =
-        "1GN0RED"
-
-      override def genericError(t: Throwable): Unit = ()
-    end Noop
-
-    /**
-     * Sensor that just prints the exception. This is somewhat better
-     * that the `Noop` but still can't link user-visible codes to
-     * the error description.
-     */
-    object PrintStack extends ErrorSensor:
-      override def internalError(requestId: Long, error: Throwable): String =
-        error.printStackTrace()
-        "REG1STERD-L066ED"
-
-      override def genericError(t: Throwable): Unit =
-        t.printStackTrace()
-    end PrintStack
-  end ErrorSensor
-
-
   /**
    * Creates a new module with Quality-of-service support.
    * @tparam Qos user-driven way to describe quality of service.
@@ -552,7 +358,7 @@ object Module:
         defaultQos: Qos,
         threadFactory: ThreadFactory,
         workThreads: Int,
-        sensor: ErrorSensor,
+        sensor: Sensor,
       ): Module[Qos] =
 
     val queue =

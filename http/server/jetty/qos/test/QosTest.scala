@@ -28,7 +28,7 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
           end newThread
         },
         workThreads = 1,
-        sensor = Module.ErrorSensor.PrintStack,
+        sensor = Sensor.PrintStack,
       )
 
     import module.given
