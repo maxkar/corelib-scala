@@ -14,6 +14,8 @@ import java.util.concurrent.ThreadFactory
 final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
 
   test("Superuser request's get priority") {
+    val activeThreads = new java.util.concurrent.atomic.AtomicInteger()
+
     val module =
       Module[Int](
         errors = NegotiableErrors(Seq.empty, Errors.Minimal),
@@ -21,7 +23,15 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
         defaultQos = 0,
         threadFactory = new ThreadFactory {
           override def newThread(x: Runnable): Thread =
-            val t = new Thread(x)
+            val t = new Thread(new Runnable() {
+              override def run(): Unit =
+                activeThreads.incrementAndGet()
+                try
+                  x.run()
+                finally
+                  activeThreads.decrementAndGet()
+              end run
+            })
             t.setName("Handler thread")
             t.setDaemon(true)
             t
@@ -69,6 +79,9 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(res === Seq((false, 0), (true, 3), (false, 1), (false, 2)))
 
     js.stop()
+    module.stop()
+
+    assert(activeThreads.get() === 0)
   }
 
 

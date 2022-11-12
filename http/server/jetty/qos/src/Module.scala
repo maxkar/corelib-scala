@@ -24,6 +24,7 @@ import org.eclipse.jetty.server.Request
  * @param routine routine implementation for the QoS.
  * @param processing processing implementation.
  * @param routing routing implementation.
+ * @param workThreads working threads - used for awaiting termination.
  */
 final class Module[Qos] private(
       routine: Coroutine[HQ.Suspension[Qos]],
@@ -32,6 +33,7 @@ final class Module[Qos] private(
       control: RequestControl,
       routineExecutor: RoutineExecutor[Qos],
       defaultQos: Qos,
+      workThreads: Seq[Thread],
     ):
 
   /** Suspension - how the execution could be paused. */
@@ -72,6 +74,18 @@ final class Module[Qos] private(
     routine.suspend(Operation.SetQos(newQos))
 
 
+  /** Stops the module and awaits the termination. */
+  def stop(): Unit =
+    control.requestTermination()
+    control.awaitTermination()
+    /* Send the "kill" signal for the threads. */
+    routineExecutor.continueRequest(
+      new RequestContext[Qos](null, -1, defaultQos, Nil, Nil, null)
+    )
+    workThreads.foreach(_.join())
+  end stop
+
+
   /**
    * Accepts a new jetty request for processing.
    * @param req request to process.
@@ -79,6 +93,13 @@ final class Module[Qos] private(
    * @param proc request handling routine.
    */
   private[qos] def processRequest(req: Request, path: List[String], proc: Step[Response]): Unit =
+    req.setHandled(true)
+
+    if !control.shouldProcessRequest() then
+      abortFast(req)
+      return
+
+    req.startAsync()
     val ctx =
       new RequestContext[Qos](
         baseRequest = req,
@@ -92,9 +113,14 @@ final class Module[Qos] private(
   end processRequest
 
 
-  /** Runs the main loop. */
-  private def runAll(): Unit =
-    routineExecutor.runAll()
+  /**
+   * Aborts the processing without invoking all the machinery (i.e. synchronously).
+   */
+  private inline def abortFast(req: Request): Unit =
+    val resp = req.getResponse()
+    resp.setStatus(503)
+  end abortFast
+
 end Module
 
 
@@ -135,8 +161,9 @@ object Module:
         routineExecutor.runAll()
     }
 
-    for i <- 1 to workThreads do
-      threadFactory.newThread(handler).start()
+    val threads =
+      Seq.fill(workThreads) { threadFactory.newThread(handler) }
+    threads.foreach(_.start())
 
     new Module(
       routine,
@@ -144,7 +171,8 @@ object Module:
       routing,
       control,
       routineExecutor,
-      defaultQos
+      defaultQos,
+      threads
     )
   end apply
 end Module

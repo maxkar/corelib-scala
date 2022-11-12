@@ -27,8 +27,6 @@ object Handler:
           ): Unit =
         var path = target.split("/").toList
         if path.headOption.contains("") then path = path.tail
-        baseRequest.setHandled(true)
-        baseRequest.startAsync()
         module.processRequest(baseRequest, path, handler)
       end handle
     }
