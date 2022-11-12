@@ -41,6 +41,12 @@ private[qos] final class RoutineExecutor[Qos](
 
 
   /**
+   * Number of requests actively running routines (i.e. using the module's pool).
+   */
+  private val liveRequests = new java.util.concurrent.atomic.AtomicInteger()
+
+
+  /**
    * Runs the main loop. May be called from multiple threads. Stops on seeing a request
    * with `null` element.
    */
@@ -49,10 +55,13 @@ private[qos] final class RoutineExecutor[Qos](
       try
         val elem = queue.take()
         if elem.baseRequest == null then
-          queue.add(elem)
           return
         end if
-        runContext(elem)
+        liveRequests.incrementAndGet()
+        try
+          runContext(elem)
+        finally
+          liveRequests.decrementAndGet()
       catch
         case e: Throwable => sensor.genericError(e)
     end while
@@ -65,6 +74,16 @@ private[qos] final class RoutineExecutor[Qos](
    */
   def continueRequest(context: RequestContext[Qos]): Unit =
     queue.add(context)
+
+
+  /** Returns number of requests being actively processed. */
+  def getLiveRequestCount(): Int =
+    liveRequests.get()
+
+
+  /** Returns number of peding requests. */
+  def getPendingRequestCount(): Int =
+    queue.size()
 
 
   /** Runs the next steps of the processing. */

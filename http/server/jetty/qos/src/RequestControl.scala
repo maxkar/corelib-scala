@@ -82,10 +82,13 @@ private[qos] final class RequestControl:
 
   /**
    * Requests that no more request should be accepted by this control.
+   * @return `true` if the module was active (and the request was registered)
+   *   and `false` if the module is terminating (or is already terminated).
    */
-  def requestTermination(): Unit =
+  def requestTermination(): Boolean =
     /* If set to true, then we are already stopping!. */
-    if !stopping.compareAndSet(false, true) then return
+    if !stopping.compareAndSet(false, true) then
+      return false
 
     /* Mark the "primary" flag, which is used for checks and notifications.
      * The separate "stopping" is not used as we would like to have some
@@ -93,6 +96,7 @@ private[qos] final class RequestControl:
      * fields is not atomic.
      */
     requestsInFlight.addAndGet(WATERMARK)
+    return true
   end requestTermination
 
 

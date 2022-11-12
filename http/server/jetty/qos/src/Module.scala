@@ -76,14 +76,44 @@ final class Module[Qos] private(
 
   /** Stops the module and awaits the termination. */
   def stop(): Unit =
-    control.requestTermination()
+    if !control.requestTermination() then return
     control.awaitTermination()
+
     /* Send the "kill" signal for the threads. */
-    routineExecutor.continueRequest(
-      new RequestContext[Qos](null, -1, defaultQos, Nil, Nil, null)
-    )
+    for i <- 1 to workThreads.size do
+      routineExecutor.continueRequest(
+        new RequestContext[Qos](null, -1, defaultQos, Nil, Nil, null)
+      )
     workThreads.foreach(_.join())
   end stop
+
+
+  /**
+   * Returns number of requests being known by this module.
+   *
+   * The number returned includes requests reported by `liveRequestCount` (being actively
+   * executed by this module), `queuedRequestCount` (waiting to be executed when a thread
+   * is available) and requests currently executed by another subsystem (for example, waiting
+   * or being processed by Database Access layer).
+   */
+  def activeRequestCount: Int =
+    control.getActiveRequestCount()
+
+
+  /**
+   * Returns number of requests that are being actively processed by this module and
+   * are consuming CPU.
+   */
+  def liveRequestCount: Int =
+    routineExecutor.getLiveRequestCount()
+
+
+  /**
+   * Returns number of requests queued for processing. These requests require some computing
+   * by this module (routing and processing) and not some external one.
+   */
+  def queuedRequestCount: Int =
+    routineExecutor.getPendingRequestCount()
 
 
   /**

@@ -73,7 +73,21 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
         t
       end for
 
+    Thread.sleep(200)
+    assert(module.activeRequestCount === 4)
+    assert(module.liveRequestCount === 1)
+    assert(module.queuedRequestCount === 3)
+
+    Thread.sleep(2000)
+    assert(module.activeRequestCount === 3)
+    assert(module.liveRequestCount === 1)
+    assert(module.queuedRequestCount === 2)
+
     threads.foreach(_.join())
+
+    assert(module.activeRequestCount === 0)
+    assert(module.liveRequestCount === 0)
+    assert(module.queuedRequestCount === 0)
 
     val res = buf.toSeq
     assert(res === Seq((false, 0), (true, 3), (false, 1), (false, 2)))
@@ -82,6 +96,9 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
     module.stop()
 
     assert(activeThreads.get() === 0)
+    assert(module.activeRequestCount === 0)
+    assert(module.liveRequestCount === 0)
+    assert(module.queuedRequestCount === 0)
   }
 
 
