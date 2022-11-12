@@ -3,7 +3,6 @@ package http.server.jetty.qos
 
 import fun.typeclass.Monad
 import fun.coroutine.Coroutine
-import fun.coroutine.Coroutine.RunResult
 
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.PriorityBlockingQueue
@@ -17,22 +16,22 @@ import http.server.api.Route
 import http.server.api.ResourceCleaner
 import http.server.api.NegotiableErrors
 
-import http.server.toolkit.BaseRoute
-
-import scala.jdk.CollectionConverters.*
-
 import org.eclipse.jetty.server.Request
 
 /**
  * Module with quality-of-service support for requests.
  * @tparam Qos User-defineable quality-of-service parameter.
+ * @param routine routine implementation for the QoS.
+ * @param processing processing implementation.
+ * @param routing routing implementation.
  */
 final class Module[Qos] private(
-      errors: NegotiableErrors,
-      knownMethods: Iterable[String],
+      routine: Coroutine[HQ.Suspension[Qos]],
+      processing: Processing[HQ.Step[Qos]],
+      routing: Route[HQ.Step[Qos]],
+      control: RequestControl,
+      routineExecutor: RoutineExecutor[Qos],
       defaultQos: Qos,
-      private[qos] val sensor: Sensor,
-      queue: BlockingQueue[RequestContext[Qos]],
     ):
 
   /** Suspension - how the execution could be paused. */
@@ -47,9 +46,6 @@ final class Module[Qos] private(
   /** Result of the execution. */
   private type StepResult[T] = HQ.Step[Qos][T]
 
-  /** Coroutine module with all the typeclasses, etc... */
-  private val routine = new Coroutine[Suspension]
-
   /** Counter for generating request IDs. */
   private val requestSerial = new AtomicLong()
 
@@ -57,16 +53,10 @@ final class Module[Qos] private(
   given monadInstance: Monad[Step] = routine.monadInstance
 
   /** Request processing instance. */
-  given processingInstance: Processing[Step] = new ProcessingImpl(routine)
+  given processingInstance: Processing[Step] = processing
 
   /** Implementation of the route typeclass for our monad. */
-  given routeInstance: Route[Step] = RouteImpl(routine, processingInstance, errors, knownMethods)
-
-  /** Request/flow control. */
-  private val control = new RequestControl()
-
-  /** Actual request executor. */
-  private val exec = new RoutineExecutor(routine, control, queue, errors, sensor)
+  given routeInstance: Route[Step] = routing
 
   /** Cached instance of "Get Quality of Service". */
   private val getQosInstance: Step[Qos] = routine.suspend(Effects.GetQos())
@@ -98,13 +88,13 @@ final class Module[Qos] private(
         effectivePath = path,
         nextSteps = proc
       )
-    exec.continueRequest(ctx)
+    routineExecutor.continueRequest(ctx)
   end processRequest
 
 
   /** Runs the main loop. */
   private def runAll(): Unit =
-    exec.runAll()
+    routineExecutor.runAll()
 end Module
 
 
@@ -130,20 +120,31 @@ object Module:
         sensor: Sensor,
       ): Module[Qos] =
 
+    val routine = new Coroutine[HQ.Suspension[Qos]]
+    implicit val processing = ProcessingImpl(routine)
+    val routing = RouteImpl(routine, processing, errors, knownMethods)
+    val control = new RequestControl()
     val queue =
       new PriorityBlockingQueue[RequestContext[Qos]](
         50,
         RequestContext.requestOrdering[Qos],
       )
-
-    val module = new Module(errors, knownMethods, defaultQos, sensor, queue)
+    val routineExecutor = new RoutineExecutor(routine, control, queue, errors, sensor)
     val handler = new Runnable() {
       override def run(): Unit =
-        module.runAll()
+        routineExecutor.runAll()
     }
 
     for i <- 1 to workThreads do
       threadFactory.newThread(handler).start()
-    module
+
+    new Module(
+      routine,
+      processing,
+      routing,
+      control,
+      routineExecutor,
+      defaultQos
+    )
   end apply
 end Module
