@@ -187,6 +187,8 @@ object Module:
    *   new incoming request.
    * @param threadFactory thread factory used to create workers.
    * @param workThreads number of work threads to start for request processing.
+   * @param maxRequestsInFlight maximal number of requests "in flight" (not complete)
+   *   that could be simultaneously processed.
    * @param sensor error sensor that is notified about execution errors.
    */
   def apply[Qos: Ordering](
@@ -195,13 +197,14 @@ object Module:
         defaultQos: Qos,
         threadFactory: ThreadFactory,
         workThreads: Int,
+        maxRequestsInFlight: Int = 10000,
         sensor: Sensor,
       ): Module[Qos] =
 
     val routine = new Coroutine[HQ.Suspension[Qos]]
     implicit val processing = ProcessingImpl(routine)
     val routing = RouteImpl(routine, processing, errors, knownMethods)
-    val control = new RequestControl()
+    val control = new RequestControl(maxRequestsInFlight)
     val queue =
       new PriorityBlockingQueue[RequestContext[Qos]](
         50,

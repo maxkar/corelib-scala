@@ -26,7 +26,6 @@ final class DeferredQosHandler[B[_], W[_]: Monad: Route: Lift.From[B]](
               _ <- setQos(iid)
               rv <- Lift(asyncWait(iid))
             yield
-              // SLOOOW process
               Response.text(200)(s"${id}:${rv}")
             end for
         }

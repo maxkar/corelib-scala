@@ -12,8 +12,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * In simple terms, the control just keeps track on the number of requests in
  * flight an allows other parties to coordinate on it.
+ *
+ * @param limit maximal number of simultaneous requests in flight.
  */
-private final class RequestControl:
+private final class RequestControl(limit: Int):
   /**
    * Watermark value - this value is "added" to the number of running
    * requests and should bring the overall "active count" to the negative value.
@@ -53,12 +55,13 @@ private final class RequestControl:
       return false
 
     val newCount = requestsInFlight.incrementAndGet()
-    /* Re-check value to avoid race condition(s). */
-    if newCount > 0 then
-      return true
+    /* Re-check value to avoid race condition(s). Also check limit on the number of requests. */
+    if newCount <= 0 || newCount > limit then
+      requestsInFlight.decrementAndGet()
+      return false
 
 
-    return false
+    return true
   end shouldProcessRequest
 
 

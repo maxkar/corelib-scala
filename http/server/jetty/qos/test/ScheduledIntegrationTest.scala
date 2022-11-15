@@ -16,13 +16,7 @@ import scala.collection.mutable.ArrayBuffer
 
 /** Test for scheduled integration. */
 final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
-
-  /** Just some value for doing schedule integration. */
-  private abstract sealed class Op[T]
-
-  private case class Wrap(x: Int) extends Op[Int]
-
-  private case class Req[T](op: Op[T], qos: Int, cb: T => Unit)
+  import ScheduledIntegrationTest.*
 
 
   test("Integration works as expected") {
@@ -92,6 +86,10 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
       assert(requestQueue.length === 4)
     }
 
+    assert(module.activeRequestCount === 4)
+    assert(module.liveRequestCount === 0)
+    assert(module.queuedRequestCount === 0)
+
     reply(requestQueue, 2, 10)
     Thread.sleep(100)
     reply(requestQueue, 1, 5)
@@ -113,8 +111,6 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(module.activeRequestCount === 0)
     assert(module.liveRequestCount === 0)
     assert(module.queuedRequestCount === 0)
-
-
   }
 
 
@@ -126,7 +122,6 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
       case Req(Wrap(v), _, cb) =>
         assert(v === serial)
         cb(resp)
-      case Req(_, _, _) => fail("Something strange failed")
     }
   end reply
 
@@ -150,4 +145,14 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
     finally
       conn.disconnect()
   end query
+end ScheduledIntegrationTest
+
+
+object ScheduledIntegrationTest:
+  /** Just some value for doing schedule integration. */
+  private abstract sealed class Op[T]
+
+  private case class Wrap(x: Int) extends Op[Int]
+
+  private case class Req[T](op: Op[T], qos: Int, cb: T => Unit)
 end ScheduledIntegrationTest
