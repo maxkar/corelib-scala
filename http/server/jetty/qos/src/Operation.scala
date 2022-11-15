@@ -9,10 +9,10 @@ import http.server.api.Response
  * An operation (coroutine call) that should be executed by the server runtime
  * and not the application code.
  */
-private[qos] abstract sealed class Operation[Qos, T]
+private abstract sealed class Operation[Qos, T]
 
 
-object Operation:
+private object Operation:
   /**
    * The operation that has to be aborted (i.e. finish processing) with
    * the given response.
@@ -27,6 +27,29 @@ object Operation:
 
   /** Sets QoS value. */
   private[qos] case class SetQos[Qos](qos: Qos) extends Operation[Qos, Unit]
+
+
+  /** Performs a completable operation. */
+  private[qos] case class RunCompletable[Qos, S[_], T](
+        operation: S[T],
+        tc: boundary.Completable[S])
+      extends Operation[Qos, T]
+
+
+  /** Performs a scheduled operation. */
+  private[qos] case class RunScheduled[Qos, S[_], T](
+        operation: S[T],
+        tc: boundary.Scheduled[S, Qos])
+      extends Operation[Qos, T]
+
+
+  /**
+   * Raises an internal exception for the request. Somewhat similar to abort but
+   * takes an exception. Used by boundaries where exception formatting and response
+   * generation should be moved from external (another module's) thread pool into the
+   * web pool.
+   */
+  private[qos] case class Raise[Qos, T](error: Throwable) extends Operation[Qos, T]
 
 
   /**

@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * In simple terms, the control just keeps track on the number of requests in
  * flight an allows other parties to coordinate on it.
  */
-private[qos] final class RequestControl:
+private final class RequestControl:
   /**
    * Watermark value - this value is "added" to the number of running
    * requests and should bring the overall "active count" to the negative value.

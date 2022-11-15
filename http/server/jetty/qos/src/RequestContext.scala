@@ -21,7 +21,7 @@ import org.eclipse.jetty.server.Request
  * @param cleaner a node in the "cleanup" chain.
  * @param nextSteps next steps to execute for request processing.
  */
-private[qos] final class RequestContext[Qos](
+private final class RequestContext[Qos](
       val baseRequest: Request,
       val serial: Long,
       var qos: Qos,

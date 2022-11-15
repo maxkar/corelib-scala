@@ -11,6 +11,7 @@ import http.server.jetty.gateway.VirtualHost
 import java.util.concurrent.ThreadFactory
 
 
+/** Basic test for the QoS support. */
 final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
 
   test("Superuser request's get priority") {

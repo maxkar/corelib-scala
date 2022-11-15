@@ -12,7 +12,7 @@ import http.server.toolkit.BaseRoute
 
 
 /** Implementation of the route typeclass. */
-private[qos] final class RouteImpl[Qos](
+private final class RouteImpl[Qos](
       routine: Coroutine[HQ.Suspension[Qos]],
       processing: Processing[HQ.Step[Qos]],
       override protected val errors: NegotiableErrors,

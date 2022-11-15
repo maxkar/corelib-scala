@@ -92,7 +92,7 @@ end InputOperation
  * Input operation - reading servlet input stream and eventually
  * returning the result.
  */
-private[qos] object InputOperation:
+private object InputOperation:
   /**
    * Starts a new input operation for the given context.
    * @param module module that would be used to handle context lifecycle events.

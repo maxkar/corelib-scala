@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters.*
 /**
  * Operations that deal with some (side-)effects upon the request context.
  */
-private[qos] object Effects:
+private object Effects:
   /** Adds the headers to be unconditionally applied to the resulting request. */
   final class AddHeaders[Qos](headers: Seq[(String, String)])
       extends Operation.ContextOperation[Qos, Unit]:

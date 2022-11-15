@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters.*
  * @param errors error specification/handler.
  * @param sensor sensor for various events.
  */
-private[qos] final class RoutineExecutor[Qos](
+private final class RoutineExecutor[Qos](
         routine: Coroutine[HQ.Suspension[Qos]],
         control: RequestControl,
         queue: BlockingQueue[RequestContext[Qos]],
@@ -76,6 +76,25 @@ private[qos] final class RoutineExecutor[Qos](
     queue.add(context)
 
 
+  /**
+   * Continues request with the given next steps.
+   * @param context context to continue execution for.
+   * @param nextSteps steps to perform on the context.
+   */
+  def continueRequest(context: RequestContext[Qos], nextSteps: HQ.Step[Qos][Response]): Unit =
+    context.nextSteps = nextSteps
+    continueRequest(context)
+
+
+  /**
+   * Continues the requset where next steps are created by applying a function
+   * to a given value (most common continuation from "resultful" calls).
+   */
+  def continueRequest[T](context: RequestContext[Qos], value: T, nextSteps: T => HQ.Step[Qos][Response]): Unit =
+    context.nextSteps = Monad.pure(value) flatMap nextSteps
+    continueRequest(context)
+
+
   /** Returns number of requests being actively processed. */
   def getLiveRequestCount(): Int =
     liveRequests.get()
@@ -99,8 +118,17 @@ private[qos] final class RoutineExecutor[Qos](
           case RunResult.Suspended(Operation.Abort(resp), _) =>
             OutputOperation(this, context, resp)
             return
+          case RunResult.Suspended(Operation.Raise(error), _) =>
+            raiseInternalError(context, error)
+            return
           case RunResult.Suspended(Operation.ReadInputBytes(limit), cont) =>
             InputOperation(this, context, limit, cont)
+            return
+          case RunResult.Suspended(Operation.RunCompletable(op, bound), cont) =>
+            runCompletable(context, op, bound, cont)
+            return
+          case RunResult.Suspended(Operation.RunScheduled(op, bound), cont) =>
+            runScheduled(context, op, bound, cont)
             return
           case RunResult.Suspended(Operation.SetQos(qos), cont) =>
             context.qos = qos
@@ -109,7 +137,7 @@ private[qos] final class RoutineExecutor[Qos](
             /* Re-schedule the request with new QoS. This may de-prioritize
              * the current one and give some other request a chance to be executed.
              */
-            continueRequest(context)
+            continueRequest(context, (), cont)
             return
           case RunResult.Suspended(x: Operation.ContextOperation[Qos, _], cont) =>
             md = cont(x.perform(context))
@@ -122,13 +150,57 @@ private[qos] final class RoutineExecutor[Qos](
   end runContext
 
 
+  /**
+   * Runs the completable. It is just a type-checked version of the inline implementation.
+   */
+  private inline def runCompletable[S[_], T](
+        context: RequestContext[Qos],
+        operation: S[T],
+        bound: boundary.Completable[S],
+        cont: T => HQ.Step[Qos][Response]
+      ): Unit =
+    bound.onComplete(operation,
+      onSuccess = v =>
+        continueRequest(context, v, cont),
+      onFailure = t =>
+        continueRequest(
+          context,
+          routine.suspend(Operation.Raise[Qos, Response](t))
+        )
+    )
+
+
+  /**
+   * Runs the scheduled. It is just a type-checked version of the inline implementation.
+   */
+  private inline def runScheduled[S[_], T](
+        context: RequestContext[Qos],
+        operation: S[T],
+        bound: boundary.Scheduled[S, Qos],
+        cont: T => HQ.Step[Qos][Response]
+      ): Unit =
+    bound(
+      operation,
+      context.qos,
+      context.serial,
+      onSuccess = v =>
+        continueRequest(context, v, cont),
+      onFailure = t =>
+        continueRequest(
+          context,
+          routine.suspend(Operation.Raise[Qos, Response](t))
+        )
+    )
+
+
   /** Raises the "request size too large" response for the given request. */
   private[qos] def raiseRequestSizeTooLarge(context: RequestContext[Qos], limit: Long): Unit =
-    context.nextSteps =
+    continueRequest(
+      context,
       processingInstance.abort(
         errors.byteLengthExceeded(context.baseRequest.getHeaders("Accept").asScala.toSeq, limit)
       )
-    continueRequest(context)
+    )
   end raiseRequestSizeTooLarge
 
 
@@ -138,8 +210,7 @@ private[qos] final class RoutineExecutor[Qos](
         data: Array[Byte],
         nextFun: Array[Byte] => HQ.Step[Qos][Response],
       ): Unit =
-    context.nextSteps = monadInstance.bind(monadInstance.pure(data), nextFun)
-    continueRequest(context)
+    continueRequest(context, data, nextFun)
   end completeInput
 
 

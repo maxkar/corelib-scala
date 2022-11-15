@@ -10,7 +10,7 @@ import http.server.api.ResourceCleaner
 
 
 /** Implementation of the processing typeclass. */
-private[qos] final class ProcessingImpl[Qos](
+private final class ProcessingImpl[Qos](
       routine: Coroutine[HQ.Suspension[Qos]]
     )
     extends Processing[HQ.Step[Qos]]:

@@ -2,6 +2,7 @@ package io.github.maxkar
 package http.server.jetty.qos
 
 import fun.typeclass.Monad
+import fun.typeclass.Lift
 import fun.coroutine.Coroutine
 
 import java.util.concurrent.BlockingQueue
@@ -59,6 +60,27 @@ final class Module[Qos] private(
 
   /** Implementation of the route typeclass for our monad. */
   given routeInstance: Route[Step] = routing
+
+
+  /**
+   * Implementation of the lift functionality for any type that
+   * completes "natually" (like Future).
+   */
+  given liftCompletable[S[_]](using c: boundary.Completable[S]): Lift[S, Step] with
+    override def apply[T](base: S[T]): Step[T] =
+      routine.suspend(Operation.RunCompletable(base, c))
+  end liftCompletable
+
+
+  /**
+   * Implementation of the lift functionality for any type that could be
+   * scheduled according to QoS definition.
+   */
+  given liftScheduled[S[_]](using s: boundary.Scheduled[S, Qos]): Lift[S, Step] with
+    override def apply[T](base: S[T]): Step[T] =
+      routine.suspend(Operation.RunScheduled(base, s))
+  end liftScheduled
+
 
   /** Cached instance of "Get Quality of Service". */
   private val getQosInstance: Step[Qos] = routine.suspend(Effects.GetQos())

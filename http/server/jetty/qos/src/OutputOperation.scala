@@ -53,7 +53,7 @@ end OutputOperation
 
 
 /** Output operation - writing request to the context's stream. */
-private[qos] object OutputOperation:
+private object OutputOperation:
   /** Outputs response into the given context. */
   def apply[Qos](
         module: RoutineExecutor[Qos],

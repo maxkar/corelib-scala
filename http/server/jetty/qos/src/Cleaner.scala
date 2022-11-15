@@ -7,7 +7,7 @@ package http.server.jetty.qos
  * @param fn function used to cleanup the resource. Internally set to
  *   `null` when cleanup is done.
  */
-private[qos] final class Cleaner(private var fn: () => Unit):
+private final class Cleaner(private var fn: () => Unit):
   /**
    * Previous cleaner in the linked list of cleaners. Set to `null`
    * when first in the context or already cleaned.

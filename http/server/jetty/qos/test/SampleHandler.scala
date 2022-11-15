@@ -5,6 +5,8 @@ import fun.typeclass.Monad
 import http.server.api.Route
 import http.server.api.Response
 
+
+/** Very basic handler for tests. */
 final class SampleHandler[W[_]: Monad: Route](setQos: Boolean => W[Unit]):
 
   /** Handles the request. */
