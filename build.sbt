@@ -21,6 +21,8 @@ val appSettings = Seq(
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 
+val jettyVersion = "9.4.49.v20220914"
+
 
 val libFun = project.in(file("fun"))
   .settings(commonSettings)
@@ -139,6 +141,78 @@ val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-forma
   .dependsOn(libJsonParser, libJsonWriter)
 
 
+val httpHeaders = project.in(file("http/headers"))
+  .settings(commonSettings)
+  .settings(
+    name := "http-headers",
+    description :=
+      """Common utilities for managing HTTP headers usable for both HTTP clients
+        | and servers. The module provides utilities for:
+        |  * Dealing with collections of headers
+        |  * Converting individual headers to and from domain model.
+      """,
+    libraryDependencies += scalatest
+  )
+
+
+val httpServerApi = project.in(file("http/server/api"))
+  .settings(commonSettings)
+  .settings(
+    name := "http-server-api",
+    description :=
+      """Server-related classes, typeclasses and utilites. This module defines a (server-agnostic)
+        | general-purpose API that could be leveraged by an HTTP server. For example, this includes:
+        | * Routing request based on the request-path.
+        | * Accessing request methods and headers
+        | * Returning HTTP response. This includes aborting processing early (for example, when
+        |   user is not authorized to access the API).
+        | * Emiting some side-effects during processing like setting cookies or adding headers.
+      """.stripMargin
+  )
+  .dependsOn(libFun, httpHeaders)
+
+
+val httpServerToolkit = project.in(file("http/server/toolkit"))
+  .settings(commonSettings)
+  .settings(
+    name := "http-server-toolkit",
+    description :=
+      """Server toolkit - a set of clasess and utilties that makes writing server API
+        | implementations easy. These clasess do not form the client API (i.e. business logic
+        | is not expected to use them) but are very handy on the server side as they solve
+        | very common problems in the standard way.
+      """.stripMargin
+  )
+  .dependsOn(httpServerApi)
+
+
+val httpServerJettyGateway = project.in(file("http/server/jetty/gateway"))
+  .settings(commonSettings)
+  .settings(
+    name := "jetty-server-gateway",
+    description :=
+        """Jetty server main configuration point and very basic handlers.
+          | This module is rarely used alone. At least one another module
+          | (like jetty-server-qos) should be used for actual business logic
+          | implementation.
+        """,
+    libraryDependencies += "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+  )
+
+
+val httpServerJettyQoS = project.in(file("http/server/jetty/qos"))
+  .settings(commonSettings)
+  .settings(
+    name := "jetty-server-qos",
+    description := """Jetty handler with Quality-of-service support.""",
+    libraryDependencies ++= Seq(
+      "org.eclipse.jetty" % "jetty-server" % jettyVersion,
+      scalatest,
+    )
+  )
+  .dependsOn(libFun, httpServerToolkit, httpServerJettyGateway % Test)
+
+
 val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
@@ -153,4 +227,7 @@ val root = project.in(file("."))
     libJsonParser, libJsonWriter, libJsonQuery,
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
+
+    httpHeaders, httpServerApi, httpServerToolkit,
+    httpServerJettyGateway, httpServerJettyQoS,
   )

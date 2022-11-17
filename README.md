@@ -8,3 +8,5 @@ working with json, running webserver or creating a desktop app.
  * `json/samples/streaming-formatter` - json formatter reusing bits
    from the standard library. It uses coroutines to allow "asynchronous"
    (in relation to the main formatting code) input-output. 
+ * `http/server/jetty/qos` - coroutine-based http server middleware with 
+   quality-of-service support (prioritizing processing of the requests).

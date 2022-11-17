@@ -43,35 +43,34 @@ end GeneratorCoroutine
 
 
 object GeneratorCoroutine:
-  /** Coroutine module. */
-  case class GeneratorSus[T](v: Int, cont: Unit => Coroutine.RunResult[GeneratorSus, T])
+
+  /** Type of the suspension. */
+  abstract sealed class GeneratorSus[T]
+  case class Yield(v: Int) extends GeneratorSus[Unit]
 
   val module = new Coroutine[GeneratorSus]
-  import module._
+  import module.*
 
   export module.given
   export module.Routine
 
 
   /** Implementation of the "yield" operator. */
-  def doYield(v: Int): Routine[Unit] =
-    module.suspend(new Suspender[Unit] {
-      override def encode[V](continue: Unit => RunResult[V]): GeneratorSus[V] =
-        GeneratorSus(v, continue)
-    })
+  def doYield(v: Int): Routine[Unit] = suspend(Yield(v))
 
 
   /** Runs the generator and returns both generated sequence and result. */
   def runGenerator[T](gen: Routine[T]): (Seq[Int], T) =
     var acc = new scala.collection.mutable.ArrayBuffer[Int]
-    var nextRes = module.run(gen)
+
+    var routine = gen
 
     /* Also "stackless" implementation. */
     while true do
-      nextRes match
-        case Coroutine.RunResult.Suspended(GeneratorSus(v, cont)) =>
+      module.run(routine) match
+        case Coroutine.RunResult.Suspended(Yield(v), cont) =>
           acc += v
-          nextRes = cont(())
+          routine = cont(())
         case Coroutine.RunResult.Finished(v) =>
           return (acc.toSeq, v)
       end match

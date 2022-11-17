@@ -55,41 +55,33 @@ object IOCoroutine:
 
   /** State suspension. Hard-coded state type. */
   enum IOSus[T]:
-    case Read(cont: Option[Char] => module.RunResult[T])
-    case Write(value: Char, cont: Unit => module.RunResult[T])
+    case Read extends IOSus[Option[Char]]
+    case Write(value: Char) extends IOSus[Unit]
   end IOSus
 
 
   /** Reads next value from the "input stream". */
-  val read: Routine[Option[Char]] =
-    module.suspend(new Suspender[Option[Char]] {
-      override def encode[V](continue: Option[Char] => RunResult[V]): IOSus[V] =
-        IOSus.Read(continue)
-    })
+  val read: Routine[Option[Char]] = module.suspend(IOSus.Read)
 
 
   /** Writes value into the "output stream". */
-  def write(c: Char): Routine[Unit] =
-    module.suspend(new Suspender[Unit] {
-      override def encode[V](continue: Unit => RunResult[V]): IOSus[V] =
-        IOSus.Write(c, continue)
-    })
+  def write(c: Char): Routine[Unit] = module.suspend(IOSus.Write(c))
 
 
   /** Runs the IO routine. */
   def runIO[T](input: String, routine: Routine[T]): (String, T) =
     var ptr = 0
     var output = new StringBuilder()
-    var nextRes = module.run(routine)
+    var proc = routine
 
     /* Classical const-stack runner. Real IO (with async/nio streams) would probably
      * be const-stack as well but with results achieved by different means.
      */
     while true do
-      nextRes match
+      module.run(proc) match
         case Coroutine.RunResult.Finished(x) =>
           return (output.toString(), x)
-        case Coroutine.RunResult.Suspended(IOSus.Read(c)) =>
+        case Coroutine.RunResult.Suspended(IOSus.Read, c) =>
           val iores =
             if ptr < input.length() then
               val r = input.charAt(ptr)
@@ -98,10 +90,10 @@ object IOCoroutine:
             else
               None
             end if
-          nextRes = c(iores)
-        case Coroutine.RunResult.Suspended(IOSus.Write(v, c)) =>
+          proc = c(iores)
+        case Coroutine.RunResult.Suspended(IOSus.Write(v), c) =>
           output += v
-          nextRes = c(())
+          proc = c(())
       end match
     end while
     throw new Error("Please stop reaching unreacheable code")

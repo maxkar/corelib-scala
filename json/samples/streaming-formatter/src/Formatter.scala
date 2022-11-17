@@ -2,6 +2,7 @@ package io.github.maxkar
 package json.sample.formatter.streaming
 
 import fun.coroutine.Coroutine
+import fun.coroutine.Coroutine.RunResult
 
 import java.io.Reader
 import java.io.Writer
@@ -14,9 +15,7 @@ import text.input.LocationLookAheadStream
 import text.output.{Stream => OutStream}
 
 import json.parser.Errors
-
-import io.github.maxkar.json.parser.Errors.SimpleHandler
-import io.github.maxkar.fun.coroutine.Coroutine.RunResult
+import json.parser.Errors.SimpleHandler
 
 object Formatter:
   private val module = new Coroutine[Suspension]
@@ -29,14 +28,12 @@ object Formatter:
       reader: Reader,
       buffer: CharBuffer,
       minSize: Int,
-      continue: Unit => Coroutine.RunResult[Suspension, T]
-    )
+    ) extends Suspension[Unit]
 
     case Output(
       writer: Writer,
       data: CharSequence,
-      continue: Unit => Coroutine.RunResult[Suspension, T]
-    )
+    ) extends Suspension[Unit]
 
     case Failure(message: String)
   end Suspension
@@ -45,33 +42,27 @@ object Formatter:
   /** Implementation of the reader. */
   private final class ReaderFiller(reader: Reader) extends Filler[Routine]:
     override def fill(buffer: CharBuffer, minCharsToRead: Int): Routine[Unit] =
-      module.suspend(new Suspender[Unit] {
-        override def encode[V](continue: Unit => Coroutine.RunResult[Suspension, V]): Suspension[V] =
-          Suspension.Input(reader, buffer, minCharsToRead, continue)
-      })
+      module.suspend(Suspension.Input(reader, buffer, minCharsToRead))
   end ReaderFiller
 
 
   /** Implementation of the writer. */
   private final class WriterOutStream(writer: Writer) extends OutStream[Routine]:
     override def write(data: CharSequence): Routine[Unit] =
-      module.suspend(new Suspender[Unit] {
-        override def encode[V](continue: Unit => Coroutine.RunResult[Suspension, V]): Suspension[V] =
-          Suspension.Output(writer, data, continue)
-      })
+      module.suspend(Suspension.Output(writer, data))
   end WriterOutStream
 
 
   /** Implementation of simple errors. */
   private object RoutineRaise extends Errors.SimpleHandler[Routine, LocationLookAheadStream[Routine, Any]]:
     override def raise[T](stream: LocationLookAheadStream[Routine, Any], message: String): Routine[T] =
-      module.suspend(new Suspender[T] {
-        override def encode[V](continue: T => Coroutine.RunResult[Suspension, V]): Suspension[V] =
-          val loc = stream.location
-          Suspension.Failure(s"(${loc.line}:${loc.column}): ${message}")
-      })
-    end raise
+      val loc = stream.location
+      module.suspend(
+        Suspension.Failure(s"(${loc.line}:${loc.column}): ${message}")
+      )
+
   end RoutineRaise
+
 
   /** Errors implementation. */
   private val errs = Errors.simple(RoutineRaise)
@@ -102,10 +93,10 @@ object Formatter:
 
   /** Runs the coroutine. */
   private def runRoutine(rt: Routine[_]): Option[String] =
-    var result = Coroutine.run(rt)
+    var proc = rt
     while true do
-      result match
-        case RunResult.Suspended(Suspension.Input(reader, buf, sz, cont)) =>
+      module.run(proc) match
+        case RunResult.Suspended(Suspension.Input(reader, buf, sz), cont) =>
           var remaining = sz
           while remaining > 0 do
             val rd = reader.read(buf)
@@ -114,11 +105,11 @@ object Formatter:
             else
               remaining -= rd
           end while
-          result = cont(())
-        case RunResult.Suspended(Suspension.Output(writer, data, cont)) =>
+          proc = cont(())
+        case RunResult.Suspended(Suspension.Output(writer, data), cont) =>
           writer.append(data)
-          result = cont(())
-        case RunResult.Suspended(Suspension.Failure(message)) =>
+          proc = cont(())
+        case RunResult.Suspended(Suspension.Failure(message), _) =>
           return Some(message)
         case RunResult.Finished(result) =>
           return None

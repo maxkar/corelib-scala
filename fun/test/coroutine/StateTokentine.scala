@@ -48,28 +48,19 @@ object StateCoroutine:
   export module.given
   export module.Routine
 
-
   /** State suspension. Hard-coded state type. */
   enum StateSus[T]:
-    case Read(cont: Int => module.RunResult[T])
-    case Write(value: Int, cont: Unit => module.RunResult[T])
+    case Read extends StateSus[Int]
+    case Write(value: Int) extends StateSus[Unit]
   end StateSus
 
 
   /** Monad/operation for getting the current state. */
-  val getState: Routine[Int] =
-    module.suspend(new Suspender[Int] {
-      override def encode[V](continue: Int => RunResult[V]): StateSus[V] =
-        StateSus.Read(continue)
-    })
+  val getState: Routine[Int] = module.suspend(StateSus.Read)
 
 
   /** Monad/operation for setting the current state. */
-  def setState(v: Int): Routine[Unit] =
-    module.suspend(new Suspender[Unit] {
-      override def encode[V](continue: Unit => RunResult[V]): StateSus[V] =
-        StateSus.Write(v, continue)
-    })
+  def setState(v: Int): Routine[Unit] = module.suspend(StateSus.Write(v))
 
 
   /**
@@ -78,14 +69,14 @@ object StateCoroutine:
   def runState[T](state: Int, routine: Routine[T]): T =
     /* Stackless (non-recursive) loop here. Just for fun and consistency. */
     var curState = state
-    var nextRes = module.run(routine)
+    var proc = routine
     while true do
-      nextRes match
-        case Coroutine.RunResult.Suspended(StateSus.Read(otherCont)) =>
-          nextRes = otherCont(curState)
-        case Coroutine.RunResult.Suspended(StateSus.Write(v, c)) =>
+      module.run(proc) match
+        case Coroutine.RunResult.Suspended(StateSus.Read, cont) =>
+          proc = cont(curState)
+        case Coroutine.RunResult.Suspended(StateSus.Write(v), cont) =>
           curState = v
-          nextRes = c(())
+          proc = cont(())
         case Coroutine.RunResult.Finished(x) => return x
       end match
     end while
