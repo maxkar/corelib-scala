@@ -8,4 +8,4 @@ import java.sql.ResultSet
  * prepared statement and field name but does not know the expected type.
  * The actual type is supposed to be extracted by a specific database dialect.
  */
-case class RowQuery(resultSet: ResultSet, fieldName: String)
+case class RowField(resultSet: ResultSet, fieldName: String)
