@@ -2,6 +2,7 @@ package io.github.maxkar
 package sql.connection
 
 import java.sql.{Connection => JdbcConnection}
+import java.sql.PreparedStatement
 
 /**
  * An "established" connection to a database.
@@ -29,4 +30,27 @@ abstract class Connection(val jdbcConnection: JdbcConnection):
    * be applied.
    */
   def allOrNothing[T](cb: Transaction[?] => T): T
+end Connection
+
+
+object Connection:
+  /**
+   * Executes a callback on a prepared statement obtained from this connection.
+   * @param statement statement text to prepare and provide to the callback.
+   * @param cb callback to execute on the prepared statement.
+   * @return result of the callback.
+   */
+  def withPreparedStatement[T](
+        statement: String
+      )(
+        cb: PreparedStatement => T
+      )(using
+        conn: Connection
+      ): T =
+    val ps = conn.jdbcConnection.prepareStatement(statement)
+    try
+      cb(ps)
+    finally
+      ps.close()
+  end withPreparedStatement
 end Connection
