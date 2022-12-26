@@ -141,6 +141,19 @@ val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-forma
   .dependsOn(libJsonParser, libJsonWriter)
 
 
+val libSqlCore = project.in(file("sql/core"))
+  .settings(commonSettings)
+  .settings(
+    name := "sql-core",
+    description :=
+      """A simple SQL query langaguage DSL. Provides a nice (and safe) SQL query syntax, result
+        | set parsing and general connection management. It also provides some common bindings
+        | for both input and output arguments.
+      """.stripMargin
+  )
+  .dependsOn(libFun)
+
+
 val httpHeaders = project.in(file("http/headers"))
   .settings(commonSettings)
   .settings(
@@ -227,6 +240,8 @@ val root = project.in(file("."))
     libJsonParser, libJsonWriter, libJsonQuery,
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
+
+    libSqlCore,
 
     httpHeaders, httpServerApi, httpServerToolkit,
     httpServerJettyGateway, httpServerJettyQoS,
