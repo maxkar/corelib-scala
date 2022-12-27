@@ -46,7 +46,7 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
    *
    * @param callback callback to execute on the "nested" transaction.
    */
-  def nested[T](callback: Transaction[I] => T): T =
+  def nested[T](callback: Transaction[I] ?=> T): T =
     val savepoint = jdbcConnection.setSavepoint()
     val nestedTx = new Transaction[I](jdbcConnection)
 
@@ -58,7 +58,7 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
      */
     val res =
       try
-        callback(nestedTx)
+        callback(using nestedTx)
       catch
         case e: Throwable =>
           jdbcConnection.rollback(savepoint)
@@ -71,6 +71,6 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
   end nested
 
 
-  override def allOrNothing[T](cb: Transaction[?] => T): T =
+  override def allOrNothing[T](cb: Transaction[?] ?=> T): T =
     nested(cb)
 end Transaction

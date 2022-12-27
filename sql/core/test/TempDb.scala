@@ -6,6 +6,13 @@ import java.sql.{Connection => JdbcConnection}
 
 /** Utilities for working with temporary database. */
 object TempDb:
+  /**
+   * An ID of the "next" database to run.
+   * Tests are run in parallel. We can prevent them from doing so. Or we can
+   * just give every test its own DB. We go with the second approach here.
+   */
+  private val dbIndex = new java.util.concurrent.atomic.AtomicInteger()
+
   /** Runs a code block with the database initialized in some specific configuration. */
   def withTestDb[T](initCommands: String*)(cb: JdbcConnection => T): T =
     withTestConnection { conn =>
@@ -23,24 +30,13 @@ object TempDb:
    * Runs a code block on a temporary in-memory database.
    */
   def withTestConnection[T](cb: JdbcConnection => T): T =
-    import org.hsqldb.Server
+    val dbName = s"mydb${dbIndex.incrementAndGet()}"
 
-    val nullStream = new java.io.PrintWriter(NullWriter)
-    val server = new Server()
-    server.setDatabaseName(0, "mydb")
-    server.setDatabasePath(0, "mem:mydb")
-    server.setLogWriter(nullStream)
-    server.setErrWriter(nullStream)
-    server.start()
-
+    Class.forName("org.hsqldb.jdbc.JDBCDriver")
+    val conn = DriverManager.getConnection(s"jdbc:hsqldb:mem:${dbName};shutdown=true", "SA", "")
     try
-      Class.forName("org.hsqldb.jdbc.JDBCDriver")
-      val conn = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost/mydb", "SA", "")
-      try
-        cb(conn)
-      finally
-        conn.close()
+      cb(conn)
     finally
-      server.shutdown()
+      conn.close()
   end withTestConnection
 end TempDb

@@ -29,7 +29,7 @@ abstract class Connection(val jdbcConnection: JdbcConnection):
    * the changes - either all changes would be applied or none of those would
    * be applied.
    */
-  def allOrNothing[T](cb: Transaction[?] => T): T
+  def allOrNothing[T](cb: Transaction[?] ?=> T): T
 end Connection
 
 

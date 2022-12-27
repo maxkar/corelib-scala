@@ -21,14 +21,14 @@ trait Database[M[_]]:
    * delay execution of the block until an actual database connection
    * is available.
    */
-  def withAutocommitConnection[T](cb: AutocommitConnection => T): M[T]
+  def withAutocommitConnection[T](cb: AutocommitConnection ?=> T): M[T]
 end Database
 
 
 object Database:
   /** Executes the code block with the default autocommit mode. */
   def withAutocommit[M[_], T](
-        cb: AutocommitConnection => T
+        cb: AutocommitConnection ?=> T
       )(implicit
         db: Database[M]
       ): M[T] =
@@ -37,37 +37,37 @@ object Database:
 
   /** Executes the code block within the "read uncommitted" transaction. */
   def atReadUncommitted[M[_], T](
-        cb: Transaction[Isolation.ReadUncommitted] => T
+        cb: Transaction[Isolation.ReadUncommitted] ?=> T
       )(implicit
         db: Database[M]
       ): M[T] =
-    db.withAutocommitConnection(conn => conn.atReadUncommitted(cb))
+    db.withAutocommitConnection(conn ?=> conn.atReadUncommitted(cb))
 
 
   /** Executes the code block within the "read committed" transaction. */
   def atReadCommitted[M[_], T](
-        cb: Transaction[Isolation.ReadCommitted] => T
+        cb: Transaction[Isolation.ReadCommitted] ?=> T
       )(implicit
         db: Database[M]
       ): M[T] =
-    db.withAutocommitConnection(conn => conn.atReadCommitted(cb))
+    db.withAutocommitConnection(conn ?=> conn.atReadCommitted(cb))
 
 
   /** Executes the code block within the "repeatable read" transaction. */
   def atRepeatableRead[M[_], T](
-        cb: Transaction[Isolation.RepeatableRead] => T
+        cb: Transaction[Isolation.RepeatableRead] ?=> T
       )(implicit
         db: Database[M]
       ): M[T] =
-    db.withAutocommitConnection(conn => conn.atRepeatableRead(cb))
+    db.withAutocommitConnection(conn ?=> conn.atRepeatableRead(cb))
 
 
   /** Executes the code block within the "serializable" transaction. */
   def atSerializable[M[_], T](
-        cb: Transaction[Isolation.Serializable] => T
+        cb: Transaction[Isolation.Serializable] ?=> T
       )(implicit
         db: Database[M]
       ): M[T] =
-    db.withAutocommitConnection(conn => conn.atSerializable(cb))
+    db.withAutocommitConnection(conn ?=> conn.atSerializable(cb))
 
 end Database
