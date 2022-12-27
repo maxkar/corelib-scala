@@ -1,8 +1,6 @@
 package io.github.maxkar
 package sql
 
-import connection.AutocommitConnection
-
 import syntax.*
 import syntax.given
 
