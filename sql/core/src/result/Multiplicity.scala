@@ -22,6 +22,10 @@ object Multiplicity:
       res
     }
 
+  /**  Synonym of `one` which works with row extractor. */
+  def one[T](rowParser: Row => T): ResultSet => T =
+    one(RowExtractor.rowSyntaxParser(rowParser))
+
 
   /**
    * Select at most one row from the result. Result may return 0 or 1 row.
@@ -39,9 +43,17 @@ object Multiplicity:
       }
     }
 
+  /**  Synonym of `atMostOne` which works with row extractor. */
+  def atMostOne[T](row: Row => T): ResultSet => Option[T] =
+    atMostOne(RowExtractor.rowSyntaxParser(row))
+
 
   /** Synonym for `atMostOne`. */
   inline def optional[T](row: RowExtractor[T]): ResultSet => Option[T] =
+    atMostOne(row)
+
+  /** Synonym for `atMostOne`. */
+  inline def optional[T](row: Row => T): ResultSet => Option[T] =
     atMostOne(row)
 
 
@@ -54,4 +66,7 @@ object Multiplicity:
       res.toSeq
     }
 
+  /** Synonym for `many` which works with the row parser. */
+  def many[T](rowParser: Row => T): ResultSet => Seq[T] =
+    many(RowExtractor.rowSyntaxParser(rowParser))
 end Multiplicity

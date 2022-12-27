@@ -23,6 +23,7 @@ val scalatest = "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 
 val jettyVersion = "9.4.49.v20220914"
 
+val hsqldb = "org.hsqldb" % "hsqldb" % "2.7.1" % Test
 
 val libFun = project.in(file("fun"))
   .settings(commonSettings)
@@ -149,7 +150,8 @@ val libSqlCore = project.in(file("sql/core"))
       """A simple SQL query langaguage DSL. Provides a nice (and safe) SQL query syntax, result
         | set parsing and general connection management. It also provides some common bindings
         | for both input and output arguments.
-      """.stripMargin
+      """.stripMargin,
+      libraryDependencies ++= Seq(scalatest, hsqldb)
   )
   .dependsOn(libFun)
 
