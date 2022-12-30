@@ -5,6 +5,7 @@ package sql
 object syntax:
   export query.syntax.*
   export query.syntax.given
+  export query.operations.*
   export query.Batch
   export result.syntax.*
   export result.Row

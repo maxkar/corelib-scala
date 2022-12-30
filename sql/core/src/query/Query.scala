@@ -1,9 +1,7 @@
 package io.github.maxkar
 package sql.query
 
-import sql.connection.Connection
 import java.sql.PreparedStatement
-import java.sql.ResultSet
 
 /**
  * A single database query. It incapsulates all the required text and
@@ -28,44 +26,6 @@ final class Query(textFragments: Seq[String], fragments: Seq[Fragment]) extends 
   end getQueryText
 
 
-  /** Performs an update of the database and returns number of rows updated. */
-  def updateCount()(using Connection): Int =
-    withPreparedStatement { _.executeUpdate() }
-
-
-  /**
-   * Performs an update on the database and returns number of rows updated. This
-   * is a synonym for `updateCount`.
-   */
-  inline def update()(using Connection): Int = updateCount()
-
-
-  /** Performs an update on the database and returns if any rows were actually updated. */
-  def updatedAny()(using Connection): Boolean =
-    updateCount() > 0
-
-
-  /** Performs an update on the database and returns if NO rows were actually updated. */
-  def updatedNothing()(using Connection): Boolean =
-    updateCount() == 0
-
-
-  /**
-   * Runs the (select) query and returns the result according to the provided result parser.
-   *
-   * @param parser result set parser. Usually created by the Result class (for specifying
-   *   multiplicity and getting adapter) and set user-defined extraction methods.
-   */
-  def select[T](parser: ResultSet => T)(using Connection): T =
-    withPreparedStatement { statement =>
-      val rs = statement.executeQuery()
-      try
-        parser(rs)
-      finally
-        rs.close()
-    }
-
-
   override def appendQuery(sb: StringBuilder): Unit =
     val textIterator = textFragments.iterator
     sb.append(textIterator.next())
@@ -87,16 +47,7 @@ final class Query(textFragments: Seq[String], fragments: Seq[Fragment]) extends 
 
     index
   end setParameters
-
-
-  /** Executes the callback on the prepared statement defined by this query. */
-  private def withPreparedStatement[T](cb: PreparedStatement => T)(using Connection): T =
-    Connection.withPreparedStatement(getQueryText()) { ps =>
-      setParameters(ps, 1)
-      cb(ps)
-    }
 end Query
-
 
 
 object Query:
