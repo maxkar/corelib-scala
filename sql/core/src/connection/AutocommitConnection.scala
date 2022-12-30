@@ -78,8 +78,21 @@ final class AutocommitConnection(jdbcConnection: JdbcConnection)
       jdbcConnection.rollback()
     else
       jdbcConnection.commit()
+      fireCommitListeners(tx)
     end if
 
     res
   end invokeCallback
+
+
+  /** Runs the commit listeners of the given transaction. */
+  private def fireCommitListeners(tx: Transaction[_]): Unit =
+    val listeners = tx.commitListeners
+    /* Expected fast path for most transactions, don't create extra iterators. */
+    if listeners.isEmpty then
+      return
+    val itr = listeners.iterator
+    while itr.hasNext do
+      itr.next()()
+  end fireCommitListeners
 end AutocommitConnection

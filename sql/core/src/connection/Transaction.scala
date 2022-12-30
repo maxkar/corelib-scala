@@ -29,6 +29,10 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
   private[connection] var rollbackOnly = false
 
 
+  /** Listeners for the commit event. */
+  private[connection] var commitListeners: Vector[() => Unit] = Vector.empty
+
+
   /**
    * Marks the transaction as rollback-only. Further queries may read and modify data but
    * all the changes will eventually be rolled back to the state before the transaction.
@@ -67,8 +71,32 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
 
     if nestedTx.rollbackOnly then
       jdbcConnection.rollback(savepoint)
+    else
+      commitListeners ++= nestedTx.commitListeners
     return res
   end nested
+
+
+
+  /**
+   * Adds a function to invoke when the transaction is committed in the database.
+   *
+   * If this method is called on the nested transaction, then the callback will be called
+   * only if (and when) the topmost transaction is committed, not when the nested transaction
+   * completes successfully. In other words, callbacks are invoked only when all
+   * the data is successfully stored in the database, not when the "logical" transaction
+   * is complete.
+   *
+   * This method is useful for two-phase (or multi-phase) processing where certains steps
+   * are dependent on the data being persisted (and transaction completing successfully).
+   * For example, a notification service may persist a pending notification message during
+   * the transaction. The message is forwarded to the message queue after the transaction
+   * completes and should not be sent if transaction is rolled back for any reason.
+   *
+   * @param callback callback to invoke.
+   */
+  def onCommit(callback: () => Unit): Unit =
+    commitListeners :+= callback
 
 
   override def allOrNothing[T](cb: Transaction[?] ?=> T): T =

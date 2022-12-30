@@ -140,4 +140,92 @@ final class TransactionTest extends DbTest:
 
     assert(1 === (sql"""SELECT count(*) FROM test""" select one(int)))
   }
+
+
+  dbTest("Callbacks are invoked on successfull commit")(
+    """CREATE TABLE test(
+        id INT PRIMARY KEY NOT NULL,
+        value VARCHAR(445)
+      )"""
+  ) { conn ?=>
+    var callCount = 0
+
+    conn.allOrNothing { tx ?=>
+      sql"""
+        INSERT INTO test VALUES(1, 'Hello')
+      """.update()
+
+      tx.onCommit(() => callCount += 1)
+    }
+
+    assert(1 === callCount)
+  }
+
+
+  dbTest("Callbacks are not invoked on rolled back commit (explicit rollback)")(
+    """CREATE TABLE test(
+        id INT PRIMARY KEY NOT NULL,
+        value VARCHAR(445)
+      )"""
+  ) { conn ?=>
+    var callCount = 0
+
+    conn.allOrNothing { tx ?=>
+      sql"""
+        INSERT INTO test VALUES(1, 'Hello')
+      """.update()
+
+      tx.onCommit(() => callCount += 1)
+      tx.setRollbackOnly()
+    }
+
+    assert(0 === callCount)
+  }
+
+
+  dbTest("Callbacks are not invoked on rolled back commit (exception)")(
+    """CREATE TABLE test(
+        id INT PRIMARY KEY NOT NULL,
+        value VARCHAR(445)
+      )"""
+  ) { conn ?=>
+    var callCount = 0
+
+    try
+      conn.allOrNothing { tx ?=>
+        sql"""
+          INSERT INTO test VALUES(1, 'Hello')
+        """.update()
+
+        tx.onCommit(() => callCount += 1)
+        tx.setRollbackOnly()
+      }
+      fail("Exception expected")
+    catch
+      case _: Throwable => ()
+
+    assert(0 === callCount)
+  }
+
+
+  dbTest("Callbacks set on nested transaction are invoked on successfull commit")(
+    """CREATE TABLE test(
+        id INT PRIMARY KEY NOT NULL,
+        value VARCHAR(445)
+      )"""
+  ) { conn ?=>
+    var callCount = 0
+
+    conn.allOrNothing { tx ?=>
+      sql"""
+        INSERT INTO test VALUES(1, 'Hello')
+      """.update()
+
+      tx.allOrNothing { sub ?=>
+        sub.onCommit(() => callCount += 1)
+      }
+    }
+
+    assert(1 === callCount)
+  }
 end TransactionTest
