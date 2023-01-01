@@ -17,7 +17,7 @@ import java.sql.ResultSet
 object operations:
   extension (q: Query)
     /** Performs an update of the database and returns number of rows updated. */
-    def updateCount()(using Connection): Int =
+    def updateCount()(using Connection, Timeout): Int =
       withPreparedStatement { _.executeUpdate() }
 
 
@@ -25,16 +25,17 @@ object operations:
      * Performs an update on the database and returns number of rows updated. This
      * is a synonym for `updateCount`.
      */
-    inline def update()(using Connection): Int = updateCount()
+    inline def update()(using Connection, Timeout): Int =
+       updateCount()
 
 
     /** Performs an update on the database and returns if any rows were actually updated. */
-    def updatedAny()(using Connection): Boolean =
+    def updatedAny()(using Connection, Timeout): Boolean =
       updateCount() > 0
 
 
     /** Performs an update on the database and returns if NO rows were actually updated. */
-    def updatedNothing()(using Connection): Boolean =
+    def updatedNothing()(using Connection, Timeout): Boolean =
       updateCount() == 0
 
 
@@ -44,7 +45,7 @@ object operations:
      * @param parser result set parser. Usually created by the Result class (for specifying
      *   multiplicity and getting adapter) and set user-defined extraction methods.
      */
-    def select[T](parser: ResultSet => T)(using Connection): T =
+    def select[T](parser: ResultSet => T)(using Connection, Timeout): T =
       withPreparedStatement { statement =>
         val rs = statement.executeQuery()
         try
@@ -55,8 +56,13 @@ object operations:
 
 
     /** Executes the callback on the prepared statement defined by this query. */
-    private def withPreparedStatement[T](cb: PreparedStatement => T)(using Connection): T =
+    private def withPreparedStatement[T](
+            cb: PreparedStatement => T
+          )(using
+            Connection, Timeout
+          ): T =
       Connection.withPreparedStatement(q.getQueryText()) { ps =>
+        ps.setQueryTimeout(implicitly[Timeout].timeoutSeconds)
         q.setParameters(ps, 1)
         cb(ps)
       }

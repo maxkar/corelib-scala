@@ -9,4 +9,6 @@ object syntax:
   export query.Batch
   export result.syntax.*
   export result.Row
+
+  given query.Timeout = query.Timeout.defaultTimeout
 end syntax
