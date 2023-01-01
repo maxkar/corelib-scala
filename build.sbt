@@ -153,7 +153,25 @@ val libSqlCore = project.in(file("sql/core"))
       """.stripMargin,
       libraryDependencies ++= Seq(scalatest, hsqldb)
   )
-  .dependsOn(libFun)
+
+
+val libSqlDatabaseStatic = project.in(file("sql/database/static"))
+  .settings(commonSettings)
+  .settings(
+    name := "sql-database-static",
+    description :=
+      """
+        |A fixed-size implementation of the Database access typeclass. This is an
+        | "inversion" of the regular pool pattern - resources are not provided from
+        | the pool but instead the tasks are provided to the database access.
+        |
+        | The implementation provided by this module maintains a fixed-size number
+        | of database connections (and corresponding I/O threads) that may handle the
+        | query tasks.
+      """.stripMargin,
+      libraryDependencies ++= Seq(scalatest, hsqldb)
+  )
+  .dependsOn(libSqlCore)
 
 
 val httpHeaders = project.in(file("http/headers"))
@@ -243,7 +261,7 @@ val root = project.in(file("."))
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
 
-    libSqlCore,
+    libSqlCore, libSqlDatabaseStatic,
 
     httpHeaders, httpServerApi, httpServerToolkit,
     httpServerJettyGateway, httpServerJettyQoS,
