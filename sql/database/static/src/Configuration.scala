@@ -41,10 +41,15 @@ object Configuration:
    * @param queryTimeoutMs timeout to use on the validation query.
    * @param validateOnIdleMsTimeout timeout to use for validating an "idle"
    *   connection. Set to 0 or negative value to avoid validation.
+   * @param validateUrl if the URL (connection) should be validated on the service
+   *   start-up (not inside the worker). The service won't start if the `validateUrl`
+   *   is set and connection could not be established. Otherwise the service will
+   *   start but connections would be unavailable for tasks.
    */
   case class Validation(
       validationTimeoutMs: Int = 5000,
       validateOnIdleMsTimeout: Int = 30000,
+      validateUrl: Boolean = true,
   )
 
 

@@ -62,6 +62,11 @@ object Service:
         tasks: TaskProvider,
         sensor: Sensor,
       ): Service =
+
+    /* Validate the URL by opening and then closing the connection. */
+    if configuration.validation.validateUrl then
+      Worker.openConnection(configuration.connection).close()
+
     val alive = new AtomicBoolean(true)
 
     val threads =

@@ -46,6 +46,22 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
   end CountingThreadFactory
 
 
+  test("Attempt to connect to non-existend DB should throw an exception") {
+    val threadFactory = new CountingThreadFactory()
+    val taskQueue = new FifoTaskProvider()
+
+    val config = new Configuration(
+      connection = Configuration.Connection.LoginPassword("jdbc:hsqldb:hsql://localhost:88/thisisnotadb", "SA", ""),
+      poolSize = 2,
+      threadFactory = threadFactory,
+    )
+
+    assertThrows[Throwable] {
+      Service(config, taskQueue, Sensor.noop)
+    }
+  }
+
+
   test("Basic service operations - running queries and stopping the DB") {
     withTempServer { dbUrl =>
       val threadFactory = new CountingThreadFactory()

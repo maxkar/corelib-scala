@@ -60,15 +60,7 @@ private final class Worker(
     while alive.get() do
       sensor.createConnectionStarted()
       try
-        val res =
-          connection match
-            case Configuration.Connection.NoCredentials(url) =>
-              DriverManager.getConnection(url)
-            case Configuration.Connection.LoginPassword(url, login, password) =>
-              DriverManager.getConnection(url, login, password)
-            case Configuration.Connection.PropertyBased(url, properties) =>
-              DriverManager.getConnection(url, properties)
-          end match
+        val res = Worker.openConnection(connection)
         sensor.createConnectionSuccessful()
         backoffStrategy.reset()
         return res
@@ -145,4 +137,19 @@ private final class Worker(
         false
     end try
   end validate
+end Worker
+
+
+
+private object Worker:
+  /** Opens a new JDBC connection to the database. */
+  def openConnection(connection: Configuration.Connection): JdbcConnection =
+    connection match
+      case Configuration.Connection.NoCredentials(url) =>
+        DriverManager.getConnection(url)
+      case Configuration.Connection.LoginPassword(url, login, password) =>
+        DriverManager.getConnection(url, login, password)
+      case Configuration.Connection.PropertyBased(url, properties) =>
+        DriverManager.getConnection(url, properties)
+    end match
 end Worker
