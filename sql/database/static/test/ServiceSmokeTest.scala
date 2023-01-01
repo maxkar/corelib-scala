@@ -47,23 +47,12 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   test("Basic service operations - running queries and stopping the DB") {
-    import org.hsqldb.Server
-
-    val idx = dbIndex.incrementAndGet()
-    val dbPort = idx + 7845
-    val dbName = s"svcdb${idx}"
-    val server = new Server()
-    server.setDatabaseName(0, dbName)
-    server.setDatabasePath(0, s"mem:${dbName}")
-    server.setPort(dbPort)
-    server.start()
-
-    try
+    withTempServer { dbUrl =>
       val threadFactory = new CountingThreadFactory()
       val taskQueue = new FifoTaskProvider()
 
       val config = new Configuration(
-        connection = Configuration.Connection.LoginPassword(s"jdbc:hsqldb:hsql://localhost:${dbPort}/${dbName}", "SA", ""),
+        connection = Configuration.Connection.LoginPassword(dbUrl, "SA", ""),
         poolSize = 2,
         threadFactory = threadFactory,
       )
@@ -105,7 +94,95 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
 
       svc.shutdown()
       assert(0 === threadFactory.activeThreadCount)
+    }
+  }
+
+
+  test("DB Pool works in case of abnormal activity (exception thrown from the handler)") {
+    withTempServer { dbUrl =>
+      val threadFactory = new CountingThreadFactory()
+      val taskQueue = new FifoTaskProvider()
+
+      val config = new Configuration(
+        connection = Configuration.Connection.LoginPassword(dbUrl, "SA", ""),
+        poolSize = 2,
+        threadFactory = threadFactory,
+      )
+
+      val svc = Service(config, taskQueue, Sensor.noop)
+      Thread.sleep(400)
+      assert(2 === threadFactory.activeThreadCount)
+
+      val smp = new Semaphore(0)
+      taskQueue.submit { conn =>
+        val stmt = conn.jdbcConnection.createStatement()
+        try
+          stmt.execute(
+            "CREATE TABLE test(id INTEGER NOT NULL PRIMARY KEY)"
+          )
+        finally
+          stmt.close()
+        smp.release()
+      }
+      smp.acquire()
+
+
+      for i <- 1 to 10 do
+        taskQueue.submit { conn =>
+          given AutocommitConnection = conn
+          sql"""INSERT INTO test(id) VALUES (${i})""".update()
+          smp.release()
+          /* This marks connection as potentially invalid, the connection should be validate
+           * and re-used.
+           */
+          throw new Exception("Test")
+        }
+
+      for i <- 11 to 20 do
+        taskQueue.submit { conn =>
+          given AutocommitConnection = conn
+          sql"""INSERT INTO test(id) VALUES (${i})""".update()
+          smp.release()
+          /* Similar to the previous, but this time connection is closed (not valid).
+           * The condition should be detected and the connection should be reopened.
+           */
+          conn.jdbcConnection.close()
+          throw new Exception("Test")
+        }
+
+      smp.acquire(20)
+      var cnt = -1
+      taskQueue.submit { conn =>
+        given AutocommitConnection = conn
+        cnt = sql"""SELECT count(*) FROM test""" select one(int)
+        smp.release()
+      }
+      smp.acquire()
+      assert(cnt === 20)
+
+      svc.shutdown()
+      assert(0 === threadFactory.activeThreadCount)
+    }
+  }
+
+
+  /**
+   * Creates a temp database server and invokes the callback with the DB URL provided.
+   */
+  private def withTempServer[T](callback: String => T): T =
+    import org.hsqldb.Server
+
+    val idx = dbIndex.incrementAndGet()
+    val dbPort = idx + 7845
+    val dbName = s"svcdb${idx}"
+    val server = new Server()
+    server.setDatabaseName(0, dbName)
+    server.setDatabasePath(0, s"mem:${dbName}")
+    server.setPort(dbPort)
+    server.start()
+    try
+      callback(s"jdbc:hsqldb:hsql://localhost:${dbPort}/${dbName}")
     finally
       server.shutdown()
-  }
+  end withTempServer
 end ServiceSmokeTest
