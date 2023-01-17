@@ -142,6 +142,15 @@ val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-forma
   .dependsOn(libJsonParser, libJsonWriter)
 
 
+val libBackoff = project.in(file("backoff"))
+  .settings(commonSettings)
+  .settings(
+    name := "backoff",
+    description :=
+      """Common traits for back-off logic and some common back-off strategies."""
+  )
+
+
 val libSqlCore = project.in(file("sql/core"))
   .settings(commonSettings)
   .settings(
@@ -260,6 +269,8 @@ val root = project.in(file("."))
     libJsonParser, libJsonWriter, libJsonQuery,
     libJsonSimple, libJsonAttributed,
     sampleJsonStreamingFormatter,
+
+    libBackoff,
 
     libSqlCore, libSqlDatabaseStatic,
 
