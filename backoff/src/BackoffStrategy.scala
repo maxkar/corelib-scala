@@ -45,4 +45,25 @@ object BackoffStrategy:
         RetryTimeout.fromStepFunction(initialTimeout, nextTimeout, maxTimeout)
     end new
 
+
+  /**
+   * Creates a randomized exponentially increasing back-off strategy.
+   *
+   * The initial retry is always the `initialTimeout`. Every consequent timeout
+   * is random value in the range of [2*prevTimeout, 3*prevTimeout) (inclusive of
+   * the left bound and exclusive of the right).
+   *
+   * @param initialTimeout initial timeout value used on the first retry.
+   * @param maxTimeout maximal allowed timeout.
+   */
+  def randomizedDouble(
+        initialTimeout: Long,
+        maxTimeout: Long
+      ): BackoffStrategy =
+    fromStepFunction(initialTimeout, nextRandomizedDouble, maxTimeout)
+
+
+  /** Retrieves next timeout value for the `randomizedDouble` strategy. */
+  private def nextRandomizedDouble(currentTimeout: Long): Long =
+    (currentTimeout << 2) + scala.util.Random.nextLong(currentTimeout)
 end BackoffStrategy
