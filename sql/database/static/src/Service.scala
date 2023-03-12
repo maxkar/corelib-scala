@@ -1,6 +1,7 @@
 package io.github.maxkar
 package sql.database.static
 
+import backoff.blocking.ConnectTimeout
 import java.util.concurrent.atomic.AtomicBoolean
 
 
@@ -13,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 final class Service private(
       isAlive: AtomicBoolean,
-      threads: Seq[(Thread, backoff.Backoff)],
+      threads: Seq[(Thread, ConnectTimeout)],
       tasks: TaskProvider
     ):
 
@@ -24,7 +25,7 @@ final class Service private(
   def requestShutdown(): Unit =
     isAlive.set(false)
     tasks.shutdown()
-    threads.foreach { t => t._2.shutdown() }
+    threads.foreach { t => t._2.cancel() }
   end requestShutdown
 
 
@@ -71,7 +72,7 @@ object Service:
 
     val threads =
       Seq.fill(configuration.poolSize) {
-        val backoff = configuration.backoffFactory.newBackoff()
+        val backoff = ConnectTimeout(configuration.backoffStrategy.newConnectTimeout())
         val worker = new Worker(
           connection = configuration.connection,
           backoffStrategy = backoff,

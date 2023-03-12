@@ -180,7 +180,7 @@ val libSqlDatabaseStatic = project.in(file("sql/database/static"))
       """.stripMargin,
       libraryDependencies ++= Seq(scalatest, hsqldb)
   )
-  .dependsOn(libSqlCore)
+  .dependsOn(libSqlCore, libBackoff)
 
 
 val httpHeaders = project.in(file("http/headers"))

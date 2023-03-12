@@ -32,6 +32,14 @@ final class ConnectTimeout private(blocker: Blocker, strat: strategy.ConnectTime
    */
   def cancel(): Unit =
     blocker.cancel()
+
+
+  /**
+   * Returns time (epoch milliseconds) when the operation should be retried.
+   * Returns 0 if there is no timeout is in progress.
+   */
+  def getNextAttemptTime(): Long =
+    blocker.getNextAttemptTime()
 end ConnectTimeout
 
 object ConnectTimeout:

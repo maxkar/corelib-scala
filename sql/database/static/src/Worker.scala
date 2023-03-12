@@ -7,6 +7,8 @@ import java.sql.{Connection => JdbcConnection}
 
 import sql.connection.AutocommitConnection
 
+import backoff.blocking.ConnectTimeout
+
 import java.util.concurrent.atomic.AtomicBoolean
 
 
@@ -23,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 private final class Worker(
       connection: Configuration.Connection,
-      backoffStrategy: backoff.Backoff,
+      backoffStrategy: ConnectTimeout,
       validation: Configuration.Validation,
       taskProvider: TaskProvider,
       sensor: Sensor,
@@ -67,7 +69,7 @@ private final class Worker(
       catch
         case e: Throwable =>
           sensor.createConnectionFailed(e)
-          backoffStrategy.handleFailure()
+          backoffStrategy.waitForRetry()
       end try
     end while
 

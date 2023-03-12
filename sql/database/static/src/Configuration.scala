@@ -1,6 +1,8 @@
 package io.github.maxkar
 package sql.database.static
 
+import backoff.strategy.BackoffStrategy
+
 import java.util.concurrent.ThreadFactory
 
 /**
@@ -11,7 +13,7 @@ import java.util.concurrent.ThreadFactory
  * @param poolSize number of connections to have and maintain.
  * @param threadFactory factory to use for database access threads. Uses a thread
  *   factory that creates daemon threads by default.
- * @param backoffFactory factory for creating back-off strategies for individual
+ * @param backoffStrategy factory for creating back-off strategies for individual
  *   threads and connections.
  * @param validation connection validation configuration.
  */
@@ -19,7 +21,7 @@ case class Configuration(
       connection: Configuration.Connection,
       poolSize: Int = 1,
       threadFactory: ThreadFactory = Configuration.defaultThreadFactory,
-      backoffFactory: backoff.BackoffFactory = Configuration.defaultBackoffFactory,
+      backoffStrategy: BackoffStrategy = Configuration.defaultBackoffStrategy,
       validation: Configuration.Validation = Configuration.defaultValidation,
     )
 
@@ -72,9 +74,9 @@ object Configuration:
     }
 
 
-  /** Default backoff factory. */
-  private lazy val defaultBackoffFactory: backoff.BackoffFactory =
-    backoff.Strategies.randomizedDoubleExponent(25, 60_000)
+  /** Default backoff strategy (randomized doubling of timeout). */
+  private lazy val defaultBackoffStrategy: BackoffStrategy =
+    BackoffStrategy.randomizedDouble(25, 60_000)
 
 
 end Configuration
