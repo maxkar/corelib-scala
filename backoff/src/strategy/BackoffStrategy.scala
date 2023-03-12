@@ -1,9 +1,9 @@
 package io.github.maxkar
-package backoff
+package backoff.strategy
 
 /**
- * A general configuration of how backing-off (timeout management) should be
- * performed in the application. Instances of this trait capture initial timeout
+ * General configuration of how backing-off (timeout management) should be
+ * performed in an application. Instances of this trait capture initial timeout
  * values and how these values should evolve over time.
  *
  * The strategy is intended to be generic enough to be able to create both

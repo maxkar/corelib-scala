@@ -1,11 +1,11 @@
 package io.github.maxkar
-package backoff
+package backoff.strategy
 
 
 /**
  * A backoff/timeout management for a persistent connection to a
  * particular resource. Instances of this trait may be used to control
- * Database and Messag Queue connections, (persistent) TCP connection to
+ * Database and Message Queue connections, (persistent) TCP connection to
  * another service or any other similar thing. The resource in question
  * does not have to be a "network" connection. ConnectionTimeout instances
  * may be used to control retry strategies used in accessing named

@@ -1,9 +1,9 @@
 package io.github.maxkar
-package backoff
+package backoff.strategy
 
 
 /**
- * A ackoff/retry timeout management for a single operation.
+ * Backoff/retry timeout management for a single operation.
  *
  * Instances of this trait are stateful and not thread-safe.
  */
