@@ -19,7 +19,7 @@ private final class ProcessingImpl[Qos](
     routine.suspend(Operation.Abort(resp))
 
 
-  override def addHeaders(headers: Seq[(String, String)]): HQ.Step[Qos][Unit] =
+  override def addHeaders(headers: (String, String)*): HQ.Step[Qos][Unit] =
     routine.suspend(Effects.AddHeaders(headers))
 
 

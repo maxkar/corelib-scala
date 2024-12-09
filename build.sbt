@@ -8,7 +8,7 @@ val commonSettings = Seq(
   Compile / scalaSource := baseDirectory.value / "src",
   Test / scalaSource := baseDirectory.value / "test",
   Test / fork := true,
-  scalaVersion := "3.2.0",
+  scalaVersion := "3.5.2",
   scalacOptions ++= Seq("-feature", "-deprecation"),
   testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
