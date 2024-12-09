@@ -25,7 +25,7 @@ private final class Cleaner(private var fn: () => Unit):
    * Adds this cleaner to the (head) of the registered cleaners
    * for the given request.
    */
-  private[qos] def register(context: RequestContext[_]): Unit =
+  private[qos] def register(context: RequestContext[?]): Unit =
     next = context.cleaner
     if next != null then next.prev = this
     context.cleaner = this
@@ -37,7 +37,7 @@ private final class Cleaner(private var fn: () => Unit):
    * separate from actual cleaning as the request clean-up may be somewhat optimized
    * when the whole context is cleaned.
    */
-  private[qos] def unregister(context: RequestContext[_]): Unit =
+  private[qos] def unregister(context: RequestContext[?]): Unit =
     /* Already cleaned. */
     if fn == null then return
 

@@ -21,7 +21,7 @@ trait Monad[M[_]] extends Applicative[M]:
 
 
   extension [S](v: M[S])
-    inline def flatMap[R](fn: S => M[R]) =
+    inline infix def flatMap[R](fn: S => M[R]) =
       Monad.this.bind(v, fn)
 
     inline def withFilter(fn: S => Boolean): M[S] =

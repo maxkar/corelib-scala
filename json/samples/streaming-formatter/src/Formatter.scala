@@ -92,7 +92,7 @@ object Formatter:
 
 
   /** Runs the coroutine. */
-  private def runRoutine(rt: Routine[_]): Option[String] =
+  private def runRoutine(rt: Routine[?]): Option[String] =
     var proc = rt
     while true do
       module.run(proc) match

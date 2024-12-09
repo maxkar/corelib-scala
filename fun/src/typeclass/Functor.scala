@@ -7,7 +7,7 @@ trait Functor[M[_]]:
   def fmap[S, R](v: M[S], fn: S => R): M[R]
 
   extension [S](x: M[S])
-    inline def map[R](fn: S => R): M[R] =
+    inline infix def map[R](fn: S => R): M[R] =
       Functor.this.fmap(x, fn)
 
     inline infix def <|[R](fn: S => R): M[R]  =

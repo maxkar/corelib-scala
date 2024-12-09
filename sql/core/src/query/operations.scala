@@ -45,7 +45,7 @@ object operations:
      * @param parser result set parser. Usually created by the Result class (for specifying
      *   multiplicity and getting adapter) and set user-defined extraction methods.
      */
-    def select[T](parser: ResultSet => T)(using Connection, Timeout): T =
+    infix def select[T](parser: ResultSet => T)(using Connection, Timeout): T =
       withPreparedStatement { statement =>
         val rs = statement.executeQuery()
         try

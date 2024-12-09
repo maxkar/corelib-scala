@@ -37,7 +37,7 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
         sensor = Sensor.PrintStack,
       )
 
-    val requestQueue = new ArrayBuffer[Req[_]]()
+    val requestQueue = new ArrayBuffer[Req[?]]()
 
     given Scheduled[Op, Int] with
       override def apply[T](
@@ -115,7 +115,7 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Replies to the element at the given position. */
-  private def reply(queue: Iterable[Req[_]], serial: Int, resp: Int): Unit =
+  private def reply(queue: Iterable[Req[?]], serial: Int, resp: Int): Unit =
     val elem = queue.find { e => e.qos == serial }.get
 
     elem match {
@@ -128,7 +128,7 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
 
   /** Runs the query to the server. */
   private def query(id: Int): String =
-    val url = new java.net.URL("http://localhost:8080/api")
+    val url = new java.net.URI("http://localhost:8080/api").toURL()
     val conn = url.openConnection().asInstanceOf[java.net.HttpURLConnection]
     conn.setDoOutput(false)
     conn.setDoInput(true)

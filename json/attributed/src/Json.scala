@@ -154,7 +154,7 @@ object Json:
   /**
    * Returns simple name of the JSON type.
    */
-  def typeName(v: Json[_]): java.lang.String =
+  def typeName(v: Json[?]): java.lang.String =
     v match
       case Json.Null(_) => "null"
       case Json.True(_) | Json.False(_) => "boolean"
@@ -217,7 +217,7 @@ object Json:
 
 
   /** Returns compact string representation of the given JSON. */
-  def toCompactString(v: Json[_]): java.lang.String =
+  def toCompactString(v: Json[?]): java.lang.String =
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
@@ -229,7 +229,7 @@ object Json:
 
   /** Returns pretty string representation of the given JSON. */
   def toPrettyString(
-        v: Json[_],
+        v: Json[?],
         format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
       ): java.lang.String =
     import fun.instances.Unnest

@@ -44,7 +44,7 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
 
   /** Removes headers encoded by the header objects. */
   @scala.annotation.targetName("removeHeaders")
-  def remove(headers: Header[_]*): Headers =
+  def remove(headers: Header[?]*): Headers =
     new Headers(data -- headers.map(_.name.toLowerCase()))
 
 
@@ -54,7 +54,7 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
 
   /** Checks if the header with the given name is defined. */
   @scala.annotation.targetName("hasHeader")
-  def has(header: Header[_]): Boolean = data.contains(header.name.toLowerCase())
+  def has(header: Header[?]): Boolean = data.contains(header.name.toLowerCase())
 
 
   /**

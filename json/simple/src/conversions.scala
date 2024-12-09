@@ -116,7 +116,7 @@ end sequenceIdConversion
 /** Automatic construction of JSON arrays (values) from simple values. */
 given sequenceConstruction[T <: MaybeJson]: Conversion[Seq[T], Json.Array] with
   override def apply(x: Seq[T]): Json.Array =
-    Json.array(x: _*)
+    Json.array(x*)
 end sequenceConstruction
 
 

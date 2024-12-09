@@ -3,12 +3,12 @@ package json.classic
 
 /** Base (primitive) JSON conversions. */
 trait BaseConverters:
-  
+
   /** Conversion from JSON to Boolean. */
   given jsonToBoolean: Conversion[Json, Boolean] =
     new Conversion[Json, Boolean] {
-      override def apply(v: Json): Boolean = 
-        v match 
+      override def apply(v: Json): Boolean =
+        v match
           case Json.True => true
           case Json.False => false
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to boolean")
@@ -17,17 +17,17 @@ trait BaseConverters:
   /** Conversion from Boolean to JSON. */
   given booleanToJson: Conversion[Boolean, Json] =
     new Conversion[Boolean, Json] {
-      override def apply(v: Boolean): Json = 
+      override def apply(v: Boolean): Json =
         if v then Json.True else Json.False
     }
 
 
-  
+
   /** Conversion from JSON to String. */
   given jsonToString: Conversion[Json, String] =
     new Conversion[Json, String] {
       override def apply(v: Json): String =
-        v match 
+        v match
           case Json.String(x) => x
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to string")
     }
@@ -50,7 +50,7 @@ trait BaseConverters:
             try
               Integer.parseInt(n)
             catch
-              case e: NumberFormatException => 
+              case e: NumberFormatException =>
                 throw Json.Exception(s"${n} is not valid integer")
             end try
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to int")
@@ -73,7 +73,7 @@ trait BaseConverters:
             try
               java.lang.Long.parseLong(n)
             catch
-              case e: NumberFormatException => 
+              case e: NumberFormatException =>
                 throw Json.Exception(s"${n} is not valid long integer")
             end try
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to long int")
@@ -96,7 +96,7 @@ trait BaseConverters:
             try
               java.lang.Double.parseDouble(n)
             catch
-              case e: NumberFormatException => 
+              case e: NumberFormatException =>
                 throw Json.Exception(s"${n} is not valid doulbe")
             end try
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to doulbe")
@@ -119,7 +119,7 @@ trait BaseConverters:
             try
               BigInt(n)
             catch
-              case e: NumberFormatException => 
+              case e: NumberFormatException =>
                 throw Json.Exception(s"${n} is not valid bigint")
             end try
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to bigint")
@@ -128,7 +128,7 @@ trait BaseConverters:
   /** Conversion from BigInt to JSON. */
   given bigintToJson: Conversion[BigInt, Json] =
     new Conversion[BigInt, Json] {
-      override def apply(v: BigInt): Json = 
+      override def apply(v: BigInt): Json =
         if v == null then Json.Null else Json.Number(v.toString())
     }
 
@@ -143,7 +143,7 @@ trait BaseConverters:
             try
               BigDecimal(n)
             catch
-              case e: NumberFormatException => 
+              case e: NumberFormatException =>
                 throw Json.Exception(s"${n} is not valid bigdecimal")
             end try
           case other => throw Json.Exception(s"Can't convert ${Json.typeName(other)} to bigdecimal")
@@ -152,12 +152,12 @@ trait BaseConverters:
   /** Conversion from BigDecimal to JSON. */
   given bigdecimalToJson: Conversion[BigDecimal, Json] =
     new Conversion[BigDecimal, Json] {
-      override def apply(v: BigDecimal): Json = 
+      override def apply(v: BigDecimal): Json =
         if v == null then Json.Null else Json.Number(v.toString())
     }
 
 
-  
+
   /** Converts JSON into an optional value. Decodes Undefined/Null to None and keeps the rest as Same(x). */
   given jsonToOptJson: Conversion[Json, Option[Json]] =
     new Conversion[Json, Option[Json]] {
@@ -171,7 +171,7 @@ trait BaseConverters:
   given optJsonToJson: Conversion[Option[Json], Json] =
     new Conversion[Option[Json], Json] {
       override def apply(v: Option[Json]): Json =
-        v match 
+        v match
           case None => Json.Undefined
           case Some(x) => x
     }
@@ -199,7 +199,7 @@ trait BaseConverters:
   /** Conversion from JSON sequence to JSON. */
   given seqToJson: Conversion[Seq[Json], Json] =
     new Conversion[Seq[Json], Json] {
-      override def apply(v: Seq[Json]): Json = Json.array(v: _*)
+      override def apply(v: Seq[Json]): Json = Json.array(v*)
     }
 
 
@@ -223,9 +223,9 @@ trait BaseConverters:
     }
 
   /** Conversion from a (simple) map to json. */
-  given mapToJson: Conversion[Map[String, Json], Json] = 
+  given mapToJson: Conversion[Map[String, Json], Json] =
     new Conversion[Map[String, Json], Json] {
       override def apply(v: Map[String, Json]): Json =
-        Json.make(v.toSeq: _*)
+        Json.make(v.toSeq*)
     }
 end BaseConverters

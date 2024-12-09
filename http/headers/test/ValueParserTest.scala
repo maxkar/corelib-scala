@@ -88,7 +88,7 @@ final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Checks that parsing fails for the given string. */
-  def checkFail(failOffset: Int, input: String)(parse: ValueParser => _): Unit =
+  def checkFail(failOffset: Int, input: String)(parse: ValueParser => ?): Unit =
     withClue(input) {
       val parser = new ValueParser(input)
       try
@@ -102,7 +102,7 @@ final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Checks that the given result denotes failure. */
-  private def assertFail(x: Either[String, _]): Unit =
+  private def assertFail(x: Either[String, ?]): Unit =
     x match
       case Left(_) => ()
       case Right(x) => fail(s"Expected error but got success ${x}")

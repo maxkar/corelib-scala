@@ -106,7 +106,7 @@ final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite:
 
   /** Runs the query to the server. */
   private def query(): (Int, String) =
-    val url = new java.net.URL("http://localhost:8080/api")
+    val url = new java.net.URI("http://localhost:8080/api").toURL()
     val conn = url.openConnection().asInstanceOf[java.net.HttpURLConnection]
     conn.setDoOutput(false)
     conn.setDoInput(true)

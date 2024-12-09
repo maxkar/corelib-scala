@@ -65,7 +65,7 @@ abstract sealed class Query[T] extends Dynamic:
   /**
    * Navigates over the sequence of steps.
    */
-  def apply(steps: Step*)(using ModelNavigation[T]): Query[T] = this / Path(steps: _*)
+  def apply(steps: Step*)(using ModelNavigation[T]): Query[T] = this / Path(steps*)
 
 
   /**
@@ -125,9 +125,9 @@ object Query:
             curPath = curPath / curStep
             curValue = s
           case ModelStepResult.IllegalSelector =>
-            return InvalidSelector(curPath, curValue, Path(curStep) + Path(itr.toSeq: _*))
+            return InvalidSelector(curPath, curValue, Path(curStep) + Path(itr.toSeq*))
           case ModelStepResult.MissingValue =>
-            return MissingElement(curPath, curValue, Path(curStep) + Path(itr.toSeq: _*))
+            return MissingElement(curPath, curValue, Path(curStep) + Path(itr.toSeq*))
       end while
       ValidQuery(curPath, curValue)
     end /
@@ -182,7 +182,7 @@ object Query:
   /**
    * Returns full path specified by the selector.
    */
-  def fullPath(q: Query[_]): Path =
+  def fullPath(q: Query[?]): Path =
     q match
       case ValidQuery(path, _) => path
       case MissingElement(validPath, _, invalidPath) => validPath + invalidPath

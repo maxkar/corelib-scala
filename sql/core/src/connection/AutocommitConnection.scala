@@ -86,7 +86,7 @@ final class AutocommitConnection(jdbcConnection: JdbcConnection)
 
 
   /** Runs the commit listeners of the given transaction. */
-  private def fireCommitListeners(tx: Transaction[_]): Unit =
+  private def fireCommitListeners(tx: Transaction[?]): Unit =
     val listeners = tx.commitListeners
     /* Expected fast path for most transactions, don't create extra iterators. */
     if listeners.isEmpty then
