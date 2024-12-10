@@ -72,12 +72,12 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 }
 
 
-private object LiteralsTest:
+private object LiteralsTest {
   /** Encoding of the "bad literal" exception. */
   final case class BadLiteral(expected: String) extends Exception
 
-  given LiteralErrors: Literals.Errors[Identity, Any] with
+  given LiteralErrors: Literals.Errors[Identity, Any] with {
     override def badLiteral(expected: String, stream: Any): Unit =
       throw new BadLiteral(expected)
-  end LiteralErrors
-end LiteralsTest
+  }
+}

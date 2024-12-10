@@ -7,13 +7,13 @@ import fun.typeclass.Applicative
 import text.input.LookAheadStream
 
 /** Number-related parsing functionality. */
-object Numbers:
+object Numbers {
   /**
    * Error handlers for JSON numbers.
    * @tparam M execution (monad).
    * @tparam S type of the stream (i.e. "context") required by the error generation.
    */
-  trait Errors[M[_], -S]:
+  trait Errors[M[_], -S] {
     /**
      * Invoked when integer digits are missing in the number.
      * Stream position is before the character that should be an integer digit but
@@ -41,7 +41,7 @@ object Numbers:
      * This is after the exponent indicator and an optional exponent sign.
      */
     def missingExponentDigits[T](stream: S): M[T]
-  end Errors
+  }
 
 
   /**
@@ -49,7 +49,7 @@ object Numbers:
    * The continuation captures the state of the parsing and is able to properly
    * resume parsing when demanded.
    */
-  abstract sealed class ParsingContinuation private[Numbers]():
+  abstract sealed class ParsingContinuation private[Numbers]() {
     /**
      * Continues parsing of the input (from the given state).
      * @param stream stream containing data to parse.
@@ -62,18 +62,17 @@ object Numbers:
         )(using
           errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)]
-  end ParsingContinuation
+  }
 
 
   /**
    * "Iterator-like" reader of number. Reads number section by section
    * and returns `null` when there are no more parts to read.
    */
-  abstract sealed class Reader[M[_]] private[Numbers]():
+  abstract sealed class Reader[M[_]] private[Numbers]() {
     /** Reads next part of the number. Returns `null` (within monad) if all the number was read. */
     def next(): M[CharSequence]
-  end Reader
-
+  }
 
 
   /**
@@ -86,9 +85,9 @@ object Numbers:
       )(using
         errs: Numbers.Errors[M, S]
       )
-      extends Reader[M]:
+      extends Reader[M] {
 
-    override def next(): M[CharSequence] =
+    override def next(): M[CharSequence] = {
       if state == null then
         Monad.pure(null)
       else
@@ -96,8 +95,8 @@ object Numbers:
           state = newState
           chars
         }
-    end next
-  end ReaderImpl
+    }
+  }
 
 
   /** Checks if the character is valid number sign. */
@@ -133,12 +132,12 @@ object Numbers:
   /**
    * Counts number of digits in the prefix.
    */
-  def countDigits(buf: CharSequence): Int =
+  def countDigits(buf: CharSequence): Int = {
     var res = 0
     while res < buf.length() && isDigit(buf.charAt(res)) do
       res += 1
     res
-  end countDigits
+  }
 
   /**
    * "Skips" digits from the given position in the input and returns a "non-digit" position.
@@ -147,12 +146,12 @@ object Numbers:
    * @return index of the first non-digit character at or after the `start` position or
    *   `chars.length()` if all characters starting from `start` are digits.
    */
-  def skipDigits(chars: CharSequence, start: Int): Int =
+  def skipDigits(chars: CharSequence, start: Int): Int = {
     var ptr = start
     while ptr < chars.length() && Numbers.isDigit(chars.charAt(ptr)) do
       ptr += 1
     ptr
-  end skipDigits
+  }
 
 
   /**
@@ -193,7 +192,6 @@ object Numbers:
         buffer.append(inputPortion)
         readAllImpl(stream, buffer, nextState)
     }
-  end readAll
 
 
   /** Internal "accumulating" implementation of read-all. */
@@ -214,7 +212,7 @@ object Numbers:
 
 
   /** Parser of the state **inside** exponent digits. */
-  private object ExponentDigitsParser extends ParsingContinuation:
+  private object ExponentDigitsParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
@@ -226,7 +224,6 @@ object Numbers:
         else
           Monad.pure(("", null))
       }
-    end continue
 
 
     /**
@@ -237,7 +234,7 @@ object Numbers:
           stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
-        ): M[(CharSequence, ParsingContinuation)] =
+        ): M[(CharSequence, ParsingContinuation)] = {
       val nonDigit = Numbers.skipDigits(lookAhead, offset)
       val nextState =
         if nonDigit >= lookAhead.length() then
@@ -245,23 +242,23 @@ object Numbers:
         else
           null: ParsingContinuation
       stream.consume(nonDigit) map (chars => (chars, nextState))
-    end continueFrom
-  end ExponentDigitsParser
+    }
+  }
 
 
   /** Parser that reports missing exponent digits. */
-  private object MissingExponentDigitsParser extends ParsingContinuation:
+  private object MissingExponentDigitsParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       errs.missingExponentDigits(stream)
-  end MissingExponentDigitsParser
+  }
 
 
   /** Parser for the optional exponent part. */
-  private object MaybeExponentParser extends ParsingContinuation:
+  private object MaybeExponentParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
@@ -271,7 +268,7 @@ object Numbers:
         /* EOF and non-exponent condition first. */
         if lookAhead.length() <= 0 || !Numbers.isExponentIndicator(lookAhead.charAt(0)) then
           Monad.pure(("", null))
-        else
+        else {
           var ptr = 1
           /* Consume optional exponent sign. */
           if ptr < lookAhead.length() && Numbers.isExponentSign(lookAhead.charAt(ptr)) then
@@ -281,9 +278,8 @@ object Numbers:
             ExponentDigitsParser.continueFrom(stream, lookAhead, ptr)
           else
             stream.consume(ptr) map { chars => (chars, MissingExponentDigitsParser)}
-        end if
+        }
       }
-    end continue
 
 
     /**
@@ -294,7 +290,7 @@ object Numbers:
           stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
-        ): M[(CharSequence, ParsingContinuation)] =
+        ): M[(CharSequence, ParsingContinuation)] = {
 
       /* No exponent part at all (assuming we _have_ some data to look at). */
       if !Numbers.isExponentIndicator(lookAhead.charAt(offset)) then
@@ -320,12 +316,12 @@ object Numbers:
         stream.consume(ptr) map { chars => (chars, MissingExponentDigitsParser) }
       else
         ExponentDigitsParser.continueFrom(stream, lookAhead, ptr)
-    end continueFrom
-  end MaybeExponentParser
+    }
+  }
 
 
   /** Parser for decimal digits and the rest of the input. */
-  private object DecimalDigitsParser extends ParsingContinuation:
+  private object DecimalDigitsParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
@@ -337,7 +333,6 @@ object Numbers:
         else
           continueFrom(stream, lookAhead, 0)
       }
-    end continue
 
     /**
      * Continues parsing from the given position in the look-ahead stream.
@@ -347,29 +342,29 @@ object Numbers:
           stream: S,
           lookAhead: CharSequence,
           offset: Int = 0
-        ): M[(CharSequence, ParsingContinuation)] =
+        ): M[(CharSequence, ParsingContinuation)] = {
       val nonDigit = Numbers.skipDigits(lookAhead, offset)
 
       if nonDigit >= lookAhead.length() then
         stream.consume(nonDigit) map { chars => (chars, DecimalDigitsParser)}
       else
         MaybeExponentParser.continueFrom(stream, lookAhead, nonDigit)
-    end continueFrom
-  end DecimalDigitsParser
+    }
+  }
 
 
   /** Parser that reports missing decimal digits. */
-  private object MissingDecimalDigitsParser extends ParsingContinuation:
+  private object MissingDecimalDigitsParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       errs.missingDecimalDigits(stream)
-  end MissingDecimalDigitsParser
+  }
 
 
-  private object MaybeDecimalPartParser extends ParsingContinuation:
+  private object MaybeDecimalPartParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
@@ -388,7 +383,7 @@ object Numbers:
         else
           DecimalDigitsParser.continueFrom(stream, lookAhead, 2)
       }
-    end continue
+
 
     /**
      * Continues parsing from the given position in the look-ahead stream.
@@ -398,7 +393,7 @@ object Numbers:
           stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
-        ): M[(CharSequence, ParsingContinuation)] =
+        ): M[(CharSequence, ParsingContinuation)] = {
       if !Numbers.isDecimalSeparator(lookAhead.charAt(offset)) then
         return MaybeExponentParser.continueFrom(stream, lookAhead, offset)
 
@@ -410,12 +405,12 @@ object Numbers:
         DecimalDigitsParser.continueFrom(stream, lookAhead, ptr)
       else
         stream.consume(ptr) map { chars => (chars, MissingDecimalDigitsParser) }
-    end continueFrom
-  end MaybeDecimalPartParser
+    }
+  }
 
 
   /** Parser for decimal digits and the rest of the input. */
-  private object IntegerDigitsParser extends ParsingContinuation:
+  private object IntegerDigitsParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
@@ -427,7 +422,6 @@ object Numbers:
         else
           continueFrom(stream, lookAhead, 0)
       }
-    end continue
 
 
     /**
@@ -438,47 +432,46 @@ object Numbers:
           stream: LookAheadStream[M],
           lookAhead: CharSequence,
           offset: Int = 0
-        ): M[(CharSequence, ParsingContinuation)] =
+        ): M[(CharSequence, ParsingContinuation)] = {
       val nonDigit = Numbers.skipDigits(lookAhead, offset)
 
       if nonDigit >= lookAhead.length() then
         stream.consume(nonDigit) map { chars => (chars, IntegerDigitsParser)}
       else
         MaybeDecimalPartParser.continueFrom(stream, lookAhead, nonDigit)
-    end continueFrom
-  end IntegerDigitsParser
+    }
+  }
 
 
   /** Parser that reports missing integer digits. */
-  private object MissingIntegerDigitsParser extends ParsingContinuation:
+  private object MissingIntegerDigitsParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       errs.missingIntegerDigits(stream)
-  end MissingIntegerDigitsParser
-
+  }
 
 
   /** Parser that reports leading 0 in the integer part. */
-  private object Leading0Parser extends ParsingContinuation:
+  private object Leading0Parser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
         ): M[(CharSequence, ParsingContinuation)] =
       errs.leadingIntegerZero(stream)
-  end Leading0Parser
+  }
 
 
   /** Parser for the numbers. */
-  private object NumberParser extends ParsingContinuation:
+  private object NumberParser extends ParsingContinuation {
     override def continue[M[_]: Monad, S <: LookAheadStream[M]](
           stream: S,
         )(using
           errs: Errors[M, S]
-        ): M[(CharSequence, ParsingContinuation)] =
+        ): M[(CharSequence, ParsingContinuation)] = {
       stream.peek(3) flatMap { lookAhead =>
         val hasSign = lookAhead.length() > 0 && Numbers.isNumberSign(lookAhead.charAt(0))
         val firstDigitIndex = if hasSign then 1 else 0
@@ -499,6 +492,6 @@ object Numbers:
         else
           IntegerDigitsParser.continueFrom(stream, lookAhead, firstDigitIndex)
       }
-    end continue
-  end NumberParser
-end Numbers
+    }
+  }
+}

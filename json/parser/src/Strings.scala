@@ -9,13 +9,13 @@ import text.input.LookAheadStream
 /**
  * String-related functionality.
  */
-object Strings:
+object Strings {
   /**
    * Error handlers for JSON strings.
    * @tparam M execution (monad).
    * @tparam S type of the stream (i.e. "context") required by the error generation.
    */
-  trait Errors[M[_], -S]:
+  trait Errors[M[_], -S] {
     /**
      * Invoked when string start was expected but something different was present
      * on the stream.
@@ -51,17 +51,17 @@ object Strings:
      * Stream position is at the end of stream.
      */
     def unterminatedString[T](stream: S): M[T]
-  end Errors
+  }
 
 
   /**
    * "Iterator-like" reader of string. Reads string section by section
    * and returns `null` when there are no more parts to read.
    */
-  abstract sealed class Reader[M[_]] private[Strings]():
+  abstract sealed class Reader[M[_]] private[Strings]() {
     /** Reads next part of the string. Returns `null` (within monad) if all the number was read. */
     def next(): M[CharSequence]
-  end Reader
+  }
 
 
   /**
@@ -73,7 +73,7 @@ object Strings:
       )(using
         errs: Strings.Errors[M, S]
       )
-      extends Reader[M]:
+      extends Reader[M] {
 
     /** Inidcator on how to start reading. */
     private var isStart = true
@@ -82,7 +82,7 @@ object Strings:
     private var isEnd = false
 
     /** Reads next part of the number. Returns `null` (within monad) if all the number was read. */
-    override def next(): M[CharSequence] =
+    override def next(): M[CharSequence] = {
       if isEnd then
         return Monad.pure(null)
       val op =
@@ -95,8 +95,8 @@ object Strings:
         isEnd = !hasMore
         data
       }
-    end next
-  end ReaderImpl
+    }
+  }
 
 
   /**
@@ -133,12 +133,11 @@ object Strings:
    * Checks if the given character is regular and valid string character.
    */
   def isRegularCharacter(char: Char): Boolean =
-    char match
+    char match {
       case '\\' | '"' | '\r' | '\n' => false
       case x if x < 0x20 => false
       case _ => true
-    end match
-  end isRegularCharacter
+    }
 
 
   /**
@@ -148,12 +147,12 @@ object Strings:
    * @param offset initial position to look at.
    * @return index of the first "irregular" string character.
    */
-  def skipRegularCharacters(chars: CharSequence, offset: Int): Int =
+  def skipRegularCharacters(chars: CharSequence, offset: Int): Int = {
     var ptr = offset
     while ptr < chars.length() && isRegularCharacter(chars.charAt(ptr)) do
       ptr += 1
     ptr
-  end skipRegularCharacters
+  }
 
 
   /**
@@ -173,7 +172,6 @@ object Strings:
       else
         processContent(lookAhead, stream, true)
     }
-  end startString
 
 
   /**
@@ -247,17 +245,17 @@ object Strings:
           isFirstChunk: Boolean
       )(using
         errs: Errors[M, S]
-      ): M[(CharSequence, Boolean)] =
+      ): M[(CharSequence, Boolean)] = {
     val seqStart = if isFirstChunk then 1 else 0
 
-    if chars.length() <= seqStart then
+    if chars.length() <= seqStart then {
       if isFirstChunk then
         return stream.skip(1) flatMap { _ => errs.unterminatedString(stream) }
       else
         return errs.unterminatedString(stream)
-    end if
+    }
 
-    chars.charAt(seqStart) match
+    chars.charAt(seqStart) match {
       /* Empty string. */
       case '"' => return stream.skip(seqStart + 1) map { _ => ("", false) }
       case '\\' => processEscape(chars, stream, isFirstChunk)
@@ -274,8 +272,8 @@ object Strings:
           return stream.skip(1) flatMap { _ => errs.invalidCharacter(stream) }
         else
           errs.invalidCharacter(stream)
-    end match
-  end processContent
+    }
+  }
 
 
   /**
@@ -293,7 +291,7 @@ object Strings:
           isFirstChunk: Boolean
       )(using
         errs: Errors[M, S]
-      ): M[(CharSequence, Boolean)] =
+      ): M[(CharSequence, Boolean)] = {
     val escapeStart = if isFirstChunk then 1 else 0
     val escapeCodeIndex = escapeStart + 1
 
@@ -301,7 +299,7 @@ object Strings:
       return stream.skip(escapeStart) flatMap { _ => errs.unterminatedString(stream) }
 
     val (ret, escapeLength) =
-      chars.charAt(escapeCodeIndex) match
+      chars.charAt(escapeCodeIndex) match {
         case '"' => ("\"", 1)
         case '\\' => ("\\", 1)
         case '/' => ("/", 1)
@@ -322,8 +320,8 @@ object Strings:
 
           val unicodeEndIndex = charCharPtr + 4
 
-          while charCharPtr < unicodeEndIndex do
-            chars.charAt(charCharPtr) match
+          while charCharPtr < unicodeEndIndex do {
+            chars.charAt(charCharPtr) match {
               case x if '0' <= x && x <= '9' => charCode = (charCode << 4) | (x - '0')
               case x if 'a' <= x && x <= 'f' => charCode = (charCode << 4) | (x - 'a' + 10)
               case x if 'A' <= x && x <= 'F' => charCode = (charCode << 4) | (x - 'A' + 10)
@@ -332,9 +330,9 @@ object Strings:
                   return stream.skip(1) flatMap { _ => errs.invalidUnicodeEscape(stream) }
                 else
                   return errs.invalidUnicodeEscape(stream)
-            end match
+            }
             charCharPtr += 1
-          end while
+          }
 
           (String.valueOf(charCode.toChar), 5)
         case other =>
@@ -342,7 +340,7 @@ object Strings:
             return stream.skip(1) flatMap { _ => errs.invalidEscapeCharacter(stream) }
           else
             return errs.invalidEscapeCharacter(stream)
-      end match
+      }
 
     var ptr = escapeCodeIndex + escapeLength
 
@@ -351,7 +349,5 @@ object Strings:
       return stream.skip(ptr + 1) map { _ => (ret, false) }
     else
       return stream.skip(ptr) map { _ => (ret, true) }
-  end processEscape
-
-end Strings
-
+  }
+}

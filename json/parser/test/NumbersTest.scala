@@ -7,11 +7,11 @@ import fun.instances.Identity.given
 /**
  * Tests for the number parsers.
  */
-final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite:
+final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
   import NumbersTest.given
 
   /** Valid numbers - should be parsed fully. */
-  val validNumbers: Seq[String] =
+  val validNumbers: Seq[String] = {
     val nonEmptyExps =
       for
         indicator <- Seq("E", "e")
@@ -27,7 +27,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite:
       frac <- Seq("", ".435", ".8", ".0001")
       exp <- exps
     yield s"${sign}${lead}${frac}${exp}"
-  end validNumbers
+  }
 
 
   /** Numbers with missing integer digits. */
@@ -92,7 +92,6 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite:
         assert(num === Numbers.readAll(stream))
         assert(stream.readOffset === num.length())
       }
-    end for
   }
 
   test("Missing integer digits") {
@@ -116,7 +115,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Runs a generic failure test. */
-  private def testFailure(inputs: Seq[(String, Int)], expected: Throwable): Unit =
+  private def testFailure(inputs: Seq[(String, Int)], expected: Throwable): Unit = {
     for
       (num, failurePosition) <- inputs
       trailer <- Seq("", ",", " ", ", ", " ,")
@@ -125,23 +124,22 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite:
     do
       withClue(s"${inputString} (by ${chunkSize})") {
         val stream = new SimpleStringStream(inputString, chunkSize)
-        try
+        try {
           Numbers.readAll(stream)
           fail(s"Exception ${expected} expected")
-        catch
+        } catch {
           case e if e == expected => ()
           case other => throw other
-        end try
+        }
         assert(stream.readOffset === failurePosition)
       }
-    end for
-  end testFailure
-end NumbersTest
+  }
+}
 
 
-object NumbersTest:
+object NumbersTest {
   /** Implementation of number errors. */
-  given NumberErrors: Numbers.Errors[Identity, Any] with
+  given NumberErrors: Numbers.Errors[Identity, Any] with {
     /** Encoding for missing integer digits. */
     case class MissingIntegerDigits() extends Exception
 
@@ -165,5 +163,5 @@ object NumbersTest:
 
     override def missingExponentDigits[T](stream: Any): T =
       throw new MissingExponentDigits()
-  end NumberErrors
-end NumbersTest
+  }
+}

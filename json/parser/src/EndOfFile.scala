@@ -6,16 +6,16 @@ import fun.typeclass.Monad
 import text.input.LookAheadStream
 
 /** End-of-file functionality for JSON. */
-object EndOfFile:
+object EndOfFile {
   /**
    * End-of-file expectation errors.
    * @tparam M execution monad.
    * @tparam S type of the stream (context) used by the computation.
    */
-  trait Errors[M[_], -S]:
+  trait Errors[M[_], -S] {
     /** Encodes an error where end-of-file was expected but something else was present. */
     def endOfFileExpected(stream: S): M[Unit]
-  end Errors
+  }
 
 
   /**
@@ -33,7 +33,6 @@ object EndOfFile:
       else
         errs.endOfFileExpected(stream)
     }
-  end expectImmediately
 
 
   /**
@@ -45,5 +44,4 @@ object EndOfFile:
         errs: Errors[M, S],
       ): M[Unit] =
     Whitespaces.skipAll(stream) flatMap { _ => expectImmediately(stream) }
-  end expectNoValues
-end EndOfFile
+}

@@ -5,7 +5,7 @@ import fun.instances.Identity
 import fun.instances.Identity.given
 
 /** Tests for array-related functionality. */
-final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite {
   import NumbersTest.given
   import ArraysTest.given
 
@@ -34,7 +34,6 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
         assert(res === expected)
         assert(stream.readOffset === inputBase.length())
       }
-    end for
   }
 
 
@@ -63,14 +62,13 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
         end try
         assert(stream.readOffset === offset)
       }
-    end for
   }
-end ArraysTest
+}
 
 
-object ArraysTest:
+object ArraysTest {
   /** Array errors implementation. */
-  given ArrayErrors: Arrays.Errors[Identity, Any] with
+  given ArrayErrors: Arrays.Errors[Identity, Any] with {
     /** Encoding of invalid array start. */
     final case class InvalidArrayStart() extends Exception
 
@@ -82,5 +80,5 @@ object ArraysTest:
 
     override def invalidArrayEnd[T](stream: Any): Identity[T] =
       throw new InvalidArraySeparator()
-  end ArrayErrors
-end ArraysTest
+  }
+}

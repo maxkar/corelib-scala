@@ -7,7 +7,7 @@ import fun.instances.Identity.given
 /**
  * Tests for value parser.
  */
-final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite {
   import ValuesTest.given
   import ValuesTest._
 
@@ -43,7 +43,6 @@ final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite:
         assert(res === expected)
         assert(stream.readOffset === (inputBase.length() + lpad.length()))
       }
-    end for
   }
 
   test("Some basic errors tests") {
@@ -76,24 +75,22 @@ final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite:
         end try
         assert(stream.readOffset === offset)
       }
-    end for
   }
+}
 
-end ValuesTest
 
-
-object ValuesTest:
+object ValuesTest {
   /** Value errors implementation. */
-  given ValueErrors: Values.Errors[Identity, Any] with
+  given ValueErrors: Values.Errors[Identity, Any] with {
     /** Encoding for invalid value. */
     case class IllegalValue() extends Exception
 
     def illegalValue[T](stream: Any): T =
       throw new IllegalValue()
-  end ValueErrors
+  }
 
 
-  given AllValueErrors: Values.AllErrors[Identity, Any] with
+  given AllValueErrors: Values.AllErrors[Identity, Any] with {
     override given valueErrors: Values.Errors[Identity, Any] =
       ValueErrors
     override given literalErrors: Literals.Errors[Identity, Any] =
@@ -106,16 +103,16 @@ object ValuesTest:
       ArraysTest.ArrayErrors
     override given objectErrors: Objects.Errors[Identity, Any] =
       ObjectsTest.ObjectErrors
-  end AllValueErrors
+  }
 
 
   /** Simple model generator. */
-  object TestValueBuilder extends Values.SimpleBuilder[AnyRef]:
+  object TestValueBuilder extends Values.SimpleBuilder[AnyRef] {
     override def fromNull(): AnyRef = null
     override def fromBoolean(v: Boolean): AnyRef = java.lang.Boolean.valueOf(v)
     override def fromNumber(repr: String): AnyRef = BigDecimal(repr)
     override def fromString(value: String): AnyRef = value
     override def fromArray(items: Seq[AnyRef]): AnyRef = items
     override def fromObject(items: Map[String, AnyRef]): AnyRef = items
-  end TestValueBuilder
-end ValuesTest
+  }
+}

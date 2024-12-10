@@ -9,7 +9,7 @@ import text.input.LookAheadStream
 /**
  * Literal readers.
  */
-object Literals:
+object Literals {
   /**
    * Error handlers for (simple) JSON literals.
    * @tparam M execution (monad).
@@ -40,7 +40,7 @@ object Literals:
    * @param characters the input sequence (that should be not shorter than
    *   the literal).
    */
-  def isSameLiteral(literal: String, characters: CharSequence): Boolean =
+  def isSameLiteral(literal: String, characters: CharSequence): Boolean = {
     if characters.length() < literal.length() then
       return false
     var ptr = 0
@@ -49,7 +49,7 @@ object Literals:
         return false
       ptr += 1
     return true
-  end isSameLiteral
+  }
 
 
   /**
@@ -79,7 +79,6 @@ object Literals:
       else
         errs.badLiteral(literal, stream)
     }
-  end readLiteral
 
 
   /** Reads the "true" literal from the stream. */
@@ -107,4 +106,4 @@ object Literals:
         errs: Errors[M, S]
       ): M[Unit] =
     readLiteral(NULL, stream)
-end Literals
+}

@@ -7,14 +7,14 @@ import text.input.LookAheadStream
 import scala.collection.mutable.HashMap
 
 /** Json object reader and related utilities. */
-object Objects:
+object Objects {
   /**
    * Error handlers for JSON object format.
    * @tparam M execution monad.
    * @tparam S type of the stream (i.e. "context") required by the error generation.
    */
-  trait Errors[M[_], -S]:
-    /**
+  trait Errors[M[_], -S] {
+    /*
      * Invoked when object start was expected but something different occured in the stream.
      * Stream position is before the character that was expected to be object start.
      */
@@ -33,7 +33,7 @@ object Objects:
      * Stream position is before the character that should be key-value separator.
      */
     def invalidKeyValueSeparator[T](stream: S): M[T]
-  end Errors
+  }
 
 
   /** Checks if the haracter is valid object start character. */
@@ -65,7 +65,6 @@ object Objects:
       else
         stream.skip(1)
     }
-  end readObjectStart
 
 
   /**
@@ -83,7 +82,6 @@ object Objects:
       else
         stream.skip(1) map { _ => false }
     }
-  end hasFirstValue
 
 
   /**
@@ -105,7 +103,6 @@ object Objects:
           case _ => errs.invalidObjectEnd(stream)
         }
     }
-  end hasNextValue
 
 
   /** Reads key-value separator. */
@@ -120,7 +117,6 @@ object Objects:
       else
         stream.skip(1)
     }
-  end readKeyValueSeparator
 
 
   /** Reads the complete object as a map. Duplicate keys will retain only the last value. */
@@ -131,7 +127,7 @@ object Objects:
           stream: S,
       )(using
         errs: Errors[M, S]
-      ): M[Map[K, V]] =
+      ): M[Map[K, V]] = {
     for
       _ <- readObjectStart(stream)
       _ <- skipWhitespaces(stream)
@@ -143,7 +139,7 @@ object Objects:
           Monad.pure(Map.empty)
         end if
     yield res
-  end readAll
+  }
 
 
   /** Aggregating reader implementation. */
@@ -155,7 +151,7 @@ object Objects:
           agg: HashMap[K, V],
       )(using
         errs: Errors[M, S]
-      ): M[Map[K, V]] =
+      ): M[Map[K, V]] = {
     for
       _ <- skipWhitespaces(stream)
       key <- readKey(stream)
@@ -173,6 +169,5 @@ object Objects:
           Monad.pure(agg.toMap)
         end if
     yield res
-  end readAllImpl
-end Objects
-
+  }
+}

@@ -7,13 +7,13 @@ import fun.typeclass.Monad
 import text.input.LookAheadStream
 
 /** Generic value-related functionality. */
-object Values:
+object Values {
   /**
    * Error handler for general value errors.
    * @tparam M execution (monad).
    * @tparam S type of the stream (i.e. "context") required by the error generation.
    */
-  trait Errors[M[_], -S]:
+  trait Errors[M[_], -S] {
     /**
      * Invoked when JSON value is expected but the next input character
      * (if present) is not valid start of any JSON value.
@@ -21,7 +21,7 @@ object Values:
      * of the input value.
      */
     def illegalValue[T](stream: S): M[T]
-  end Errors
+  }
 
 
   /**
@@ -29,7 +29,7 @@ object Values:
    * @tparam M execution monad.
    * @tparam S type of the stream (context) used by the computation.
    */
-  trait AllErrors[M[_], -S]:
+  trait AllErrors[M[_], -S] {
     /** Value errors handlers. */
     given valueErrors: Errors[M, S]
     /** Literal error handlers. */
@@ -42,14 +42,14 @@ object Values:
     given arrayErrors: Arrays.Errors[M, S]
     /** Object error handlers. */
     given objectErrors: Objects.Errors[M, S]
-  end AllErrors
+  }
 
 
   /**
    * Callback for specific value or value type being observed in the stream.
    * @tparam T type of the value returned by the callback.
    */
-  trait ValueCallback[T]:
+  trait ValueCallback[T] {
     /** The value is the `true` literal. */
     def onTrue(): T
     /** The value is the `false` literal. */
@@ -64,14 +64,14 @@ object Values:
     def onArray(): T
     /** The next vaule is object. */
     def onObject(): T
-  end ValueCallback
+  }
 
 
   /**
    * Very simple builder of the JSON model.
    * @tparam T type of the JSON model element.
    */
-  trait SimpleBuilder[T]:
+  trait SimpleBuilder[T] {
     /** Creates a new element from the boolean value. */
     def fromBoolean(v: Boolean): T
     /** Encodes explicit `null` value. */
@@ -87,7 +87,7 @@ object Values:
     def fromArray(items: Seq[T]): T
     /** Encodes object value. */
     def fromObject(items: Map[String, T]): T
-  end SimpleBuilder
+  }
 
 
 
@@ -100,7 +100,7 @@ object Values:
    * @return one of the values returned by the `callback` or `noMatch`.
    */
   def expectedValue[T](char: Char, callback: ValueCallback[T], noMatch: => T): T =
-    char match
+    char match {
       case 't' => callback.onTrue()
       case 'f' => callback.onFalse()
       case 'n' => callback.onNull()
@@ -110,8 +110,7 @@ object Values:
       case '-' => callback.onNumber()
       case x if '0' <= x && x <= '9' => callback.onNumber()
       case _ => noMatch
-    end match
-  end expectedValue
+    }
 
 
   /**
@@ -134,7 +133,6 @@ object Values:
       else
         expectedValue(lookAhead.charAt(0), callback, errs.illegalValue(stream))
     }
-  end expectedValue
 
 
   /**
@@ -149,10 +147,10 @@ object Values:
         stream: S,
       )(using
         errs: AllErrors[M, S]
-      ): M[T] =
+      ): M[T] = {
     import errs.given
 
-    object reader extends ValueCallback[M[T]]:
+    object reader extends ValueCallback[M[T]] {
       override def onTrue(): M[T] =
         Literals.readTrue(stream) map { _ => model.fromBoolean(true) }
 
@@ -186,8 +184,8 @@ object Values:
       /** Reads a value. */
       def readValue(stream: S): M[T] =
         expectedValue(stream, this)
-    end reader
+    }
 
     Whitespaces.skipAll(stream) flatMap { _ => reader.readValue(stream) }
-  end readSimple
-end Values
+  }
+}

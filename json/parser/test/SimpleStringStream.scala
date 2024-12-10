@@ -15,7 +15,7 @@ import text.input.LookAheadStream
 final class SimpleStringStream[M[_]: Applicative](
       data: String,
       lookAheadSizeHint: Int
-    ) extends LookAheadStream[M]:
+    ) extends LookAheadStream[M] {
   /** Read pointer. */
   private var ptr = 0
 
@@ -29,7 +29,7 @@ final class SimpleStringStream[M[_]: Applicative](
   def readOffset: Int = ptr
 
 
-  override def peek(minLength: Int): M[CharSequence] =
+  override def peek(minLength: Int): M[CharSequence] = {
     if minLength <= 0 then
       throw new IllegalArgumentException(s"Peek's argument must be positive but is ${minLength}")
 
@@ -37,10 +37,10 @@ final class SimpleStringStream[M[_]: Applicative](
     lookAheadPtr = ptr + charsToRead
 
     Applicative.pure(data.subSequence(ptr, lookAheadPtr))
-  end peek
+  }
 
 
-  override def consume(count: Int): M[CharSequence] =
+  override def consume(count: Int): M[CharSequence] = {
     if lookAheadPtr < 0 then
       throw new IllegalStateException("Could not consume with no look-ahead called")
 
@@ -53,10 +53,10 @@ final class SimpleStringStream[M[_]: Applicative](
     ptr = newPtr
     lookAheadPtr = -1
     Applicative.pure(resSeq)
-  end consume
+  }
 
 
-  override def skip(count: Int): M[Unit] =
+  override def skip(count: Int): M[Unit] = {
     if lookAheadPtr < 0 then
       throw new IllegalStateException("Could not skip with no look-ahead called")
 
@@ -68,16 +68,15 @@ final class SimpleStringStream[M[_]: Applicative](
     ptr = newPtr
     lookAheadPtr = -1
     Applicative.pure(())
-  end skip
+  }
 
 
   override def releaseCharSequence(): M[Unit] =
     Applicative.pure(())
+}
 
-end SimpleStringStream
 
-
-object SimpleStringStream:
+object SimpleStringStream {
   /** Returns all possible streams with various look-ahead sizes. */
   def allLookAheadSizes[M[_]: Applicative](data: String): Iterable[SimpleStringStream[M]] =
     (1 until data.size).map(new SimpleStringStream(data, _))
@@ -86,4 +85,4 @@ object SimpleStringStream:
   /** Invokes callback on various read patterns. */
   def forAllLookAheadSizes[M[_]: Applicative](data: String)(cb: SimpleStringStream[M] => Unit): Unit =
     allLookAheadSizes(data).foreach(cb)
-end SimpleStringStream
+}

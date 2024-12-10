@@ -6,7 +6,7 @@ import fun.instances.Identity.given
 
 
 /** Tests for object-related functionality. */
-final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
   import NumbersTest.given
   import StringsTest.given
   import ObjectsTest.given
@@ -36,7 +36,6 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
         assert(res === expected)
         assert(stream.readOffset === inputBase.length())
       }
-    end for
   }
 
 
@@ -56,23 +55,22 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
     do
       withClue(s"${inputString} (by ${chunkSize})") {
         val stream = new SimpleStringStream(inputString, chunkSize)
-        try
+        try {
           Objects.readAll(Whitespaces.skipAll[Identity], Strings.readAll, Numbers.readAll, stream)
           fail(s"Expected ${exn} but got nothing")
-        catch
+        } catch {
           case e if e === exn => ()
           case other => throw other
-        end try
+        }
         assert(stream.readOffset === offset)
       }
-    end for
   }
-end ObjectsTest
+}
 
 
-object ObjectsTest:
+object ObjectsTest {
   /** Object errors implementation. */
-  given ObjectErrors: Objects.Errors[Identity, Any] with
+  given ObjectErrors: Objects.Errors[Identity, Any] with {
     /** Encoding of invalid object start. */
     final case class InvalidObjectStart() extends Exception
 
@@ -90,5 +88,5 @@ object ObjectsTest:
 
     override def invalidKeyValueSeparator[T](stream: Any): Identity[T] =
       throw new InvalidKeyValueSeparator()
-  end ObjectErrors
-end ObjectsTest
+  }
+}

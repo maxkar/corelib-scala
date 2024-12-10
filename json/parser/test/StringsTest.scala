@@ -7,7 +7,7 @@ import fun.instances.Identity.given
 /**
  * Tests for the string parsers.
  */
-final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
+final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
   import StringsTest.given
 
   test("Smoke test") {
@@ -31,9 +31,10 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       input <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
       suffix <- Seq.tabulate(8) { c => "Y" * c }
-    do
+    do {
       val base = prefix + input + suffix
       checkSimpleSuccess(base, "\"" + base + "\"")
+    }
   }
 
 
@@ -50,9 +51,10 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       (input, expected) <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
       suffix <- Seq.tabulate(8) { c => "Y" * c }
-    do
+    do {
       val base = prefix + input + suffix
       checkSimpleSuccess(expected, "\"" + input + "\"")
+    }
   }
 
 
@@ -76,9 +78,10 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       input <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
       suffix <- Seq.tabulate(8) { c => "Y" * c }
-    do
+    do {
       val base = prefix + input + suffix
       checkError("\"" + base, new StringErrors.UnterminatedString(), base.length())
+    }
   }
 
 
@@ -95,10 +98,11 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       input <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
       suffix <- Seq.tabulate(8) { c => "Y" * c }
-    do
+    do {
       val base = prefix + input + suffix
       /* Error position is prefix and opening quote. */
       checkError("\"" + base + "\"", new StringErrors.InvalidCharacter(), prefix.length() + 1)
+    }
   }
 
 
@@ -115,10 +119,11 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       input <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
       suffix <- Seq.tabulate(8) { c => "Y" * c }
-    do
+    do {
       val base = prefix + input + suffix
       /* Error position is prefix and opening quote. */
       checkError("\"" + base + "\"", new StringErrors.InvalidEscapeCharacter(), prefix.length() + 1)
+    }
   }
 
 
@@ -136,10 +141,11 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       input <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
       suffix <- Seq.tabulate(8) { c => "Y" * c }
-    do
+    do {
       val base = prefix + input + suffix
       /* Error position is prefix and opening quote. */
       checkError("\"" + base + "\"", new StringErrors.InvalidUnicodeEscape(), prefix.length() + 1)
+    }
   }
 
 
@@ -157,10 +163,11 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
     for
       input <- inputs
       prefix <- Seq.tabulate(8) { c => "X" * c }
-    do
+    do {
       val base = prefix + input
       /* Error position is prefix and opening quote. */
       checkError("\"" + base + "\"", new StringErrors.InvalidUnicodeEscape(), prefix.length() + 1)
+    }
   }
 
 
@@ -170,7 +177,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Checks parsing success on the given string. */
-  private def checkSimpleSuccess(expected: String, data: String, expectedResultOffset: Int): Unit =
+  private def checkSimpleSuccess(expected: String, data: String, expectedResultOffset: Int): Unit = {
     for
       trailer <- Seq("", ",", "]", "}", "  ,  ")
       text = data + trailer
@@ -181,12 +188,12 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
         assert(expected === Strings.readAll(stream))
         assert(expectedResultOffset === stream.readOffset)
       }
-  end checkSimpleSuccess
+  }
 
 
   /**
    * Checks that error is raised at the proper location. */
-  private def checkError(data: String, error: Throwable, errorOffset: Int): Unit =
+  private def checkError(data: String, error: Throwable, errorOffset: Int): Unit = {
     for
       chunkSize <- 1 until data.length()
     do
@@ -200,13 +207,13 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
           case other => throw other
         end try
       }
-  end checkError
-end StringsTest
+  }
+}
 
 
-object StringsTest:
+object StringsTest {
   /** Implementation of the string parsing error handlers. */
-  given StringErrors: Strings.Errors[Identity, Any] with
+  given StringErrors: Strings.Errors[Identity, Any] with {
     /** Encoding of illegal string start. */
     final case class IllegalStringStart() extends Exception
     /** Encoding of invalid escape error. */
@@ -232,5 +239,5 @@ object StringsTest:
 
     override def unterminatedString[T](stream: Any): T =
       throw new UnterminatedString()
-  end StringErrors
-end StringsTest
+  }
+}

@@ -5,7 +5,7 @@ import fun.instances.Identity
 import fun.instances.Identity.given
 
 /** Tests for end-of-file-related. */
-final class EndOfFileTest extends org.scalatest.funsuite.AnyFunSuite:
+final class EndOfFileTest extends org.scalatest.funsuite.AnyFunSuite {
   import EndOfFileTest._
   import EndOfFileTest.given
 
@@ -18,13 +18,13 @@ final class EndOfFileTest extends org.scalatest.funsuite.AnyFunSuite:
 
   test("Immediate end-of-file (failure)") {
     val stream = new SimpleStringStream(" ", 1)
-    try
+    try {
       EndOfFile.expectImmediately(stream)
       fail("An error has to be raised")
-    catch
+    } catch {
       case e: EofErrors.EofExpected =>
         assert(stream.readOffset === 0)
-    end try
+    }
   }
 
 
@@ -44,7 +44,6 @@ final class EndOfFileTest extends org.scalatest.funsuite.AnyFunSuite:
         EndOfFile.expectNoValues(stream)
         assert(stream.readOffset === inputString.length())
       }
-    end for
   }
 
 
@@ -71,26 +70,25 @@ final class EndOfFileTest extends org.scalatest.funsuite.AnyFunSuite:
     do
       withClue(s"${inputString} (by ${chunkSize})") {
         val stream = new SimpleStringStream(inputString, chunkSize)
-        try
+        try {
           EndOfFile.expectNoValues(stream)
           fail("An error has to be raised")
-        catch
+        } catch {
           case e: EofErrors.EofExpected =>
             assert(stream.readOffset === prefix.length())
-        end try
+        }
       }
-    end for
   }
-end EndOfFileTest
+}
 
 
-object EndOfFileTest:
+object EndOfFileTest {
   /** Implementation of end-of-file errors. */
-  given EofErrors: EndOfFile.Errors[Identity, Any] with
+  given EofErrors: EndOfFile.Errors[Identity, Any] with {
     /** Encoding for missing end-of-file. */
     case class EofExpected() extends Exception
 
     override def endOfFileExpected(stream: Any): Identity[Unit] =
       throw new EofExpected()
-  end EofErrors
-end EndOfFileTest
+  }
+}

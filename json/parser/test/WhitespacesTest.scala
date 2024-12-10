@@ -7,7 +7,7 @@ import fun.instances.Identity.given
 /**
  * Tests for whitespace parsers.
  */
-final class WhitespacesTest extends org.scalatest.funsuite.AnyFunSuite:
+final class WhitespacesTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Count whitespaces is correct") {
     assert(0 === Whitespaces.countWhitespaces("Test"))
     assert(1 === Whitespaces.countWhitespaces(" Test"))
@@ -71,4 +71,4 @@ final class WhitespacesTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(out4.toString() === "   ")
     assert(!hasMore4)
   }
-end WhitespacesTest
+}

@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 object Arrays {
 
   /** Error encoding for array formats. */
-  trait Errors[M[_], -S]:
+  trait Errors[M[_], -S] {
     /**
      * Invoked when array start was expected but something different occured in the stream.
      * Stream position is before the character that was expected to be array start.
@@ -26,7 +26,7 @@ object Arrays {
      * value separator.
      */
     def invalidArrayEnd[T](stream: S): M[T]
-  end Errors
+  }
 
 
   /** Checks if character is an array start character. */
@@ -69,7 +69,6 @@ object Arrays {
       else
         stream.skip(1) map { _ => false }
     }
-  end hasFirstValue
 
 
   /**
@@ -91,7 +90,6 @@ object Arrays {
           case _ => errs.invalidArrayEnd(stream)
         }
     }
-  end hasNextValue
 
 
   /**
@@ -104,7 +102,7 @@ object Arrays {
         stream: S,
       )(using
         errs: Errors[M, S]
-      ): M[Seq[T]] =
+      ): M[Seq[T]] = {
     for
       _ <- readArrayStart(stream)
       _ <- skipWhitespaces(stream)
@@ -116,7 +114,7 @@ object Arrays {
           Monad.pure(Seq.empty)
     yield
       res
-  end readAll
+  }
 
 
   /** Recursive reader implementation. */
@@ -127,7 +125,7 @@ object Arrays {
         agg: ArrayBuffer[T],
       )(using
         errs: Errors[M, S]
-      ): M[Seq[T]] =
+      ): M[Seq[T]] = {
     for
       _ <- skipWhitespaces(stream)
       elem <- readValue(stream)
@@ -142,5 +140,5 @@ object Arrays {
         end if
     yield
       res
-  end readAllImpl
+  }
 }

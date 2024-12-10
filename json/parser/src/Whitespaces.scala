@@ -8,27 +8,26 @@ import text.input.LookAheadStream
 /**
  * (Standard) Whitespace reader and utilities.
  */
-object Whitespaces:
+object Whitespaces {
   /**
    * Returns a number of whitespaces in the sequence.
    */
-  def countWhitespaces(cs: CharSequence): Int =
+  def countWhitespaces(cs: CharSequence): Int = {
     var ptr = 0
     while ptr < cs.length() && isWhitespace(cs.charAt(ptr)) do
       ptr += 1
     ptr
-  end countWhitespaces
+  }
 
 
   /**
    * Checks if the given character is considered to be whitespace.
    */
   def isWhitespace(chr: Char): Boolean =
-    chr match
+    chr match {
       case ' ' | '\t' | '\r' | '\n' => true
       case _ => false
-    end match
-  end isWhitespace
+    }
 
 
   /**
@@ -43,7 +42,6 @@ object Whitespaces:
       else
         stream.consume(wsCharCount)
     }
-  end next
 
 
   /**
@@ -57,12 +55,11 @@ object Whitespaces:
       val wsCharCount = countWhitespaces(lookAhead)
       if wsCharCount == 0 then
         Monad.pure(("", false))
-      else
+      else {
         val mayHaveMore = wsCharCount >= lookAhead.length()
         stream.consume(wsCharCount) map { chars => (chars, mayHaveMore)}
-      end if
+      }
     }
-  end parse
 
 
   /**
@@ -94,10 +91,9 @@ object Whitespaces:
     next(stream) flatMap { nextSection =>
       if nextSection == null then
         Monad.pure(accum.toString())
-      else
+      else {
         accum.append(nextSection)
         readAllImpl(accum, stream)
+      }
     }
-  end readAllImpl
-
-end Whitespaces
+}

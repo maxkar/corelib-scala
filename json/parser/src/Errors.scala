@@ -8,13 +8,13 @@ import text.input.LookAheadStream
 /**
  * Error-related utilities.
  */
-object Errors:
+object Errors {
 
   /**
    * Very simple error handler that just "raises" the error using
    * the provided error message and the context (stream) where it happened.
    */
-  trait SimpleHandler[M[_], -S]:
+  trait SimpleHandler[M[_], -S] {
     /**
       * Raises (aka encodes) the error.
       *
@@ -24,20 +24,21 @@ object Errors:
       * @return encoded error.
       */
     def raise[T](stream: S, message: String): M[T]
-  end SimpleHandler
+  }
 
 
   /** Implementation of error handlers. */
   final class ErrorHandler[M[_]: Monad, S <: LookAheadStream[M]] private[Errors](
         handler: SimpleHandler[M, S]
       )
-      extends Values.AllErrors[M, S]:
+      extends Values.AllErrors[M, S] {
 
     /** Returns "context" of the stream that could be used in the messages. */
-    private def getContext(seq: CharSequence, maxLength: Int = 7): String =
+    private def getContext(seq: CharSequence, maxLength: Int = 7): String = {
       val len = Math.min(maxLength, seq.length())
       seq.subSequence(0, len).toString()
-    end getContext
+    }
+
 
     /**
      * Universal handler for errors that fetches the context and provides
@@ -66,17 +67,17 @@ object Errors:
       }
 
 
-    override given valueErrors: Values.Errors[M, S] with
+    override given valueErrors: Values.Errors[M, S] with {
       override def illegalValue[T](stream: S): M[T] =
         message(
           stream,
           "value",
           la => s"Unexpected start of json value '${la}'"
         )
-    end valueErrors
+    }
 
 
-    override given literalErrors: Literals.Errors[M, S] with
+    override given literalErrors: Literals.Errors[M, S] with {
       override def badLiteral(expected: String, stream: S): M[Unit] =
         message(
           stream,
@@ -84,10 +85,10 @@ object Errors:
           la => s"Invalid literal ${expected}, got '${la}'",
           expected.length()
         )
-    end literalErrors
+    }
 
 
-    override given numberErrors: Numbers.Errors[M, S] with
+    override given numberErrors: Numbers.Errors[M, S] with {
       override def missingIntegerDigits[T](stream: S): M[T] =
         message(
           stream,
@@ -113,10 +114,10 @@ object Errors:
           "exponent digits",
           la => s"Invalid number format, exponent digits are expected, got '${la}'"
         )
-    end numberErrors
+    }
 
 
-    override given stringErrors: Strings.Errors[M, S] with
+    override given stringErrors: Strings.Errors[M, S] with {
       override def illegalStringStart[T](stream: S): M[T] =
         message(
           stream,
@@ -142,10 +143,10 @@ object Errors:
 
       override def unterminatedString[T](stream: S): M[T] =
         handler.raise(stream, "Unexpected end of stream inside string literal")
-    end stringErrors
+    }
 
 
-    override given arrayErrors: Arrays.Errors[M, S] with
+    override given arrayErrors: Arrays.Errors[M, S] with {
       override def invalidArrayStart[T](stream: S): M[T] =
         message(
           stream,
@@ -161,10 +162,10 @@ object Errors:
           la => s"Invalid array end (or value separator), expected ']' or ',' but got '${la.charAt(0)}'",
           contextLength = 1,
         )
-    end arrayErrors
+    }
 
 
-    override given objectErrors: Objects.Errors[M, S] with
+    override given objectErrors: Objects.Errors[M, S] with {
       override def invalidObjectStart[T](stream: S): M[T] =
         message(
           stream,
@@ -187,11 +188,11 @@ object Errors:
           "key-value separator",
           la => s"Invalid key-value separator, expected ':' but got '${la.charAt(0)}'"
         )
-    end objectErrors
+    }
 
 
     /** Implementation of "End of file" errors. */
-    given endOfFileErrors: EndOfFile.Errors[M, S] with
+    given endOfFileErrors: EndOfFile.Errors[M, S] with {
       override def endOfFileExpected(stream: S): M[Unit] =
         stream.peek(7) flatMap { lookAhead =>
           handler.raise(
@@ -199,9 +200,8 @@ object Errors:
             s"Unexpected data '${getContext(lookAhead)}' before end of file"
           )
         }
-    end endOfFileErrors
-
-  end ErrorHandler
+    }
+  }
 
 
 
@@ -214,4 +214,4 @@ object Errors:
    */
   def simple[M[_]: Monad, S <: LookAheadStream[M]](handler: SimpleHandler[M, S]): ErrorHandler[M, S] =
     new ErrorHandler[M, S](handler)
-end Errors
+}
