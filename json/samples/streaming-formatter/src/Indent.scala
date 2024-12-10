@@ -4,7 +4,7 @@ package json.sample.formatter.streaming
 import text.output.Stream
 
 /** Indent logic. */
-trait Indent[M[_]]:
+trait Indent[M[_]] {
   /** Wraps the line (if supported), increases the indend by one and puts the indented line. */
   def wrapAndIncrease(stream: Stream[M]): M[Unit]
 
@@ -16,4 +16,4 @@ trait Indent[M[_]]:
 
   /** Indents key-value pair (after the key-value separator). */
   def indentKeyValuePair(stream: Stream[M]): M[Unit]
-end Indent
+}

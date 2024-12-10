@@ -5,7 +5,7 @@ import java.io.StringReader
 import java.io.StringWriter
 
 /** Tests for JSON compaction. */
-final class CompactionTest extends org.scalatest.funsuite.AnyFunSuite:
+final class CompactionTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("Smoke test") {
@@ -44,10 +44,10 @@ final class CompactionTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
   /** Runs the compaction and checks the result. */
-  private def check(expected: String)(input: String): Unit =
+  private def check(expected: String)(input: String): Unit = {
     val i = new StringReader(input)
     val o = new StringWriter()
     assert(None === Formatter.compact(i, o))
     assert(expected === o.toString())
-  end check
-end CompactionTest
+  }
+}

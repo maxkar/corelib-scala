@@ -6,7 +6,7 @@ import fun.typeclass.Applicative
 import text.output.Stream
 
 /** "No Indent" logic used for compact printing. */
-final class NoIndent[M[_]: Applicative] extends Indent[M]:
+final class NoIndent[M[_]: Applicative] extends Indent[M] {
   /** No-operation used here. */
   private val pass = Applicative.pure(())
 
@@ -17,6 +17,4 @@ final class NoIndent[M[_]: Applicative] extends Indent[M]:
   override def wrapAndIndent(stream: Stream[M]): M[Unit] = pass
 
   override def indentKeyValuePair(stream: Stream[M]): M[Unit] = pass
-end NoIndent
-
-
+}

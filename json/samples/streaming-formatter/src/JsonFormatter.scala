@@ -20,12 +20,12 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       errs: parser.Values.AllErrors[M, S],
       eofErrors: parser.EndOfFile.Errors[M, S]
     )
-    extends parser.Values.ValueCallback[M[Unit]]:
+    extends parser.Values.ValueCallback[M[Unit]] {
   import errs.given
 
 
   /** Copies data from input into output with formatting. */
-  def copy(): M[Unit] =
+  def copy(): M[Unit] = {
     given parser.EndOfFile.Errors[M, S] = eofErrors
 
     for
@@ -34,7 +34,7 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       _ <- parser.Whitespaces.skipAll(input)
       res <- parser.EndOfFile.expectImmediately(input)
     yield res
-  end copy
+  }
 
   /**
    * Copies single value from input into output. Expected to be called in the position
@@ -67,23 +67,20 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       res <- continueNumber(nextState)
     yield
       res
-  end onNumber
 
 
   /** Continue reading number from the given state. */
   private def continueNumber(state: parser.Numbers.ParsingContinuation): M[Unit] =
     if state == null then
       Monad.pure(())
-    else
+    else {
       for
         (digits, nextState) <- state.continue(input)
         _ <- output.write(digits)
         res <- continueNumber(nextState)
       yield
         res
-      end for
-    end if
-  end continueNumber
+    }
 
 
   /** Copies string from the input stream into the output stream. */
@@ -94,7 +91,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       _ <- writer.Strings.writeStringContent(firstChunk, output)
       res <- continueString(hasMore)
     yield res
-  end onString
 
 
   /** Continues copying string from the input into the output. */
@@ -107,7 +103,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       yield res
     else
       writer.Strings.writeStringBoundary(output)
-  end continueString
 
 
   override def onArray(): M[Unit] =
@@ -122,7 +117,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
         else
           writer.Arrays.writeArrayEnd(output)
     yield res
-  end onArray
 
 
   /** Copies non-empty array. */
@@ -134,7 +128,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       hasMore <- parser.Arrays.hasNextValue(input)
       res <- continueNonEmptyArray(hasMore)
     yield res
-  end copyNonEmptyArray
 
 
   /** Continues copying non-empty array. */
@@ -154,7 +147,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
         _ <- indent.wrapAndDecrease(output)
         res <- writer.Arrays.writeArrayEnd(output)
       yield res
-  end continueNonEmptyArray
 
 
   override def onObject(): M[Unit] =
@@ -169,7 +161,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
         else
           writer.Objects.writeObjectEnd(output)
     yield res
-  end onObject
 
 
   /** Copies contents of non-empty object. */
@@ -180,7 +171,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       hasNext <- parser.Objects.hasNextValue(input)
       res <- continueNonEmptyObject(hasNext)
     yield res
-  end copyNonEmptyObject
 
 
   /** Continues copying non-empty object. */
@@ -198,7 +188,6 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
         _ <- indent.wrapAndDecrease(output)
         res <- writer.Objects.writeObjectEnd(output)
       yield res
-  end continueNonEmptyObject
 
 
   /** Copies key-value pair in the object. */
@@ -214,5 +203,4 @@ final class JsonFormatter[M[_]: Monad, S <: LookAheadStream[M]](
       _ <- copyValue()
       res <- parser.Whitespaces.skipAll(input)
     yield res
-  end copyKeyValuePair
-end JsonFormatter
+}

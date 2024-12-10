@@ -17,13 +17,13 @@ import text.output.{Stream => OutStream}
 import json.parser.Errors
 import json.parser.Errors.SimpleHandler
 
-object Formatter:
+object Formatter {
   private val module = new Coroutine[Suspension]
   import module._
   import module.given
 
   /** How the execution could be suspenden. */
-  enum Suspension[T]:
+  enum Suspension[T] {
     case Input(
       reader: Reader,
       buffer: CharBuffer,
@@ -36,40 +36,38 @@ object Formatter:
     ) extends Suspension[Unit]
 
     case Failure(message: String)
-  end Suspension
+  }
 
 
   /** Implementation of the reader. */
-  private final class ReaderFiller(reader: Reader) extends Filler[Routine]:
+  private final class ReaderFiller(reader: Reader) extends Filler[Routine] {
     override def fill(buffer: CharBuffer, minCharsToRead: Int): Routine[Unit] =
       module.suspend(Suspension.Input(reader, buffer, minCharsToRead))
-  end ReaderFiller
+  }
 
 
   /** Implementation of the writer. */
-  private final class WriterOutStream(writer: Writer) extends OutStream[Routine]:
+  private final class WriterOutStream(writer: Writer) extends OutStream[Routine] {
     override def write(data: CharSequence): Routine[Unit] =
       module.suspend(Suspension.Output(writer, data))
-  end WriterOutStream
+  }
 
 
   /** Implementation of simple errors. */
-  private object RoutineRaise extends Errors.SimpleHandler[Routine, LocationLookAheadStream[Routine, Any]]:
+  private object RoutineRaise extends Errors.SimpleHandler[Routine, LocationLookAheadStream[Routine, Any]] {
     override def raise[T](stream: LocationLookAheadStream[Routine, Any], message: String): Routine[T] =
       val loc = stream.location
       module.suspend(
         Suspension.Failure(s"(${loc.line}:${loc.column}): ${message}")
       )
-
-  end RoutineRaise
-
+  }
 
   /** Errors implementation. */
   private val errs = Errors.simple(RoutineRaise)
 
 
   /** Runs the computation and returns either error string or none if everything was copied. */
-  private def run(from: Reader, to: Writer, indent: Indent[Routine]): Option[String] =
+  private def run(from: Reader, to: Writer, indent: Indent[Routine]): Option[String] = {
     val filler = new ReaderFiller(from)
     val bufferedInput = BufferLookAheadStream(filler, CharBuffer.allocate(2048))
     val locationStream = LocationLookAheadStream(bufferedInput)
@@ -78,7 +76,7 @@ object Formatter:
 
     val fmt = new JsonFormatter(locationStream, output, indent, errs, errs.endOfFileErrors)
     runRoutine(fmt.copy())
-  end run
+  }
 
 
   /** Compacts JSON from `form` into `to` returing optional error message. */
@@ -92,10 +90,10 @@ object Formatter:
 
 
   /** Runs the coroutine. */
-  private def runRoutine(rt: Routine[?]): Option[String] =
+  private def runRoutine(rt: Routine[?]): Option[String] = {
     var proc = rt
-    while true do
-      module.run(proc) match
+    while true do {
+      module.run(proc) match {
         case RunResult.Suspended(Suspension.Input(reader, buf, sz), cont) =>
           var remaining = sz
           while remaining > 0 do
@@ -113,8 +111,8 @@ object Formatter:
           return Some(message)
         case RunResult.Finished(result) =>
           return None
-      end match
-    end while
+      }
+    }
     return None
-  end runRoutine
-end Formatter
+  }
+}
