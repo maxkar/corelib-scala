@@ -13,7 +13,7 @@ import text.Location
 /**
  * Tests for location look-ahead stream.
  */
-final class LocationLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSuite:
+final class LocationLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Location is tracked correctly (smoke test)") {
     val reader = new StringReader("Hello\n world\rThird line\r\nAnd the pair")
     val buffer = CharBuffer.allocate(10)
@@ -54,4 +54,4 @@ final class LocationLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSui
     loc.skip(10)
     assert(loc.location === Location(28, 4, 4))
   }
-end LocationLookAheadStreamTest
+}

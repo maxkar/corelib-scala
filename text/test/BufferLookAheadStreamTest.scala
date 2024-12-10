@@ -7,18 +7,9 @@ import java.nio.CharBuffer
 /**
  * Tests for the buffered look-ahead stream tests.
  */
-final class BufferLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSuite:
-
-  /** Identity type for simplifying operations. */
-  type Identity[T] = T
-
-  /** Implementation of the monad for the identity type. */
-  given identityMonad: Monad[Identity] with
-    override def pure[T](x: T): T = x
-
-    override def bind[S, R](v: Identity[S], fn: S => Identity[R]): Identity[R] = fn(v)
-  end identityMonad
-
+final class BufferLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSuite {
+  import fun.instances.Identity.given
+  import fun.instances.Identity
 
   /**
    * Data feeder that has controllable chunks.
@@ -29,21 +20,21 @@ final class BufferLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSuite
         source: String,
         var nextFeedSize: Int,
       )
-      extends BufferLookAheadStream.Filler[Identity]:
+      extends BufferLookAheadStream.Filler[Identity] {
 
     /** Current write pointer. */
     private var ptr = 0
 
 
-    override def fill(buffer: CharBuffer, minCharsToRead: Int): Identity[Unit] =
+    override def fill(buffer: CharBuffer, minCharsToRead: Int): Identity[Unit] = {
       assert(minCharsToRead <= nextFeedSize)
       assert(buffer.remaining() >= nextFeedSize)
       assert(nextFeedSize <= source.length() - ptr)
       val end = ptr + nextFeedSize
       buffer.append(source.subSequence(ptr, end))
       ptr = end
-    end fill
-  end DynamicFeeder
+    }
+  }
 
 
   test("Wrap-around executed as expected") {
@@ -86,4 +77,4 @@ final class BufferLookAheadStreamTest extends org.scalatest.funsuite.AnyFunSuite
     assert(buffered.peek(2).toString() === str.subSequence(14, 16))
     /* Buffer -> pos=5,limit=7,capacity=7; Str -> pos=14 */
   }
-end BufferLookAheadStreamTest
+}

@@ -35,7 +35,7 @@ import fun.typeclass.Applicative
  *
  * @tparam M type of the operation on the stream. I.e. synchronous, asynchronous, etc...
  */
-trait LookAheadStream[M[_]]:
+trait LookAheadStream[M[_]] {
   /**
    * Attempts to look at the next `minLength` characters from the input stream. The
    * call may return less that `minLength` characters only if these are the very
@@ -76,13 +76,13 @@ trait LookAheadStream[M[_]]:
    * (if any) backing the sequence may now be reused for other purposes.
    */
   def releaseCharSequence(): M[Unit]
-end LookAheadStream
+}
 
 
 /**
  * Utilities and factories for look-ahead streams.
  */
-object LookAheadStream:
+object LookAheadStream {
   /**
    * Creates a new look-ahead stream that also tracks current text location.
    * @param peer underlying data stream.
@@ -102,4 +102,4 @@ object LookAheadStream:
    */
   def fromCharSequence[M[_]: Applicative](data: CharSequence): LookAheadStream[M] =
     new SimpleLookAheadStream(data)
-end LookAheadStream
+}

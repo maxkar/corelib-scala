@@ -19,7 +19,7 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
       peer: LookAheadStream[M],
       val attachement: A,
     )
-    extends LookAheadStream[M]:
+    extends LookAheadStream[M] {
 
 
   /** Source offset. */
@@ -47,7 +47,7 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
    * @param data data to advance over.
    * @return the original data sequence.
    */
-  private def advance(data: CharSequence): CharSequence =
+  private def advance(data: CharSequence): CharSequence = {
     val limit = data.length()
 
     if limit == 0 then
@@ -55,17 +55,17 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
 
     var ptr = 0
 
-    if afterCR then
+    if afterCR then {
       afterCR = false
-      if data.charAt(ptr) == '\n' then
+      if data.charAt(ptr) == '\n' then {
         ptr += 1
         offset += 1
-      end if
-    end if
+      }
+    }
 
 
-    while ptr < limit do
-      data.charAt(ptr) match
+    while ptr < limit do {
+      data.charAt(ptr) match {
         case '\r' =>
           line += 1
           column = 1
@@ -73,18 +73,17 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
 
           val nextIdx = ptr + 1
           /* Keep the flag as the "read state", we need to carry this over. */
-          if nextIdx >= limit then
+          if nextIdx >= limit then {
             ptr = nextIdx
             afterCR = true
             return data
-          end if
+          }
 
-          if data.charAt(nextIdx) == '\n' then
+          if data.charAt(nextIdx) == '\n' then {
             offset += 1
             ptr = nextIdx + 1
-          else
+          } else
             ptr = nextIdx
-          end if
 
         case '\n' =>
           line += 1
@@ -96,11 +95,11 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
           offset += 1
           ptr += 1
           column += 1
-      end match
-    end while
+      }
+    }
 
     data
-  end advance
+  }
 
 
   /** Current (read) position in the text. */
@@ -124,11 +123,10 @@ final class LocationLookAheadStream[M[_]: Monad, +A] private(
 
   override def releaseCharSequence(): M[Unit] =
     peer.releaseCharSequence()
+}
 
-end LocationLookAheadStream
 
-
-object LocationLookAheadStream:
+object LocationLookAheadStream {
   /**
    * Creates a new look-ahead stream that also tracks current text location.
    * @param peer underlying data stream.
@@ -141,4 +139,4 @@ object LocationLookAheadStream:
         attachment: A = (),
       ): LocationLookAheadStream[M, A] =
     new LocationLookAheadStream(peer, attachment)
-end LocationLookAheadStream
+}
