@@ -7,10 +7,10 @@ import json.writer.Values
 /**
  * Implementation of the write protocol for the attributed JSON.
  */
-given WriteableFactory:  Values.ValueClassifier[Json[Any]] with
+given WriteableFactory:  Values.ValueClassifier[Json[Any]] with {
 
   override def classifyValue[R](jsonValue: Json[Any], visitor: Values.ValueCallback[Json[Any], R]): R =
-    jsonValue match
+    jsonValue match {
       case Json.Null(_) => visitor.nullValue()
       case Json.True(_) => visitor.boolean(true)
       case Json.False(_) => visitor.boolean(false)
@@ -21,6 +21,5 @@ given WriteableFactory:  Values.ValueClassifier[Json[Any]] with
         visitor.unorderedObject(
           elts.view.mapValues(_.value).iterator
         )
-      end match
-  end classifyValue
-end WriteableFactory
+    }
+}

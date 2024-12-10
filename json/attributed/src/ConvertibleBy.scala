@@ -9,7 +9,7 @@ import json.query.Path
  * @tparam M conversion target (monad).
  * @tparam A type of json Attributes.
  */
-trait ConvertibleBy[M[_], A]:
+trait ConvertibleBy[M[_], A] {
   /** Wraps a "successfull" value. */
   def pure[T](v: T): M[T]
 
@@ -25,10 +25,10 @@ trait ConvertibleBy[M[_], A]:
    * date, etc...)
    */
   def invalidDomainValue[T](path: Path, value: Json[A], message: String): M[T]
-end ConvertibleBy
+}
 
 
-object ConvertibleBy:
+object ConvertibleBy {
   /** Identity "monad" type. */
   type Identity[T] = T
 
@@ -40,7 +40,7 @@ object ConvertibleBy:
    * @param location function used to exctract location from the attributes.
    */
   def identityWithLocation[A](location: A => String): ConvertibleBy[Identity, A] =
-    new ConvertibleBy[Identity, A]:
+    new ConvertibleBy[Identity, A] {
       import java.io.IOException
 
       override def pure[T](v: T): Identity[T] = v
@@ -59,7 +59,5 @@ object ConvertibleBy:
         throw new IOException(
           s"${location(value.attrs)} (${path}): Could not convert JSON value into domain value: ${message}"
         )
-    end new
-end ConvertibleBy
-
-
+    }
+}

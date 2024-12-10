@@ -10,7 +10,7 @@ import defaultConversions.given
 /**
  * Tests for simple json conversion and navigation.
  */
-final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite {
   given ConvertibleBy[({type Id[T] = T})#Id, Int] = ConvertibleBy.identityWithLocation(_.toString)
 
   test("Basic query and navigation on json works") {
@@ -86,7 +86,4 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
       )
     assert(q2.as[Map[String, Map[String, BigDecimal]]] === expected2)
   }
-
-end ConversionAndSyntaxTest
-
-
+}

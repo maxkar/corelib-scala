@@ -26,7 +26,7 @@ import scala.language.implicitConversions
  * A test for monadic (higher-kinded) json parsing and conversion. Illustrates some
  * "real-world" scenario and may be used as an implementation example.
  */
-final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
+final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite {
   import MonadicConversionTest._
   import MonadicConversionTest.given
 
@@ -150,10 +150,10 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
     val maybeDto3 = parseDto(Query(lessStupid).data(0))
     assert(maybeDto3 === expectedDto)
   }
-end MonadicConversionTest
+}
 
 
-object MonadicConversionTest:
+object MonadicConversionTest {
   /** Attributes of the resulting json. */
   type Attrs = (Location, Location)
 
@@ -164,15 +164,14 @@ object MonadicConversionTest:
   type Md[T] = Either[Seq[String], T]
 
   /** Monad implementation. */
-  given mdImpl: Monad[Md] with
+  given mdImpl: Monad[Md] with {
     override def pure[T](v: T): Md[T] = Right(v)
 
     override def bind[S, R](v: Md[S], fn: S => Md[R]): Md[R] =
-      v match
+      v match {
         case Left(x) => Left(x)
         case Right(v) => fn(v)
-      end match
-    end bind
+      }
 
     /* We need custom applicative here - we want to preserve both sides of error. */
     override def aapply[S, R](v: Md[S], fn: Md[S => R]): Md[R] =
@@ -182,29 +181,29 @@ object MonadicConversionTest:
         case (_, Left(y)) => Left(y)
         case (Right(xv), Right(fv)) => Right(fv(xv))
       }
-  end mdImpl
+  }
 
 
   /** How to collect multiple operations into one. */
-  given collectImpl: Collect[Md] with
-    override def collect[T](items: Seq[Md[T]]): Md[Seq[T]] =
+  given collectImpl: Collect[Md] with {
+    override def collect[T](items: Seq[Md[T]]): Md[Seq[T]] = {
       val (errors, successes) = items.partitionMap(identity)
       if errors.nonEmpty then
         Left(errors.flatten)
       else
         Right(successes)
-    end collect
-  end collectImpl
+    }
+  }
 
 
   /** Factory for the attributes. */
   private val attrFactory = AttributeFactory.span
 
   /** Simple implementation of the error handler. */
-  private object RaiseError extends Errors.SimpleHandler[Md, LocationLookAheadStream[Md, Any]]:
+  private object RaiseError extends Errors.SimpleHandler[Md, LocationLookAheadStream[Md, Any]] {
     override def raise[T](stream: LocationLookAheadStream[Md, Any], message: String): Md[T] =
       Left(Seq(s"${stream.location}: ${message}"))
-  end RaiseError
+  }
 
 
   /** Error handler for all the errors. */
@@ -214,7 +213,7 @@ object MonadicConversionTest:
 
 
   /** Attribute-specific errors. */
-  given attrErrors: Reader.Errors[Md, LocationLookAheadStream[Md, Any], Attrs] with
+  given attrErrors: Reader.Errors[Md, LocationLookAheadStream[Md, Any], Attrs] with {
     override def duplicateObjectKey(
           prevEntry: Json.ObjectEntry[Attrs],
           newKeyAttrs: Attrs,
@@ -223,23 +222,22 @@ object MonadicConversionTest:
       Left(Seq(
         s"${newKeyAttrs._1}: Duplicate key ${prevEntry.key}, previous definition at ${prevEntry.keyAttrs._1}"
       ))
-  end attrErrors
+  }
 
 
   /** Runs the parser on the given input with with the given chunk size. */
-  private def runParser(input: String): Md[Json[Attrs]] =
+  private def runParser(input: String): Md[Json[Attrs]] = {
     val reader = new java.io.StringReader(input)
     val filler = BufferLookAheadStream.Filler[Md](reader, Right(()), x => Left(Seq(x.toString)))
     val baseInputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
     val inputStream = LocationLookAheadStream(baseInputStream)
     Reader.read(inputStream, attrFactory)
-  end runParser
+  }
 
 
   private def parse(input: String): Json[Attrs] =
-    runParser(input) match
+    runParser(input) match {
       case Right(x) => x
       case Left(err) => throw new java.io.IOException(s"Errors parsing json: ${err}")
-    end match
-  end parse
-end MonadicConversionTest
+    }
+}

@@ -17,9 +17,9 @@ import scala.language.implicitConversions
 given strictConversion[M[_], A, T](
       using pf: Function[Json[A], Either[String, T]],
       mcb: ConvertibleBy[M, A])
-    : Conversion[Query[Json[A]], M[T]] with
+    : Conversion[Query[Json[A]], M[T]] with {
   override def apply(v: Query[Json[A]]): M[T] =
-    v match
+    v match {
       case Query.ValidQuery(path, vv) =>
         pf(vv) match
           case Right(v) => mcb.pure(v)
@@ -29,9 +29,8 @@ given strictConversion[M[_], A, T](
         mcb.fieldMissing(validPath, value, invalidPath)
       case Query.InvalidSelector(validPath, value, invalidPath) =>
         mcb.accessError(validPath, value, invalidPath)
-    end match
-  end apply
-end strictConversion
+    }
+}
 
 inline given strictIdConversion[A, T](
       using pf: Function[Json[A], Either[String, T]],
@@ -47,9 +46,9 @@ inline given strictIdConversion[A, T](
 given optionalConversion[M[_], A, T](
       using pf: Function[Json[A], Either[String, T]],
       mcb: ConvertibleBy[M, A])
-    : Conversion[Query[Json[A]], M[Option[T]]] with
+    : Conversion[Query[Json[A]], M[Option[T]]] with {
   override def apply(v: Query[Json[A]]): M[Option[T]] =
-    v match
+    v match {
       case Query.ValidQuery(_, Json.Null(_)) => mcb.pure(None)
       case Query.ValidQuery(path, vv) =>
         pf(vv) match
@@ -60,9 +59,8 @@ given optionalConversion[M[_], A, T](
         mcb.pure(None)
       case Query.InvalidSelector(validPath, value, invalidPath) =>
         mcb.accessError(validPath, value, invalidPath)
-    end match
-  end apply
-end optionalConversion
+    }
+}
 
 inline given optionalIdConversion[A, T](
       using pf: Function[Json[A], Either[String, T]],
@@ -78,24 +76,22 @@ inline given optionalIdConversion[A, T](
 given sequenceConversion[M[_]: Collect: Monad, A, T](
       using eltConv: Conversion[Query[Json[A]], M[T]],
       seqConv: Conversion[Query[Json[A]], M[Seq[Query[Json[A]]]]])
-    : Conversion[Query[Json[A]], M[Seq[T]]] with
+    : Conversion[Query[Json[A]], M[Seq[T]]] with {
   override def apply(v: Query[Json[A]]): M[Seq[T]] =
     for {
       items <- seqConv(v)
       res <- Collect.seq(items.map(eltConv))
     } yield res
-
-end sequenceConversion
+}
 
 
 inline given sequenceIdConversion[A, T](
       using eltConv: Conversion[Query[Json[A]], T],
       seqConv: Conversion[Query[Json[A]], Seq[Query[Json[A]]]])
-    : Conversion[Query[Json[A]], Seq[T]] with
+    : Conversion[Query[Json[A]], Seq[T]] with {
   override def apply(v: Query[Json[A]]): Seq[T] =
     seqConv(v).map(eltConv)
-end sequenceIdConversion
-
+}
 
 /**
  * Automatic conversion Query -> Map[String, T] based on conversions
@@ -104,7 +100,7 @@ end sequenceIdConversion
 given mapConversion[M[_]: Collect: Monad, A, T](
       using eltConv: Conversion[Query[Json[A]], M[T]],
       mapConv: Conversion[Query[Json[A]], M[Map[String, Query[Json[A]]]]])
-    : Conversion[Query[Json[A]], M[Map[String, T]]] with
+    : Conversion[Query[Json[A]], M[Map[String, T]]] with {
   override def apply(v: Query[Json[A]]): M[Map[String, T]] =
     for {
       items <- mapConv(v)
@@ -118,38 +114,36 @@ given mapConversion[M[_]: Collect: Monad, A, T](
             (k, converted)
       }
     } yield res.toMap
-
-end mapConversion
+}
 
 
 given mapIdConversion[A, T](
       using eltConv: Conversion[Query[Json[A]], T],
       mapConv: Conversion[Query[Json[A]], Map[String, Query[Json[A]]]])
-    : Conversion[Query[Json[A]], Map[String, T]] with
+    : Conversion[Query[Json[A]], Map[String, T]] with {
   override def apply(v: Query[Json[A]]): Map[String, T] =
     mapConv(v).view.mapValues(eltConv).toMap
-end mapIdConversion
+}
 
 /**
  * Conversion from Query to optional query.
  */
-given queryToOptionalQuery[A]: Conversion[Query[Json[A]], Option[Query[Json[A]]]] with
+given queryToOptionalQuery[A]: Conversion[Query[Json[A]], Option[Query[Json[A]]]] with {
   override def apply(v: Query[Json[A]]): Option[Query[Json[A]]] =
-    v match
+    v match {
       case Query.MissingElement(validPath, value, invalidPath) => None
       case other => Some(other)
-    end match
-  end apply
-end queryToOptionalQuery
+    }
+}
 
 
 /**
  * Conversion from Query to sequence of queries.
  */
 given queryToSequenceConversion[M[_], A](using mcb: ConvertibleBy[M, A])
-    : Conversion[Query[Json[A]], M[Seq[Query[Json[A]]]]] with
+    : Conversion[Query[Json[A]], M[Seq[Query[Json[A]]]]] with {
   override def apply(v: Query[Json[A]]): M[Seq[Query[Json[A]]]] =
-    v match
+    v match {
       case Query.ValidQuery(path, Json.Array(elements, _)) =>
         val content =
           for
@@ -163,9 +157,8 @@ given queryToSequenceConversion[M[_], A](using mcb: ConvertibleBy[M, A])
         mcb.fieldMissing(validPath, value, invalidPath)
       case Query.InvalidSelector(validPath, value, invalidPath) =>
         mcb.accessError(validPath, value, invalidPath)
-    end match
-  end apply
-end queryToSequenceConversion
+    }
+}
 
 inline given queryToSequenceIdConversion[A](
       using mcb: ConvertibleBy[({type Id[T] = T})#Id, A])
@@ -177,9 +170,9 @@ inline given queryToSequenceIdConversion[A](
  * Conversion from Query to map with queries as values.
  */
 given queryToMapConversion[M[_], A](using mcb: ConvertibleBy[M, A])
-    : Conversion[Query[Json[A]], M[Map[String, Query[Json[A]]]]] with
+    : Conversion[Query[Json[A]], M[Map[String, Query[Json[A]]]]] with {
   override def apply(v: Query[Json[A]]): M[Map[String, Query[Json[A]]]] =
-    v match
+    v match {
       case Query.ValidQuery(path, Json.Object(elements, _)) =>
         val content =
           for
@@ -193,14 +186,11 @@ given queryToMapConversion[M[_], A](using mcb: ConvertibleBy[M, A])
         mcb.fieldMissing(validPath, value, invalidPath)
       case Query.InvalidSelector(validPath, value, invalidPath) =>
         mcb.accessError(validPath, value, invalidPath)
-    end match
-  end apply
-end queryToMapConversion
+    }
+}
 
 
 inline given queryToMapIdConversion[A](
       using mcb: ConvertibleBy[({type Id[T] = T})#Id, A])
     : Conversion[Query[Json[A]], Map[String, Query[Json[A]]]] =
   queryToMapConversion
-
-

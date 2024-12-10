@@ -11,7 +11,7 @@ import json.writer.Values
 /**
  * Test for the writer (both json writer and writer for the attributed binding).
  */
-final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
+final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Primitives are serialized as needed") {
     checkCompact("null", Json.Null(()))
     checkCompact("true", Json.True(43))
@@ -70,5 +70,4 @@ final class AttributedWriterTest extends org.scalatest.funsuite.AnyFunSuite:
    */
   private def checkCompact[T](expected: String, v: Json[T]): Unit =
     assert(expected === v.toCompactString())
-  end checkCompact
-end AttributedWriterTest
+}

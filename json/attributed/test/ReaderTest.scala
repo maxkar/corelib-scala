@@ -18,7 +18,7 @@ import Json.ObjectEntry
 
 
 /** Tests for attributed parsing reader. */
-class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:
+class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Attributes of the resulting json. */
   type Attrs = (Location, Location)
 
@@ -26,10 +26,10 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:
   private val attrFactory = AttributeFactory.span
 
   /** Simple implementation of the error handler. */
-  private object RaiseError extends Errors.SimpleHandler[Identity, LocationLookAheadStream[Identity, Any]]:
+  private object RaiseError extends Errors.SimpleHandler[Identity, LocationLookAheadStream[Identity, Any]] {
     override def raise[T](stream: LocationLookAheadStream[Identity, Any], message: String): T =
       throw new java.io.IOException(s"${stream.location}: ${message}")
-  end RaiseError
+  }
 
 
   /** Error handler for all the errors. */
@@ -38,7 +38,7 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:
   import errorHandler.endOfFileErrors
 
   /** Attribute-specific errors. */
-  given attrErrors: Reader.Errors[Identity, LocationLookAheadStream[Identity, Any], Attrs] with
+  given attrErrors: Reader.Errors[Identity, LocationLookAheadStream[Identity, Any], Attrs] with {
     override def duplicateObjectKey(
           prevEntry: ObjectEntry[Attrs],
           newKeyAttrs: Attrs,
@@ -47,7 +47,7 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:
       throw new java.io.IOException(
         s"${newKeyAttrs._1}: Duplicate key ${prevEntry.key}, previous definition at ${prevEntry.keyAttrs._1}"
       )
-  end attrErrors
+  }
 
 
   test("Some basic literals work") {
@@ -118,29 +118,29 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Creates a "single-line" attribute. */
-  private def lineAttr(offset: Int, row: Int, column: Int, width: Int): Attrs =
+  private def lineAttr(offset: Int, row: Int, column: Int, width: Int): Attrs = {
     val start = Location(offset, row, column)
     val end = Location(offset + width, row, column + width)
     (start, end)
-  end lineAttr
+  }
 
 
   /** Creates a multi-line attribute. */
   private def multilineAttr(
         startOffset: Int, startRow: Int, startCol: Int,
-        endOffset: Int, endRow: Int, endCol: Int): Attrs =
+        endOffset: Int, endRow: Int, endCol: Int): Attrs = {
     val start = Location(startOffset, startRow, startCol)
     val end = Location(endOffset, endRow, endCol)
     (start, end)
-  end multilineAttr
+  }
 
 
   /** Runs the parser on the given input with with the given chunk size. */
-  private def runParser(input: String): Json[Attrs] =
+  private def runParser(input: String): Json[Attrs] = {
     val reader = new java.io.StringReader(input)
     val filler = BufferLookAheadStream.Filler[Identity](reader, (), x => throw x)
     val baseInputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
     val inputStream = LocationLookAheadStream(baseInputStream)
     Json.read(inputStream, attrFactory)
-  end runParser
-end ReaderTest
+  }
+}

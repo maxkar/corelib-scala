@@ -22,14 +22,14 @@ import scala.collection.mutable.HashMap
 
 
 /** Reader for the attributed json model. */
-object Reader:
+object Reader {
   /**
    * (Additional) error types thar are specific to this reader.
    * @tparam M execution monad.
    * @tparam S type of the input stream supported.
    * @tparam A type of the attributes supported by this error handler.
    */
-  trait Errors[M[_], -S, -A]:
+  trait Errors[M[_], -S, -A] {
     /**
      * Handles a situation where json object contains duplicate keys. An implementation
      * may decide to flag a error and abort execution in monad-specific way. If the
@@ -46,19 +46,19 @@ object Reader:
      * @return result of handling the duplicate key situation.
      */
     def duplicateObjectKey(prevEntry: Json.ObjectEntry[A], newKeyAttrs: A, stream: S): M[Unit]
-  end Errors
+  }
 
 
-  object Errors:
+  object Errors {
     /**
      * Creates an error handler that ignores all the errors.
      * @param success value that denotes success in the given monad/applicative.
      */
     def ignoreBy[M[_]](success: M[Unit]): Errors[M, Any, Any] =
-      new Errors[M, Any, Any]:
+      new Errors[M, Any, Any] {
         override def duplicateObjectKey(prevEntry: Json.ObjectEntry[Any], newKeyAttrs: Any, stream: Any): M[Unit] =
           success
-      end new
+      }
 
 
     /** Creates an error handler that ignores all the errors. */
@@ -74,15 +74,14 @@ object Reader:
      *   (like location) from the input stream.
      */
     def simple[M[_]: Monad, S <: LookAheadStream[M]](handler: StdErrors.SimpleHandler[M, S]): Reader.Errors[M, S, Any] =
-      new Reader.Errors[M, S, Any]:
+      new Reader.Errors[M, S, Any] {
         override def duplicateObjectKey(prevEntry: Json.ObjectEntry[Any], newKeyAttrs: Any, stream: S): M[Unit] =
           handler.raise(
             stream,
             s"Duplicate object entry with key '${prevEntry.key}'"
           )
-      end new
-    end simple
-  end Errors
+      }
+  }
 
 
 
@@ -99,18 +98,16 @@ object Reader:
       )(using
         errs: Values.AllErrors[M, S],
         attrErrors: Errors[M, S, A]
-      ): M[Json[A]] =
+      ): M[Json[A]] = {
     import errs.given
 
-    object reader extends Values.ValueCallback[M[Json[A]]]:
-
+    object reader extends Values.ValueCallback[M[Json[A]]] {
       override def onTrue(): M[Json[A]] =
         for {
           ctx <- attributeFactory.start(stream)
           _ <- Literals.readTrue(stream)
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.True(attr)
-      end onTrue
 
 
       override def onFalse(): M[Json[A]] =
@@ -119,7 +116,6 @@ object Reader:
           _ <- Literals.readFalse(stream)
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.False(attr)
-      end onFalse
 
 
       override def onNull(): M[Json[A]] =
@@ -128,7 +124,6 @@ object Reader:
           _ <- Literals.readNull(stream)
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.Null(attr)
-      end onNull
 
 
       override def onNumber(): M[Json[A]] =
@@ -137,7 +132,6 @@ object Reader:
           repr <- Numbers.readAll(stream)
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.Number(repr, attr)
-      end onNumber
 
 
       override def onString(): M[Json[A]] =
@@ -146,7 +140,6 @@ object Reader:
           value <- Strings.readAll(stream)
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.String(value, attr)
-      end onString
 
 
       override def onArray(): M[Json[A]] =
@@ -160,7 +153,6 @@ object Reader:
             )
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.Array(elements, attr)
-      end onArray
 
 
       override def onObject(): M[Json[A]] =
@@ -176,7 +168,6 @@ object Reader:
               Monad.pure(Map.empty)
           attr <- attributeFactory.end(ctx, stream)
         } yield Json.Object(elems, attr)
-      end onObject
 
 
       /**
@@ -209,19 +200,16 @@ object Reader:
               readObjectElements(stream, agg)
             else
               Monad.pure(agg.toMap)
-            end if
-        } yield
-          res
-      end readObjectElements
+        } yield res
 
 
       /** Reads a value. */
       def readValue(stream: S): M[Json[A]] =
         Values.expectedValue(stream, this)
-    end reader
+    }
 
     Whitespaces.skipAll(stream) flatMap { _ => reader.readValue(stream) }
-  end readOneValue
+  }
 
 
   /**
@@ -245,6 +233,4 @@ object Reader:
       res <- readOneValue(stream, attributeFactory)
       _ <- EndOfFile.expectNoValues(stream)
     } yield res
-  end read
-
-end Reader
+}
