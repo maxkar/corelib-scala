@@ -12,7 +12,7 @@ final case class MediaType(
       category: String,
       subtype: String,
       parameters: Map[String, String],
-    ):
+    ) {
 
   /**
    * Checks if the media type satisfies the selector.
@@ -36,20 +36,20 @@ final case class MediaType(
    */
   def unapply(selector: MediaSelector): Boolean =
     selector.accepts(this)
-end MediaType
+}
 
 
-object MediaType:
+object MediaType {
   /** Creates a new media type .*/
   def apply(
         category: String,
         subtype: String,
         params: (String, String)*
-      ): MediaType =
+      ): MediaType = {
     val effectiveParams =
       params
         .map((k, v) => (k.toLowerCase(), v))
         .toMap
     new MediaType(category, subtype, effectiveParams)
-  end apply
-end MediaType
+  }
+}

@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 
 /** Very basic handler for tests (future resolution). */
-final class FutureHandler[W[_]: Monad: Route: Lift.From[Future]](calculation: Future[String]):
+final class FutureHandler[W[_]: Monad: Route: Lift.From[Future]](calculation: Future[String]) {
 
   /** Handles the request. */
   val handle: W[Response] =
@@ -23,9 +23,6 @@ final class FutureHandler[W[_]: Monad: Route: Lift.From[Future]](calculation: Fu
               resp <- Lift(calculation)
             yield
               Response.text(200)(resp)
-            end for
         }
     }
-end FutureHandler
-
-
+}

@@ -5,7 +5,7 @@ package http.headers
  * Handler of some specific header that could be represented by a "native" scala type.
  * The header (instances) define specific conversion logic.
  */
-trait Header[T]:
+trait Header[T] {
   /** Name of the header in the protocol. */
   val name: String
 
@@ -30,4 +30,4 @@ trait Header[T]:
    */
   final def -->(value: T): (String, String) =
     name -> encodeToString(value)
-end Header
+}

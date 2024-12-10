@@ -7,20 +7,20 @@ import http.headers.ValueWriter
 import http.headers.HeaderFormatException
 
 /** Content type header implementation. */
-object ContentType extends Header[MediaType]:
+object ContentType extends Header[MediaType] {
   override val name: String = "Content-Type"
 
-  override def encodeToString(value: MediaType): String =
+  override def encodeToString(value: MediaType): String = {
     val sb = new StringBuilder()
     sb.append(value.category)
     sb.append('/')
     sb.append(value.subtype)
     ValueWriter.writeParameters(value.parameters, sb)
     sb.toString()
-  end encodeToString
+  }
 
 
-  override def decodeFromString(values: Seq[String]): MediaType =
+  override def decodeFromString(values: Seq[String]): MediaType = {
     if values.isEmpty then
       throw new HeaderFormatException("No Content-Type header was provided")
     if values.length > 1 then
@@ -34,5 +34,5 @@ object ContentType extends Header[MediaType]:
     val params = reader.readParameters()
     reader.expectEof()
     MediaType(category, subtype, params*)
-  end decodeFromString
-end ContentType
+  }
+}

@@ -34,15 +34,15 @@ private final class RequestContext[Qos](
     )
 
 
-private[qos] object RequestContext:
+private[qos] object RequestContext {
   /** Ordering for context based on the Qos ordering. */
-  given requestOrdering[Qos](using qorder: Ordering[Qos]): Ordering[RequestContext[Qos]] with
-    override def compare(x: RequestContext[Qos], y: RequestContext[Qos]): Int =
+  given requestOrdering[Qos](using qorder: Ordering[Qos]): Ordering[RequestContext[Qos]] with {
+    override def compare(x: RequestContext[Qos], y: RequestContext[Qos]): Int = {
       val qvalue = qorder.compare(x.qos, y.qos)
       if qvalue != 0 then qvalue
       else if x.serial < y.serial then -1
       else if x.serial > y.serial then 1
       else 0
-    end compare
-  end requestOrdering
-end RequestContext
+    }
+  }
+}

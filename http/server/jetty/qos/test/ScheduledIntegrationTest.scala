@@ -15,7 +15,7 @@ import scala.collection.mutable.ArrayBuffer
 
 
 /** Test for scheduled integration. */
-final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite {
   import ScheduledIntegrationTest.*
 
 
@@ -26,12 +26,12 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
         knownMethods = Route.defaultMethods,
         defaultQos = 0,
         threadFactory = new ThreadFactory {
-          override def newThread(x: Runnable): Thread =
+          override def newThread(x: Runnable): Thread = {
             val t = new Thread(x)
             t.setName("Handler thread")
             t.setDaemon(true)
             t
-          end newThread
+          }
         },
         workThreads = 1,
         sensor = Sensor.PrintStack,
@@ -39,7 +39,7 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
 
     val requestQueue = new ArrayBuffer[Req[?]]()
 
-    given Scheduled[Op, Int] with
+    given Scheduled[Op, Int] with {
       override def apply[T](
             operation: Op[T],
             qos: Int,
@@ -50,7 +50,7 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
         requestQueue synchronized {
           requestQueue += Req(operation, qos, onSuccess)
         }
-    end given
+    }
 
     import module.given
     val handler = new DeferredQosHandler(
@@ -71,11 +71,12 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
     val threads =
       Seq.tabulate(4) { idx =>
         val t = new Thread(new Runnable() {
-          override def run(): Unit =
+          override def run(): Unit = {
             val res = query(idx)
             lock synchronized {
               buf += ((idx, res))
             }
+          }
         })
         t.start()
         t
@@ -115,7 +116,7 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Replies to the element at the given position. */
-  private def reply(queue: Iterable[Req[?]], serial: Int, resp: Int): Unit =
+  private def reply(queue: Iterable[Req[?]], serial: Int, resp: Int): Unit = {
     val elem = queue.find { e => e.qos == serial }.get
 
     elem match {
@@ -123,11 +124,11 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
         assert(v === serial)
         cb(resp)
     }
-  end reply
+  }
 
 
   /** Runs the query to the server. */
-  private def query(id: Int): String =
+  private def query(id: Int): String = {
     val url = new java.net.URI("http://localhost:8080/api").toURL()
     val conn = url.openConnection().asInstanceOf[java.net.HttpURLConnection]
     conn.setDoOutput(false)
@@ -135,24 +136,26 @@ final class ScheduledIntegrationTest extends org.scalatest.funsuite.AnyFunSuite:
     conn.addRequestProperty("X-Id", id.toString)
     conn.connect()
 
-    try
+    try {
       val is = conn.getInputStream()
-      try
+      try {
         val ret = new String(is.readAllBytes(), "UTF-8")
         ret
-      finally
+      } finally {
         is.close()
-    finally
+      }
+    } finally {
       conn.disconnect()
-  end query
-end ScheduledIntegrationTest
+    }
+  }
+}
 
 
-object ScheduledIntegrationTest:
+object ScheduledIntegrationTest {
   /** Just some value for doing schedule integration. */
   private abstract sealed class Op[T]
 
   private case class Wrap(x: Int) extends Op[Int]
 
   private case class Req[T](op: Op[T], qos: Int, cb: T => Unit)
-end ScheduledIntegrationTest
+}

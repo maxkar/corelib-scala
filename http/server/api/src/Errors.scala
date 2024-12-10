@@ -7,7 +7,7 @@ import java.nio.charset.Charset
 import scala.language.implicitConversions
 
 /** Simple encoders for server-side errors. */
-trait Errors:
+trait Errors {
   /**
    * Encodes "path not found" error.
    * @param fullPath full request path (but only path) that was received.
@@ -59,16 +59,16 @@ trait Errors:
    * @param ref unique reference that could be used to look-up error details on the server.
    */
   def internalError(ref: String): Response
-end Errors
+}
 
 
-object Errors:
+object Errors {
   /** Hexadecimal characters. */
   private val hexChars = "0123456789ABCDEF"
 
 
   /** Minimal errors - just set the code but no explanation behind it. */
-  object Minimal extends Errors:
+  object Minimal extends Errors {
     override def pathNotFound(fullPath: List[String], unconsumed: List[String]): Response =
       Response(404)()
 
@@ -87,12 +87,11 @@ object Errors:
     override def byteLengthExceeded(length: Long): Response = Response(413)()
 
     override def internalError(ref: String): Response = Response(500)()
-
-  end Minimal
+  }
 
 
   /** Simple text errors - just provide a text message and nothing else. */
-  object SimpleText extends Errors:
+  object SimpleText extends Errors {
     override def pathNotFound(fullPath: List[String], unconsumed: List[String]): Response =
       Response.text(404)("The requested path was not found on this server")
 
@@ -118,5 +117,5 @@ object Errors:
       Response.text(413, "Max-Byte-Length" -> length.toString())(
         s"Request size exceedes the maximum allowed size of ${length} bytes"
       )
-  end SimpleText
-end Errors
+  }
+}

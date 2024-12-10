@@ -13,7 +13,7 @@ import http.server.api.ResourceCleaner
 private final class ProcessingImpl[Qos](
       routine: Coroutine[HQ.Suspension[Qos]]
     )
-    extends Processing[HQ.Step[Qos]]:
+    extends Processing[HQ.Step[Qos]] {
 
   override def abort[T](resp: Response): HQ.Step[Qos][T] =
     routine.suspend(Operation.Abort(resp))
@@ -26,25 +26,25 @@ private final class ProcessingImpl[Qos](
   override def setCookie(cookie: Cookie): HQ.Step[Qos][Unit] =
     routine.suspend(Effects.AddCookie(cookie))
 
-  override def cleanup(cleaner: => Unit): HQ.Step[Qos][ResourceCleaner[HQ.Step[Qos]]] =
+  override def cleanup(cleaner: => Unit): HQ.Step[Qos][ResourceCleaner[HQ.Step[Qos]]] = {
     val c = new Cleaner(() => cleaner)
     val ret = new ResourceCleanerImpl(routine.suspend(Effects.InvokeCleaner(c)))
     routine.suspend(Effects.AddCleaner(c, ret))
-  end cleanup
+  }
 
 
-  override def withResource[R](resource: R, cleanup: R => Unit): HQ.Step[Qos][R] =
+  override def withResource[R](resource: R, cleanup: R => Unit): HQ.Step[Qos][R] = {
     val c = new Cleaner(() => cleanup(resource))
     routine.suspend(Effects.AddCleaner(c, resource))
-  end withResource
+  }
 
 
   override def withCleanableResource[R](
         resource: R,
         cleanup: R => Unit,
-      ): HQ.Step[Qos][(R, ResourceCleaner[HQ.Step[Qos]])] =
+      ): HQ.Step[Qos][(R, ResourceCleaner[HQ.Step[Qos]])] = {
     val c = new Cleaner(() => cleanup(resource))
     val ret = new ResourceCleanerImpl(routine.suspend(Effects.InvokeCleaner(c)))
     routine.suspend(Effects.AddCleaner(c, (resource, ret)))
-  end withCleanableResource
-end ProcessingImpl
+  }
+}

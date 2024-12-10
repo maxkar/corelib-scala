@@ -35,7 +35,7 @@ final class Module[Qos] private(
       routineExecutor: RoutineExecutor[Qos],
       defaultQos: Qos,
       workThreads: Seq[Thread],
-    ):
+    ) {
 
   /** Suspension - how the execution could be paused. */
   private type Suspension[T] = HQ.Suspension[Qos][T]
@@ -66,20 +66,20 @@ final class Module[Qos] private(
    * Implementation of the lift functionality for any type that
    * completes "natually" (like Future).
    */
-  given liftCompletable[S[_]](using c: boundary.Completable[S]): Lift[S, Step] with
+  given liftCompletable[S[_]](using c: boundary.Completable[S]): Lift[S, Step] with {
     override def apply[T](base: S[T]): Step[T] =
       routine.suspend(Operation.RunCompletable(base, c))
-  end liftCompletable
+  }
 
 
   /**
    * Implementation of the lift functionality for any type that could be
    * scheduled according to QoS definition.
    */
-  given liftScheduled[S[_]](using s: boundary.Scheduled[S, Qos]): Lift[S, Step] with
+  given liftScheduled[S[_]](using s: boundary.Scheduled[S, Qos]): Lift[S, Step] with {
     override def apply[T](base: S[T]): Step[T] =
       routine.suspend(Operation.RunScheduled(base, s))
-  end liftScheduled
+  }
 
 
   /** Cached instance of "Get Quality of Service". */
@@ -97,7 +97,7 @@ final class Module[Qos] private(
 
 
   /** Stops the module and awaits the termination. */
-  def stop(): Unit =
+  def stop(): Unit = {
     if !control.requestTermination() then return
     control.awaitTermination()
 
@@ -107,7 +107,7 @@ final class Module[Qos] private(
         new RequestContext[Qos](null, -1, defaultQos, Nil, Nil, null)
       )
     workThreads.foreach(_.join())
-  end stop
+  }
 
 
   /**
@@ -144,7 +144,7 @@ final class Module[Qos] private(
    * @param path request path that should be used for routing.
    * @param proc request handling routine.
    */
-  private[qos] def processRequest(req: Request, path: List[String], proc: Step[Response]): Unit =
+  private[qos] def processRequest(req: Request, path: List[String], proc: Step[Response]): Unit = {
     req.setHandled(true)
 
     if !control.shouldProcessRequest() then
@@ -162,21 +162,20 @@ final class Module[Qos] private(
         nextSteps = proc
       )
     routineExecutor.continueRequest(ctx)
-  end processRequest
+  }
 
 
   /**
    * Aborts the processing without invoking all the machinery (i.e. synchronously).
    */
-  private inline def abortFast(req: Request): Unit =
+  private inline def abortFast(req: Request): Unit = {
     val resp = req.getResponse()
     resp.setStatus(503)
-  end abortFast
+  }
+}
 
-end Module
 
-
-object Module:
+object Module {
   /**
    * Creates a new module with Quality-of-service support.
    * @tparam Qos user-driven way to describe quality of service.
@@ -199,7 +198,7 @@ object Module:
         workThreads: Int,
         maxRequestsInFlight: Int = 10000,
         sensor: Sensor,
-      ): Module[Qos] =
+      ): Module[Qos] = {
 
     val routine = new Coroutine[HQ.Suspension[Qos]]
     implicit val processing = ProcessingImpl(routine)
@@ -229,5 +228,5 @@ object Module:
       defaultQos,
       threads
     )
-  end apply
-end Module
+  }
+}

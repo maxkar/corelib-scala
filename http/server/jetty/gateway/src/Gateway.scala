@@ -15,7 +15,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool
 /**
  * The main entry point into launching jetty handlers.
  */
-object Gateway:
+object Gateway {
 
   private def gzippableMethods = Set("GET", "POST", "PATCH")
 
@@ -50,13 +50,13 @@ object Gateway:
    *
    * @param hosts hosts to run on the single jetty server.
    */
-  def create(hosts: VirtualHost*): JettyServer =
+  def create(hosts: VirtualHost*): JettyServer = {
     val contextHandlers =
       for
         vhost <- hosts
         vhostSpec = Array("@port" + vhost.port)
         (path, handler) <- vhost.handlers
-      yield
+      yield {
         val ctxHandler = new ContextHandler(path)
         ctxHandler.setHandler(handler)
         ctxHandler.setVirtualHosts(vhostSpec)
@@ -64,7 +64,7 @@ object Gateway:
         ctxHandler.setMaxFormContentSize(16 * 1024 * 1024)
         ctxHandler.setMaxFormKeys(511)
         ctxHandler
-      end for
+      }
 
     val ports =
       hosts.view
@@ -83,19 +83,19 @@ object Gateway:
     val connectors = ports.iterator.map(createConnector(server)).toArray
     server.setConnectors(connectors)
     server
-  end create
+  }
 
 
   /** Runs the server (blocks on it). */
-  def run(vhosts: VirtualHost*): Unit =
+  def run(vhosts: VirtualHost*): Unit = {
     val server = create(vhosts*)
     server.start()
     server.join()
-  end run
+  }
 
 
   /** Creates HTTP connector for a server running on the given port. */
-  private def createConnector(server: JettyServer)(port: Int): Connector =
+  private def createConnector(server: JettyServer)(port: Int): Connector = {
     val conf = new HttpConfiguration()
     conf.setPersistentConnectionsEnabled(true)
     conf.setRelativeRedirectAllowed(true)
@@ -108,5 +108,5 @@ object Gateway:
     conn.setName("port" + port)
     conn.setPort(port)
     conn
-  end createConnector
-end Gateway
+  }
+}

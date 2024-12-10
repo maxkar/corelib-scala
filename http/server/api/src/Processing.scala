@@ -3,7 +3,7 @@ package http.server.api
 
 
 /** Request-processing functionality apart the one included in Route. */
-trait Processing[M[_]]:
+trait Processing[M[_]] {
   /**
    * Aborts processing of the current request, sends the `response` to the
    * client and releases all the resources associated with the current process.
@@ -83,9 +83,9 @@ trait Processing[M[_]]:
    * in this case despite the fact the `cleaner.clean()` line is never reached.
    */
   def withCleanableResource[R](resource: R, cleanup: R => Unit): M[(R, ResourceCleaner[M])]
-end Processing
+}
 
-object Processing:
+object Processing {
   /**
    * Aborts processing of the current request, sends the `response` to the
    * client and releases all the resources associated with the current process.
@@ -218,4 +218,4 @@ object Processing:
         p: Processing[M]
       ): M[(R, ResourceCleaner[M])] =
     p.withCleanableResource(resource, cleanup)
-end Processing
+}

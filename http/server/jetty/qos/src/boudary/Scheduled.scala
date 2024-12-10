@@ -8,7 +8,7 @@ package http.server.jetty.qos.boundary
  * @tparam M type (constructor) used to encode the execution.
  * @tparam Qos type used to describe "quality of service" (or priority) level.
  */
-trait Scheduled[M[_], Qos]:
+trait Scheduled[M[_], Qos] {
   /**
    * Schedules the given operation to be executed at some stage later.
    *
@@ -35,4 +35,4 @@ trait Scheduled[M[_], Qos]:
         onSuccess: T => Unit,
         onFailure: Throwable => Unit
       ): Unit
-end Scheduled
+}

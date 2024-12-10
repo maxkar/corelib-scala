@@ -4,7 +4,7 @@ package http.server.jetty.qos
 import fun.coroutine.Coroutine
 
 /** Qos-related definition and type shortcuts. */
-private object HQ:
+private object HQ {
   /** Suspension constructor - how to describe external routine to be called. */
   type Suspension[Qos] = [T] =>> Operation[Qos, T]
 
@@ -13,4 +13,4 @@ private object HQ:
 
   /** Result of executing one step. */
   type StepResult[Qos] = [T] =>> Coroutine.RunResult[Suspension[Qos], T]
-end HQ
+}

@@ -8,7 +8,7 @@ import http.headers.HeaderFormatException
  * Most tests for headers are "property-based" - they check that the given
  * media types are accepted and not the specific structures are built.
  */
-final class AcceptTest extends org.scalatest.funsuite.AnyFunSuite:
+final class AcceptTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Expectation - what to check. */
   private final class Expectation(
         val weight: Int,
@@ -238,7 +238,7 @@ final class AcceptTest extends org.scalatest.funsuite.AnyFunSuite:
 
       for
         (selector, expectation) <- results.zip(expectations)
-      do
+      do {
         assert(selector.weight === expectation.weight, "Weight is not correct")
         assert(selector.category === expectation.category, "Category is not correct")
         assert(selector.subtype === expectation.subtype, "Subtype is not correct")
@@ -247,6 +247,7 @@ final class AcceptTest extends org.scalatest.funsuite.AnyFunSuite:
           assert(selector.accepts(acc), "Required media is not accepted")
         for rej <- expectation.rejects do
           assert(!selector.accepts(rej), "Media is not rejected")
+      }
     }
 
 
@@ -257,5 +258,4 @@ final class AcceptTest extends org.scalatest.funsuite.AnyFunSuite:
         Accept.decodeFromString(Seq(str))
       }
     }
-
-end AcceptTest
+}

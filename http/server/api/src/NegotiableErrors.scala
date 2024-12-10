@@ -18,7 +18,7 @@ import java.nio.charset.Charset
  *   handler that could generate appropriate message.
  * @param default hanlder to use when no content-based error handler is found.
  */
-final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Errors):
+final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Errors) {
   /**
    * Encodes "path not found" error.
    * @param accept accept specification(s) describing client's format preferences.
@@ -121,33 +121,32 @@ final class NegotiableErrors(lookup: Iterable[(MediaType, Errors)], default: Err
    * lookup entry that is accepted. If there is no such entry or `accept` headers
    * are not valid (i.e. mailformed) then default error handler is returned.
    */
-  private def negotiate(accept: Seq[String]): Errors =
+  private def negotiate(accept: Seq[String]): Errors = {
     val baseClauses =
-      try
+      try {
         Accept.decodeFromString(accept)
-      catch
+      } catch {
         /* We are already in error handler and should not cause new errors,
          * fallback to the default instead.
          */
         case _: HeaderFormatException => return default
-      end try
+      }
 
     val clauses = baseClauses.sorted
 
     val ci = clauses.iterator
 
-    while ci.hasNext do
+    while ci.hasNext do {
       val clause = ci.next()
 
       val li = lookup.iterator
-      while li.hasNext do
+      while li.hasNext do {
         val item = li.next()
         if clause.accepts(item._1) then
           return item._2
-      end while
-    end while
+      }
+    }
 
     return default
-  end negotiate
-
-end NegotiableErrors
+  }
+}

@@ -16,9 +16,8 @@ private final class RouteImpl[Qos](
       routine: Coroutine[HQ.Suspension[Qos]],
       processing: Processing[HQ.Step[Qos]],
       override protected val errors: NegotiableErrors,
-
       override protected val knownMethods: Iterable[String],
-    ) extends BaseRoute[HQ.Step[Qos]]:
+    ) extends BaseRoute[HQ.Step[Qos]] {
   /** Just a synonym for making life easier. */
   private type Step[T] = HQ.Step[Qos][T]
 
@@ -45,10 +44,10 @@ private final class RouteImpl[Qos](
 
   override def continue[T](unconsumedPath: List[String], handler: Step[T]): Step[T] =
     routine.suspend(new Operation.ComplexContextOperation[Qos, T] {
-      override def perform(context: RequestContext[Qos]): Step[T] =
+      override def perform(context: RequestContext[Qos]): Step[T] = {
         context.effectivePath = unconsumedPath
         handler
-      end perform
+      }
     })
 
   override def getMethod(): Step[String] = getMethodInstance
@@ -68,4 +67,4 @@ private final class RouteImpl[Qos](
 
   override def getBodyAsBytes(limit: Long): Step[Array[Byte]] =
     routine.suspend(Operation.ReadInputBytes(limit))
-end RouteImpl
+}

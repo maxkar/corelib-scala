@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * @param limit maximal number of simultaneous requests in flight.
  */
-private final class RequestControl(limit: Int):
+private final class RequestControl(limit: Int) {
   /**
    * Watermark value - this value is "added" to the number of running
    * requests and should bring the overall "active count" to the negative value.
@@ -49,27 +49,28 @@ private final class RequestControl(limit: Int):
    * @return `true` if the request should be processed as usual and `false` if
    *   processing should be aborted as soon as possible.
    */
-  def shouldProcessRequest(): Boolean =
+  def shouldProcessRequest(): Boolean = {
     /* Negative value means that stop was requested - don't process the request!. */
     if requestsInFlight.get() < 0 then
       return false
 
     val newCount = requestsInFlight.incrementAndGet()
     /* Re-check value to avoid race condition(s). Also check limit on the number of requests. */
-    if newCount <= 0 || newCount > limit then
+    if newCount <= 0 || newCount > limit then {
       requestsInFlight.decrementAndGet()
       return false
+    }
 
 
     return true
-  end shouldProcessRequest
+  }
 
 
   /**
    * Notifies this handler that request was processed. This is mostly
    * used for handling graceful shutdown.
    */
-  def requestComplete(): Unit =
+  def requestComplete(): Unit = {
     /* Unregister request. Also check if we are terminating AND
      * it was the last running request. If we are not terminating or
      * if there are more requests - do nothing. Otherwise we'll notify
@@ -80,7 +81,7 @@ private final class RequestControl(limit: Int):
     terminationLock synchronized {
       terminationLock.notifyAll()
     }
-  end requestComplete
+  }
 
 
   /**
@@ -88,7 +89,7 @@ private final class RequestControl(limit: Int):
    * @return `true` if the module was active (and the request was registered)
    *   and `false` if the module is terminating (or is already terminated).
    */
-  def requestTermination(): Boolean =
+  def requestTermination(): Boolean = {
     /* If set to true, then we are already stopping!. */
     if !stopping.compareAndSet(false, true) then
       return false
@@ -100,11 +101,11 @@ private final class RequestControl(limit: Int):
      */
     requestsInFlight.addAndGet(WATERMARK)
     return true
-  end requestTermination
+  }
 
 
   /** Awaits until there are no more active requests. */
-  def awaitTermination(): Unit =
+  def awaitTermination(): Unit = {
     if !stopping.get() then
       throw new IllegalStateException("Stop was not requested, could not await termination")
 
@@ -112,20 +113,19 @@ private final class RequestControl(limit: Int):
       while requestsInFlight.get() != WATERMARK do
         terminationLock.wait()
     }
-  end awaitTermination
+  }
 
 
   /** Terminates processing and awaits until the last request is processed. */
-  def terminate(): Unit =
+  def terminate(): Unit = {
     requestTermination()
     awaitTermination()
-  end terminate
+  }
 
 
   /** Returns a number of requests currently in filght. */
-  def getActiveRequestCount(): Int =
+  def getActiveRequestCount(): Int = {
     val v = requestsInFlight.get()
     if v >= 0 then v else v - WATERMARK
-  end getActiveRequestCount
-
-end RequestControl
+  }
+}

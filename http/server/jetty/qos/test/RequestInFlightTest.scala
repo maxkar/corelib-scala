@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext
 import scala.collection.mutable.ArrayBuffer
 
 /** Checks the limit on number of requests in flight. */
-final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite:
+final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Request limit works as expected") {
     val module =
       Module[Int](
@@ -30,12 +30,12 @@ final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite:
         knownMethods = Route.defaultMethods,
         defaultQos = 0,
         threadFactory = new ThreadFactory {
-          override def newThread(x: Runnable): Thread =
+          override def newThread(x: Runnable): Thread = {
             val t = new Thread(x)
             t.setName("Handler thread")
             t.setDaemon(true)
             t
-          end newThread
+          }
         },
         workThreads = 1,
         maxRequestsInFlight = 2,
@@ -46,13 +46,13 @@ final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite:
     val futureEc = Executors.newSingleThreadExecutor()
     given ec: ExecutionContext = ExecutionContext.fromExecutor(futureEc)
 
-    given Completable[Future] with
+    given Completable[Future] with {
       override def onComplete[T](computation: Future[T], onSuccess: T => Unit, onFailure: Throwable => Unit): Unit =
         computation.onComplete {
           case Success(value) => onSuccess(value)
           case Failure(exception) => onFailure(exception)
         }
-    end given
+    }
 
     val op = Promise[String]()
 
@@ -72,11 +72,12 @@ final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite:
     val threads =
       Seq.tabulate(2) { idx =>
         val t = new Thread(new Runnable() {
-          override def run(): Unit =
+          override def run(): Unit = {
             val res = query()
             lock synchronized {
               buf += res
             }
+          }
         })
         t.start()
         t
@@ -105,22 +106,24 @@ final class RequestInFlightTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Runs the query to the server. */
-  private def query(): (Int, String) =
+  private def query(): (Int, String) = {
     val url = new java.net.URI("http://localhost:8080/api").toURL()
     val conn = url.openConnection().asInstanceOf[java.net.HttpURLConnection]
     conn.setDoOutput(false)
     conn.setDoInput(true)
     conn.connect()
 
-    try
+    try {
       val is = conn.getInputStream()
-      try
+      try {
         val code = conn.getResponseCode()
         val ret = new String(is.readAllBytes(), "UTF-8")
         (code, ret)
-      finally
+      } finally {
         is.close()
-    finally
+      }
+    } finally {
       conn.disconnect()
-  end query
-end RequestInFlightTest
+    }
+  }
+}

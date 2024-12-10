@@ -34,7 +34,7 @@ import http.server.api.NegotiableErrors
  * @tparam M execution monad.
  */
 abstract class BaseRoute[M[_]: Monad]
-    extends Route[M]:
+    extends Route[M] {
 
   /** Name of the header used for content negotiation. */
   protected final val contentNegotiationHeader = "Accept"
@@ -90,15 +90,15 @@ abstract class BaseRoute[M[_]: Monad]
 
   override def getHeader[T](header: Header[T]): M[T] =
     getHeaders(header.name) flatMap { values =>
-      try
+      try {
         Monad.pure(header.decodeFromString(values))
-      catch
+      } catch {
         case HeaderFormatException(msg) =>
           if values.isEmpty then
             raiseMissingHeader(header.name)
           else
             raiseInvalidHeader(header.name, values, msg)
-      end try
+      }
     }
 
 
@@ -115,13 +115,12 @@ abstract class BaseRoute[M[_]: Monad]
       if values.isEmpty then
         Monad.pure(defaultValue)
       else
-        try
+        try {
           Monad.pure(header.decodeFromString(values))
-        catch
+        } catch {
           case HeaderFormatException(msg) =>
             raiseInvalidHeader(header.name, values, msg)
-        end try
-      end if
+        }
     }
 
 
@@ -138,13 +137,12 @@ abstract class BaseRoute[M[_]: Monad]
       if values.isEmpty then
         Monad.pure(None)
       else
-        try
+        try {
           Monad.pure(Some(header.decodeFromString(values)))
-        catch
+        } catch {
           case HeaderFormatException(msg) =>
             raiseInvalidHeader(header.name, values, msg)
-        end try
-      end if
+        }
     }
 
 
@@ -181,10 +179,10 @@ abstract class BaseRoute[M[_]: Monad]
         default: => M[T],
       ): M[T] =
     getHeader(header) flatMap { headerValues =>
-      headerValues.sorted.find(fn.isDefinedAt) match
+      headerValues.sorted.find(fn.isDefinedAt) match {
         case Some(v) => fn(v)
         case None => default
-      end match
+      }
     }
 
 
@@ -195,10 +193,10 @@ abstract class BaseRoute[M[_]: Monad]
         default: => M[T],
       ): M[T] =
     getHeader(header) flatMap { headerValues =>
-      headerValues.sortBy(weight).find(fn.isDefinedAt) match
+      headerValues.sortBy(weight).find(fn.isDefinedAt) match {
         case Some(v) => fn(v)
         case None => default
-      end match
+      }
     }
 
 
@@ -212,7 +210,6 @@ abstract class BaseRoute[M[_]: Monad]
       fn(unconsumedPath)
     else
       raisePathNotFound(fullPath, unconsumedPath)
-  end doRoute
 
 
   /** Raises the "path not found" error. */
@@ -259,4 +256,4 @@ abstract class BaseRoute[M[_]: Monad]
     getHeaders(contentNegotiationHeader) flatMap { acc =>
       abort(errors.byteLengthExceeded(acc, length))
     }
-end BaseRoute
+}

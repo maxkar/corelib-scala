@@ -18,7 +18,7 @@ import java.nio.charset.Charset
  *
  * @tparam M type constructor of the execution monad.
  */
-trait Route[M[_]]:
+trait Route[M[_]] {
   /**
    * Routes/handles the request based on the (unconsumed) request path. The
    * implementation should abort the request (usually by returning "404 Not Found").
@@ -204,10 +204,10 @@ trait Route[M[_]]:
         fn: PartialFunction[H, M[T]],
         default: => M[T])
       : M[T]
-end Route
+}
 
 
-object Route:
+object Route {
   /**
    * Default methods that are commonly used by servers and are supported by
    * many http client libraries.
@@ -548,4 +548,4 @@ object Route:
         rt: Route[M],
       ) : M[T] =
     rt.negotiateBy(header, weight, fn, default)
-end Route
+}

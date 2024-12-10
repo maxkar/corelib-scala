@@ -12,7 +12,7 @@ import http.server.api.Response
 final class DeferredQosHandler[B[_], W[_]: Monad: Route: Lift.From[B]](
       setQos: Int => W[Unit],
       asyncWait: Int => B[Int],
-    ):
+    ) {
 
   /** Handles the request. */
   val handle: W[Response] =
@@ -27,7 +27,6 @@ final class DeferredQosHandler[B[_], W[_]: Monad: Route: Lift.From[B]](
               rv <- Lift(asyncWait(iid))
             yield
               Response.text(200)(s"${id}:${rv}")
-            end for
         }
     }
-end DeferredQosHandler
+}

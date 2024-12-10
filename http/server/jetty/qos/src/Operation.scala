@@ -12,7 +12,7 @@ import http.server.api.Response
 private abstract sealed class Operation[Qos, T]
 
 
-private object Operation:
+private object Operation {
   /**
    * The operation that has to be aborted (i.e. finish processing) with
    * the given response.
@@ -56,20 +56,20 @@ private object Operation:
    * An operation that is performed on the given request context and
    * consists of modifying request or retrieving data from it.
    */
-  private[qos] abstract class ContextOperation[Qos, T] extends Operation[Qos, T]:
+  private[qos] abstract class ContextOperation[Qos, T] extends Operation[Qos, T] {
     /** Performs the operation upon the given context. */
     def perform(context: RequestContext[Qos]): T
-  end ContextOperation
+  }
 
 
   /**
    * Complex context operation - yields monad instead of the simple value.
    */
-  private[qos] abstract class ComplexContextOperation[Qos, T] extends Operation[Qos, T]:
+  private[qos] abstract class ComplexContextOperation[Qos, T] extends Operation[Qos, T] {
     /**
      * Performs the operation upon the given context but yields
      * another computation instead of plain value.
      */
     def perform(context: RequestContext[Qos]): Coroutine.Routine[({type M[T] = Operation[Qos, T]})#M, T]
-  end ComplexContextOperation
-end Operation
+  }
+}

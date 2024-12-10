@@ -12,7 +12,7 @@ class Response(
     )
 
 
-object Response:
+object Response {
 
   /** Creates a new response with the given status, header and content. */
   def apply(
@@ -41,9 +41,9 @@ object Response:
         headers: (String, String)*
       )(
         content: String
-      ) :Response =
+      ) :Response = {
     var hdr = Headers(headers*)
     hdr.addIfNotSet("Content-Type" -> "text/plain;charset=UTF-8")
     new Response(status, hdr, content.getBytes("UTF-8"))
-  end text
-end Response
+  }
+}

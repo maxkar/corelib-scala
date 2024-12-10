@@ -11,7 +11,7 @@ import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
 
-object Handler:
+object Handler {
   /**
    * Creates a new jetty handler for the given modul. The handler will
    * execute the request on the module's thread pool and according module's QoS
@@ -24,11 +24,10 @@ object Handler:
             baseRequest: Request,
             request: HttpServletRequest,
             response: HttpServletResponse,
-          ): Unit =
+          ): Unit = {
         var path = target.split("/").toList
         if path.headOption.contains("") then path = path.tail
         module.processRequest(baseRequest, path, handler)
-      end handle
+      }
     }
-  end apply
-end Handler
+}

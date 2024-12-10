@@ -2,7 +2,7 @@ package io.github.maxkar
 package http.headers
 
 /** Test for the header value writer. */
-final class ValueWriterTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ValueWriterTest extends org.scalatest.funsuite.AnyFunSuite {
   test("String writing") {
     check("\"hello\""){ ValueWriter.writeString("hello", _) }
     check("\"\""){ ValueWriter.writeString("", _) }
@@ -36,4 +36,4 @@ final class ValueWriterTest extends org.scalatest.funsuite.AnyFunSuite:
       create(buf)
       assert(expected === buf.toString())
     }
-end ValueWriterTest
+}

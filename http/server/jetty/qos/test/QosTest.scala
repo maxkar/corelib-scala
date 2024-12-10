@@ -12,7 +12,7 @@ import java.util.concurrent.ThreadFactory
 
 
 /** Basic test for the QoS support. */
-final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
+final class QosTest extends org.scalatest.funsuite.AnyFunSuite {
 
   test("Superuser request's get priority") {
     val activeThreads = new java.util.concurrent.atomic.AtomicInteger()
@@ -23,20 +23,20 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
         knownMethods = Route.defaultMethods,
         defaultQos = 0,
         threadFactory = new ThreadFactory {
-          override def newThread(x: Runnable): Thread =
+          override def newThread(x: Runnable): Thread = {
             val t = new Thread(new Runnable() {
-              override def run(): Unit =
+              override def run(): Unit = {
                 activeThreads.incrementAndGet()
                 try
                   x.run()
                 finally
                   activeThreads.decrementAndGet()
-              end run
+              }
             })
             t.setName("Handler thread")
             t.setDaemon(true)
             t
-          end newThread
+          }
         },
         workThreads = 1,
         sensor = Sensor.PrintStack,
@@ -59,20 +59,20 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
     val threads =
       for
         (x, idx) <- Seq(false, false, false, true).zipWithIndex
-      yield
+      yield {
         val t = new Thread() {
-          override def run(): Unit =
+          override def run(): Unit = {
             val ret = query(x)
             assert(ret === "Hello, world!")
             lock synchronized {
               buf += ((x, idx))
             }
-          end run
+          }
         }
         t.start()
         Thread.sleep(100)
         t
-      end for
+      }
 
     Thread.sleep(200)
     assert(module.activeRequestCount === 4)
@@ -104,7 +104,7 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Runs the query to the server. */
-  private def query(admin: Boolean): String =
+  private def query(admin: Boolean): String = {
     val url = new java.net.URI("http://localhost:8080/api").toURL()
     val conn = url.openConnection().asInstanceOf[java.net.HttpURLConnection]
     conn.setDoOutput(false)
@@ -112,14 +112,16 @@ final class QosTest extends org.scalatest.funsuite.AnyFunSuite:
     conn.addRequestProperty("X-Admin", if admin then "true" else "false")
     conn.connect()
 
-    try
+    try {
       val is = conn.getInputStream()
-      try
+      try {
         val ret = new String(is.readAllBytes(), "UTF-8")
         ret
-      finally
+      } finally {
         is.close()
-    finally
+      }
+    } finally {
       conn.disconnect()
-  end query
-end QosTest
+    }
+  }
+}

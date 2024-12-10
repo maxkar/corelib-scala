@@ -7,7 +7,7 @@ package http.server.jetty.qos.boundary
  *
  * @tparam M type constructor used to represent execution/computation.
  */
-trait Completable[M[_]]:
+trait Completable[M[_]] {
   /**
    * Registers callbacks and executes them when value of the `base` is available.
    *
@@ -25,4 +25,4 @@ trait Completable[M[_]]:
         onSuccess: T => Unit,
         onFailure: Throwable => Unit,
       ): Unit
-end Completable
+}

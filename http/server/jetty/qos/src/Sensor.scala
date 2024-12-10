@@ -2,7 +2,7 @@ package io.github.maxkar
 package http.server.jetty.qos
 
 /** Sensor for the QoS module. */
-trait Sensor:
+trait Sensor {
   /**
    * Registers internal error and returns user-visible code that
    * @param requestId server-specific ID of the request.
@@ -29,29 +29,30 @@ trait Sensor:
    * to a specific request.
    */
   def genericError(t: Throwable): Unit
-end Sensor
+}
 
 
-object Sensor:
+object Sensor {
   /** No-operation sensor. Not recommended. */
-  object Noop extends Sensor:
+  object Noop extends Sensor {
     override def internalError(requestId: Long, error: Throwable): String =
       "1GN0RED"
 
     override def genericError(t: Throwable): Unit = ()
-  end Noop
+  }
 
   /**
    * Sensor that just prints the exception. This is somewhat better
    * that the `Noop` but still can't link user-visible codes to
    * the error description.
    */
-  object PrintStack extends Sensor:
-    override def internalError(requestId: Long, error: Throwable): String =
+  object PrintStack extends Sensor {
+    override def internalError(requestId: Long, error: Throwable): String = {
       error.printStackTrace()
       "REG1STERD-L066ED"
+    }
 
     override def genericError(t: Throwable): Unit =
       t.printStackTrace()
-  end PrintStack
-end Sensor
+  }
+}

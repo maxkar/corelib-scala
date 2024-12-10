@@ -7,7 +7,7 @@ import http.server.api.Response
 
 
 /** Very basic handler for tests. */
-final class SampleHandler[W[_]: Monad: Route](setQos: Boolean => W[Unit]):
+final class SampleHandler[W[_]: Monad: Route](setQos: Boolean => W[Unit]) {
 
   /** Handles the request. */
   val handle: W[Response] =
@@ -19,11 +19,11 @@ final class SampleHandler[W[_]: Monad: Route](setQos: Boolean => W[Unit]):
               maybeSuperHeader <- Route.getOptHeader("X-Admin")
               isAdmin = maybeSuperHeader == Some("true")
               _ <- setQos(isAdmin)
-            yield
+            yield {
               // SLOOOW process
               Thread.sleep(2000)
               Response.text(200)("Hello, world!")
-            end for
+            }
         }
     }
-end SampleHandler
+}

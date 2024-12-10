@@ -37,7 +37,7 @@ private final class RoutineExecutor[Qos](
       )(
         using monadInstance: Monad[HQ.Step[Qos]],
         processingInstance: Processing[HQ.Step[Qos]]
-      ):
+      ) {
 
 
   /**
@@ -51,21 +51,22 @@ private final class RoutineExecutor[Qos](
    * with `null` element.
    */
   def runAll(): Unit =
-    while true do
-      try
+    while true do {
+      try {
         val elem = queue.take()
         if elem.baseRequest == null then
           return
-        end if
+
         liveRequests.incrementAndGet()
-        try
+        try {
           runContext(elem)
-        finally
+        } finally {
           liveRequests.decrementAndGet()
-      catch
+        }
+      } catch {
         case e: Throwable => sensor.genericError(e)
-    end while
-  end runAll
+      }
+    }
 
 
   /**
@@ -81,18 +82,20 @@ private final class RoutineExecutor[Qos](
    * @param context context to continue execution for.
    * @param nextSteps steps to perform on the context.
    */
-  def continueRequest(context: RequestContext[Qos], nextSteps: HQ.Step[Qos][Response]): Unit =
+  def continueRequest(context: RequestContext[Qos], nextSteps: HQ.Step[Qos][Response]): Unit = {
     context.nextSteps = nextSteps
     continueRequest(context)
+  }
 
 
   /**
    * Continues the requset where next steps are created by applying a function
    * to a given value (most common continuation from "resultful" calls).
    */
-  def continueRequest[T](context: RequestContext[Qos], value: T, nextSteps: T => HQ.Step[Qos][Response]): Unit =
+  def continueRequest[T](context: RequestContext[Qos], value: T, nextSteps: T => HQ.Step[Qos][Response]): Unit = {
     context.nextSteps = Monad.pure(value) flatMap nextSteps
     continueRequest(context)
+  }
 
 
   /** Returns number of requests being actively processed. */
@@ -106,12 +109,12 @@ private final class RoutineExecutor[Qos](
 
 
   /** Runs the next steps of the processing. */
-  private def runContext(context: RequestContext[Qos]): Unit =
+  private def runContext(context: RequestContext[Qos]): Unit = {
     var md = context.nextSteps
     context.nextSteps = null
-    try
-      while true do
-        routine.run(md) match
+    try {
+      while true do {
+        routine.run(md) match {
           case RunResult.Finished(resp) =>
             OutputOperation(this, context, resp)
             return
@@ -143,11 +146,12 @@ private final class RoutineExecutor[Qos](
             md = cont(x.perform(context))
           case RunResult.Suspended(x: Operation.ComplexContextOperation[Qos, _], cont) =>
             md = monadInstance.bind(x.perform(context), cont)
-        end match
-      end while
-    catch
+        }
+      }
+    } catch {
       case e: Throwable => raiseInternalError(context, e)
-  end runContext
+    }
+  }
 
 
   /**
@@ -201,7 +205,6 @@ private final class RoutineExecutor[Qos](
         errors.byteLengthExceeded(context.baseRequest.getHeaders("Accept").asScala.toSeq, limit)
       )
     )
-  end raiseRequestSizeTooLarge
 
 
   /** Completes input operation for the given request. */
@@ -211,7 +214,6 @@ private final class RoutineExecutor[Qos](
         nextFun: Array[Byte] => HQ.Step[Qos][Response],
       ): Unit =
     continueRequest(context, data, nextFun)
-  end completeInput
 
 
 
@@ -219,22 +221,22 @@ private final class RoutineExecutor[Qos](
    * Raises an internal error and aborts request processing.
    * This may be called from **any** thread.
    */
-  private[qos] def raiseInternalError(context: RequestContext[Qos], e: Throwable): Unit =
+  private[qos] def raiseInternalError(context: RequestContext[Qos], e: Throwable): Unit = {
     /* First, try to generate response.
      * Everything may fail so we are trying to be extra careful. */
     val errResponse =
-      try
+      try {
         val ref = sensor.internalError(context.serial, e)
         errors.internalError(context.baseRequest.getHeaders("Accept").asScala.toSeq, ref)
-      catch
+      } catch {
         case e: Throwable =>
-          try
+          try {
             sensor.invisibleError(context.serial, e)
-          catch
+          } catch {
             case e: Throwable => ()
-          end try
+          }
           Response(500)()
-      end try
+      }
 
     /* Now, complete the request. Depending on where it happened it may be either
      * Jetty thread (input routine) or Internal Thread (raised as part of the
@@ -242,16 +244,16 @@ private final class RoutineExecutor[Qos](
      * it happened.
      */
     OutputOperation(this, context, errResponse)
-  end raiseInternalError
+  }
 
 
   /** Handles an issue with the context output. */
   private[qos] def outputError(context: RequestContext[Qos], e: Throwable): Unit =
-    try
+    try {
       sensor.invisibleError(context.serial, e)
-    finally
+    } finally {
       finish(context)
-  end outputError
+    }
 
 
   /**
@@ -259,47 +261,47 @@ private final class RoutineExecutor[Qos](
    * complete and runs the cleaners associated with the request.
    */
   private[qos] def finish(context: RequestContext[Qos]): Unit =
-    try
+    try {
       context.baseRequest.getAsyncContext().complete()
-    finally
+    } finally {
       cleanup(context)
-  end finish
+    }
 
 
   /**
    * Cleans-up the context by running all the registered cleaners.
    */
   private def cleanup(context: RequestContext[Qos]): Unit =
-    try
+    try {
       runCleaners(context)
-    finally
+    } finally {
       control.requestComplete()
-  end cleanup
+    }
 
 
   /** Runs cleaners on the context. */
-  private def runCleaners(context: RequestContext[Qos]): Unit =
+  private def runCleaners(context: RequestContext[Qos]): Unit = {
     var cleaner = context.cleaner
     context.cleaner = null
-    while cleaner != null do
+    while cleaner != null do {
       val nextCleaner = cleaner.next
-      try
+      try {
         cleaner.drop()
         cleaner.performCleanup()
-      catch
+      } catch {
         case e: Throwable =>
-          try
+          try {
             sensor.invisibleError(context.serial, e)
-          catch
+          } catch {
             case e: Throwable =>
               /* Explicitly ignore. We don't want to cause resource leak if
                * there are some sensor issues. Or at least we should make a best
                * effort to cleanup those resources.
                */
               ()
-          end try
-      end try
+          }
+      }
       cleaner = nextCleaner
-    end while
-  end runCleaners
-end RoutineExecutor
+    }
+  }
+}

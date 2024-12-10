@@ -2,7 +2,7 @@ package io.github.maxkar
 package http.headers
 
 /** Headers - collection of the "header" elements. */
-final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
+final class Headers(data: Map[String, (String, Seq[String])] = Map.empty) {
   /**
    * Creates an iterator over entries in the headers. The iterator returns
    * header names (usually the first one if multiple headers were set) and
@@ -17,7 +17,7 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
    * Appends new values and returns new headers with those extra values. Old values
    * are preserved.
    */
-  def append(values: (String, String)*): Headers =
+  def append(values: (String, String)*): Headers = {
     var tmp = data
     for
       (key, value) <- values
@@ -29,7 +29,7 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
         case Some((outKey, data)) =>
           tmp = tmp + (lowerKey -> (outKey, data :+ value))
     new Headers(tmp)
-  end append
+  }
 
 
   /** Sets/replaces the headers with the new values. */
@@ -86,7 +86,7 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
    * response constructor may set the `Content-Typ` header to `application/json` unless
    * something else is set by the client code.
    */
-  def addIfNotSet(values: (String, String)*): Headers =
+  def addIfNotSet(values: (String, String)*): Headers = {
     var tmp = data
     for
       (k, v) <- values
@@ -95,11 +95,11 @@ final class Headers(data: Map[String, (String, Seq[String])] = Map.empty):
       if !tmp.contains(lowerKey) then
         tmp = tmp + (lowerKey -> (k, Seq(v)))
     new Headers(tmp)
-  end addIfNotSet
-end Headers
+  }
+}
 
 
-object Headers:
+object Headers {
   /** Empty headers - no data. */
   val empty: Headers = new Headers()
 
@@ -120,5 +120,4 @@ object Headers:
         val values = entries.map(_._2)
         (key, values)
       }
-  end prepare
-end Headers
+}

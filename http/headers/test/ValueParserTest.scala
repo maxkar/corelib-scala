@@ -2,7 +2,7 @@ package io.github.maxkar
 package http.headers
 
 /** Test for the header value parser. */
-final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite {
 
   test("Reading tokens") {
     check("hello", "hello")(_.readToken())
@@ -91,11 +91,12 @@ final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite:
   def checkFail(failOffset: Int, input: String)(parse: ValueParser => ?): Unit =
     withClue(input) {
       val parser = new ValueParser(input)
-      try
+      try {
         parse(parser)
         fail("Expected header format exception, got nothing")
-      catch
+      } catch {
         case e: HeaderFormatException => ()
+      }
       assert(parser.offset === failOffset)
     }
 
@@ -103,8 +104,8 @@ final class ValueParserTest extends org.scalatest.funsuite.AnyFunSuite:
 
   /** Checks that the given result denotes failure. */
   private def assertFail(x: Either[String, ?]): Unit =
-    x match
+    x match {
       case Left(_) => ()
       case Right(x) => fail(s"Expected error but got success ${x}")
-  end assertFail
-end ValueParserTest
+    }
+}

@@ -7,7 +7,7 @@ package http.server.jetty.qos
  * @param fn function used to cleanup the resource. Internally set to
  *   `null` when cleanup is done.
  */
-private final class Cleaner(private var fn: () => Unit):
+private final class Cleaner(private var fn: () => Unit) {
   /**
    * Previous cleaner in the linked list of cleaners. Set to `null`
    * when first in the context or already cleaned.
@@ -25,11 +25,11 @@ private final class Cleaner(private var fn: () => Unit):
    * Adds this cleaner to the (head) of the registered cleaners
    * for the given request.
    */
-  private[qos] def register(context: RequestContext[?]): Unit =
+  private[qos] def register(context: RequestContext[?]): Unit = {
     next = context.cleaner
     if next != null then next.prev = this
     context.cleaner = this
-  end register
+  }
 
 
   /**
@@ -37,7 +37,7 @@ private final class Cleaner(private var fn: () => Unit):
    * separate from actual cleaning as the request clean-up may be somewhat optimized
    * when the whole context is cleaned.
    */
-  private[qos] def unregister(context: RequestContext[?]): Unit =
+  private[qos] def unregister(context: RequestContext[?]): Unit = {
     /* Already cleaned. */
     if fn == null then return
 
@@ -49,7 +49,7 @@ private final class Cleaner(private var fn: () => Unit):
       context.cleaner = next
 
     drop()
-  end unregister
+  }
 
 
   /**
@@ -57,10 +57,10 @@ private final class Cleaner(private var fn: () => Unit):
    * nodes in the list. This is mostly useful for avoiding unnecessary object
    * retention if cleaner link is held for too long.
    */
-  private[qos] def drop(): Unit =
+  private[qos] def drop(): Unit = {
     prev = null
     next = null
-  end drop
+  }
 
 
   /**
@@ -70,4 +70,4 @@ private final class Cleaner(private var fn: () => Unit):
    */
   private[qos] def performCleanup(): Unit =
     fn()
-end Cleaner
+}
