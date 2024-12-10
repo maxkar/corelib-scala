@@ -16,7 +16,7 @@ package backoff.strategy
  *
  * Instances of this trait are not thread-safe.
  */
-trait ConnectTimeout:
+trait ConnectTimeout {
   /**
    * Returns the timeout before the connection should be established for a next time.
    * This operation may be called multiple times in a row and usually returns
@@ -33,10 +33,10 @@ trait ConnectTimeout:
    * implementations may use other (time-based) strategies on how to use the timeout(s).
    */
   def reset(): Unit
-end ConnectTimeout
+}
 
 
-object ConnectTimeout:
+object ConnectTimeout {
   /**
    * Creates a new connection timeout from the given step function. Timeout values
    * produced by the `nextTimeout` function are clipped to the `maxTimeout` value.
@@ -53,7 +53,7 @@ object ConnectTimeout:
         nextTimeout: Long => Long,
         maxTimeout: Long
       ): ConnectTimeout =
-    new ConnectTimeout:
+    new ConnectTimeout {
       /**
        * Last returned retry timeout in the "failure" chain.
        * Set to -1 if no calls to `getTimeout` was made (no connection attempts was made)
@@ -61,7 +61,7 @@ object ConnectTimeout:
        */
       private var currentTimeout = -1L
 
-      override def getTimeout(): Long =
+      override def getTimeout(): Long = {
         val nextValue =
           if currentTimeout < 0 then
             initialTimeout
@@ -71,9 +71,10 @@ object ConnectTimeout:
         currentTimeout =
           if nextValue > maxTimeout then maxTimeout else nextValue
         currentTimeout
-      end getTimeout
+      }
+
 
       override def reset(): Unit =
         currentTimeout = -1
-    end new
-end ConnectTimeout
+    }
+}

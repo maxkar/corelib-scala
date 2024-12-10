@@ -6,7 +6,7 @@ package backoff.blocking
  * Implementation of "blocking wait" and timeout management.
  * @param timeoutFn function to build timeout.
  */
-final class Blocker(timeoutFn: () => Long):
+final class Blocker(timeoutFn: () => Long) {
   /** Synchronization primitive. */
   private val lock = new Object()
 
@@ -21,31 +21,31 @@ final class Blocker(timeoutFn: () => Long):
    * Waits for the next time when an attempt should be retried of the timeout is cancelled.
    * @return `true` if timeout was reached or `false` if this timeout was cancelled.
    */
-  def waitForRetry(): Boolean =
+  def waitForRetry(): Boolean = {
     var now = System.currentTimeMillis()
     deadline = now + timeoutFn()
     lock synchronized {
-      while now < deadline && !cancelled do
+      while now < deadline && !cancelled do {
         lock.wait(deadline - now)
         now = System.currentTimeMillis()
-      end while
+      }
 
       deadline = 0
       return !cancelled
     }
-  end waitForRetry
+  }
 
 
   /**
    * Cancels the timeout. Current `waitForRetry` will be terminated, will yield `false` and all
    * other invocations of `waitForRetry` would terminate immediately with the `false` result.
    */
-  def cancel(): Unit =
+  def cancel(): Unit = {
     lock synchronized {
       cancelled = true
       lock.notifyAll()
     }
-  end cancel
+  }
 
 
   /**
@@ -56,5 +56,4 @@ final class Blocker(timeoutFn: () => Long):
     lock synchronized {
       deadline
     }
-
-end Blocker
+}

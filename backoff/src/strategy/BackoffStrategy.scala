@@ -10,16 +10,16 @@ package backoff.strategy
  * simple RetryTimeouts (for individual operations) and ConnectionTimeouts
  * (for persistent connections).
  */
-trait BackoffStrategy:
+trait BackoffStrategy {
   /** Creates a new instance of the retry timeout. */
   def newRetryTimeout(): RetryTimeout
 
   /** Creates a new instance of the (persistent) connection timeout. */
   def newConnectTimeout(): ConnectTimeout
-end BackoffStrategy
+}
 
 
-object BackoffStrategy:
+object BackoffStrategy {
   /**
    * Creates a new strategy that uses "step function" to derive consequent timeouts.
    * Timeout values produced by the `nextTimeout` function are clipped to the
@@ -37,13 +37,13 @@ object BackoffStrategy:
         nextTimeout: Long => Long,
         maxTimeout: Long
       ): BackoffStrategy =
-    new BackoffStrategy:
+    new BackoffStrategy {
       override def newConnectTimeout(): ConnectTimeout =
         ConnectTimeout.fromStepFunction(initialTimeout, nextTimeout, maxTimeout)
 
       override def newRetryTimeout(): RetryTimeout =
         RetryTimeout.fromStepFunction(initialTimeout, nextTimeout, maxTimeout)
-    end new
+    }
 
 
   /**
@@ -66,4 +66,4 @@ object BackoffStrategy:
   /** Retrieves next timeout value for the `randomizedDouble` strategy. */
   private def nextRandomizedDouble(currentTimeout: Long): Long =
     (currentTimeout << 2) + scala.util.Random.nextLong(currentTimeout)
-end BackoffStrategy
+}

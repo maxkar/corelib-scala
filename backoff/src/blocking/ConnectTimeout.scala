@@ -8,7 +8,7 @@ import backoff.strategy
  * @param blocker blocking support
  * @param strat connect strategy used by the blocker.
  */
-final class ConnectTimeout private(blocker: Blocker, strat: strategy.ConnectTimeout):
+final class ConnectTimeout private(blocker: Blocker, strat: strategy.ConnectTimeout) {
   /**
    * Waits for the next time when an attempt should be retried of the timeout is cancelled.
    * @return `true` if timeout was reached or `false` if this timeout was cancelled.
@@ -40,11 +40,11 @@ final class ConnectTimeout private(blocker: Blocker, strat: strategy.ConnectTime
    */
   def getNextAttemptTime(): Long =
     blocker.getNextAttemptTime()
-end ConnectTimeout
+}
 
-object ConnectTimeout:
-  def apply(strat: strategy.ConnectTimeout): ConnectTimeout =
+object ConnectTimeout {
+  def apply(strat: strategy.ConnectTimeout): ConnectTimeout = {
     val blocker = new Blocker(strat.getTimeout)
     new ConnectTimeout(blocker, strat)
-  end apply
-end ConnectTimeout
+  }
+}

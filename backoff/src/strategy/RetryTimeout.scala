@@ -7,7 +7,7 @@ package backoff.strategy
  *
  * Instances of this trait are stateful and not thread-safe.
  */
-trait RetryTimeout:
+trait RetryTimeout {
   /**
    * Returns the timeout before the operation should be retried. This method may
    * be called multiple times and usually returns increasing values on such
@@ -16,10 +16,10 @@ trait RetryTimeout:
    * @return timeout (milliseconds) before the operation should be retried.
    */
   def getTimeout(): Long
-end RetryTimeout
+}
 
 
-object RetryTimeout:
+object RetryTimeout {
   /**
    * Creates a new operation retry timeout from the given step function. Timeout values
    * produced by the `nextTimeout` function are clipped to the `maxTimeout` value.
@@ -35,11 +35,11 @@ object RetryTimeout:
         nextTimeout: Long => Long,
         maxTimeout: Long
       ): RetryTimeout =
-    new RetryTimeout:
+    new RetryTimeout {
       /** Last returned timeout or -1 if no timeout was returned yet. */
       private var currentTimeout = -1L
 
-      override def getTimeout(): Long =
+      override def getTimeout(): Long = {
         val nextValue =
           if currentTimeout < 0 then
             initialTimeout
@@ -49,6 +49,6 @@ object RetryTimeout:
         currentTimeout =
           if nextValue > maxTimeout then maxTimeout else nextValue
         currentTimeout
-      end getTimeout
-    end new
-end RetryTimeout
+      }
+    }
+}
