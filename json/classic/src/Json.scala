@@ -7,13 +7,13 @@ import scala.language.dynamics
 
 
 /** A real JSON value or a placeholder for absent (non-existing) value.  */
-abstract sealed class Json extends Dynamic:
+abstract sealed class Json extends Dynamic {
   /**
    * Retrieves a child of this value considering it is a json object. Returns
    * {{{Json.Undefined}}} if this value is not an object or the name is not defined
    * on the current value.
    * @param name field name.
-   * @return field of the object or {{{Json.Undefined}}} when key not found or this 
+   * @return field of the object or {{{Json.Undefined}}} when key not found or this
    *   value is not json object.
    */
   def selectDynamic(name: java.lang.String): Json = Json.Undefined
@@ -29,7 +29,7 @@ abstract sealed class Json extends Dynamic:
 
   /**
    * Selects a value by index. Returns {{{Json.Undefined}} if this value is not a
-   * {{{JsonValue.Array}}} or if the index is out of bounds. 
+   * {{{JsonValue.Array}}} or if the index is out of bounds.
    * @param idx index of the value to select.
    * @return value at the given index or {{{Json.Undefined}}} when this value is not
    *   an array or index is out of bounds.
@@ -48,29 +48,28 @@ abstract sealed class Json extends Dynamic:
   /** Convenience conversion to a string representation. */
   override final def toString(): java.lang.String =
     Json.toString(this)
-
-end Json
+}
 
 
 
 /**
- * The main entry point to the json-related functionality. 
+ * The main entry point to the json-related functionality.
  * Contains specific json types and provides access to parsing and serialization functionality.
  */
-object Json:
+object Json {
   /**
    * Exception in JSON handling or processing. This exception is only raised
    * by parsing and conversion functions (and never by JSON generation functions).
-   * Json manipulations usually occur as part of input and output hence the 
+   * Json manipulations usually occur as part of input and output hence the
    * inheritance from IOException.
    */
-  class Exception(msg: java.lang.String) extends IOException(msg) 
+  class Exception(msg: java.lang.String) extends IOException(msg)
 
 
   /**
    * Undefined (non-existing) value. It is returned from member selectors when
    * a field does not exist on an object or index is out of array bounds. Object and
-   * Array constructors ignore undefined elements. A json {{{null}}} literal is 
+   * Array constructors ignore undefined elements. A json {{{null}}} literal is
    * considered to be some defined value and is represented by the {{{Null}}} constant.
    */
   case object Undefined extends Json
@@ -108,12 +107,12 @@ object Json:
     Number.validate(value)
 
 
-  /** 
+  /**
    * JSON array (a sequence of JSON values). The instance constructor does not
    * accept {{{Undefined}}} values, use {{{Json.array}}} if this may be the case.
    * @param elements elements of the array.
    */
-  case class Array(elements: Seq[Json]) extends Json:
+  case class Array(elements: Seq[Json]) extends Json {
     if elements.contains(Undefined) then
       throw IllegalArgumentException("Json array could not contain Undefined elements")
 
@@ -126,8 +125,7 @@ object Json:
 
     /** Concatenates this array with elements from another array. */
     def ++(other: Array): Array = Array(elements ++ other.elements)
-
-  end Array
+  }
 
 
   /**
@@ -135,7 +133,7 @@ object Json:
    * does not accept {{{Undefined}}} values, use {{{Json.make}}} if this may be the case.
    * @param values map from keys to corresponding values.
    */
-  final case class Object(values: Map[java.lang.String, Json]) extends Json:
+  final case class Object(values: Map[java.lang.String, Json]) extends Json {
     if values.values.iterator.contains(Undefined) then
       throw IllegalArgumentException("Undefined values are not allowed in Json object")
 
@@ -144,10 +142,9 @@ object Json:
 
     /** Combines two objects into one. */
     def ++(other: Object): Object = Object(values ++ other.values)
+  }
 
-  end Object
 
-  
   /** Returns a human-readable name of the type of the json value. */
   def typeName(v: Json): java.lang.String =
     v match {
@@ -162,7 +159,7 @@ object Json:
 
 
   /**
-   * Creates a JSON array from a list (of possibly optional) values. 
+   * Creates a JSON array from a list (of possibly optional) values.
    * {{{Undefined}}} values are removed from the input. {{{Null}}} values
    * remains as null liteterals.
    */
@@ -186,20 +183,21 @@ object Json:
    * @throws IOException if an error happens.
    * @throws JsonException if value is undefined.
    */
-  def write(value: Json, stream: java.io.Writer): Unit = 
+  def write(value: Json, stream: java.io.Writer): Unit =
     Serializer.write(value, stream)
 
 
   /** Converts a JSON value into a string. */
-  def toString(value: Json): java.lang.String =
+  def toString(value: Json): java.lang.String = {
     val sw = java.io.StringWriter()
     write(value, sw)
     sw.close()
     sw.toString()
+  }
 
 
   /** Parses JSON from a reader. */
-  def parse(r: java.io.Reader): Json = 
+  def parse(r: java.io.Reader): Json =
     Deserializer.parse(r)
 
 
@@ -213,7 +211,7 @@ object Json:
     Deserializer.parse(data)
 
 
-  /** 
+  /**
    * Parses a byte array automatically detecting JSON encoding.
    * The RFC 8259 makes UTF-8 the only supported format thus the default read method change.
    */
@@ -222,7 +220,7 @@ object Json:
 
 
   /** Utilities for json number. */
-  object Number:
+  object Number {
     /** Optional minus sign. */
     private val patMaybeMinus = "-?"
     /** Pattern for the JSON integer value part. */
@@ -233,13 +231,13 @@ object Json:
     private val patExp = "[eE][-+]?\\d+"
 
     /** Pattern for the json number. */
-    private val pat = 
+    private val pat =
       java.util.regex.Pattern.compile(
         s"${patMaybeMinus}(${patInt})(${patFrac})?(${patExp})?"
       )
 
 
-    /** 
+    /**
      * Validates that the number is a valid JSON number representation.
      * @throws IllegalArgumentException if value is not valid.
      */
@@ -247,7 +245,5 @@ object Json:
       if !pat.matcher(num).matches then
         /* Json parser explicitly raises JsonException, this one is always developer error so IAE. */
         throw IllegalArgumentException("Invalid JSON number value " + num)
-
-  end Number
-
-end Json
+  }
+}

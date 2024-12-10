@@ -6,7 +6,7 @@ import implicits.given
 import scala.language.implicitConversions
 
 /** A short syntax test. */
-final class SmokeSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
+final class SmokeSyntaxTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Simple syntax could be used to create json objects") {
     val x = Json.make("a" -> 3, "b" -> "test")
   }
@@ -71,4 +71,4 @@ final class SmokeSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
       "b" -> Seq(Json.make("a" -> 5), Json.make("b" -> 4))
     )
   }
-end SmokeSyntaxTest
+}

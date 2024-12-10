@@ -7,7 +7,7 @@ import scala.language.implicitConversions
 
 
 /** Tests for json serialization/parsing. */
-final class JsonOutputTest extends org.scalatest.funsuite.AnyFunSuite:
+final class JsonOutputTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Serializes and re-parses json. */
   private def roll(v: Json): Json = Json.parse(Json.toString(v))
 
@@ -34,9 +34,9 @@ final class JsonOutputTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   test("Json array conversions") {
-    val a = Json.make("a" -> 5)    
+    val a = Json.make("a" -> 5)
     val b: Json = 3
-    val x = Json.make("arr" -> Json.array(a, b))    
+    val x = Json.make("arr" -> Json.array(a, b))
 
     val xx = roll(x)
     val arr: Seq[Json] = xx.arr
@@ -44,4 +44,4 @@ final class JsonOutputTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(5 === arr(0).a.as[Int])
     assert(3 === arr(1).as[Int])
   }
-end JsonOutputTest
+}

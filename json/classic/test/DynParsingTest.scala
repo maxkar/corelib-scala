@@ -7,7 +7,7 @@ import scala.language.implicitConversions
 
 
 /** Tests for dynamic parsing syntax. */
-final class DynParsingTest extends org.scalatest.funsuite.AnyFunSuite:
+final class DynParsingTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Just a class for some syntax test. */
   case class T1(x: Int, y: String)
 
@@ -16,7 +16,7 @@ final class DynParsingTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   test("Basic object parsing and type conversions") {
-    val json = Json.parse("""{"a": 3, "b": "aoeu"}""") 
+    val json = Json.parse("""{"a": 3, "b": "aoeu"}""")
     val a: Int = json.a
     val b: String = json.b
 
@@ -52,10 +52,10 @@ final class DynParsingTest extends org.scalatest.funsuite.AnyFunSuite:
 
   test("Minimal values works correctly with encoding detection") {
     val samples = Seq("1", "{}", "[]")
-    for 
+    for
       sample <- samples
       encoding <- SNIFF_ENCODINGS
     do
       Json.parseRFC7158(sample.getBytes(encoding))
   }
-end DynParsingTest
+}

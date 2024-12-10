@@ -7,10 +7,10 @@ import java.io.InputStreamReader
 
 
 /** Json reader/deserializer. */
-private object Deserializer:
+private object Deserializer {
 
-  /** 
-   * Parses a byte array assuming it is using UTF-8 encoding (RFC 8259). 
+  /**
+   * Parses a byte array assuming it is using UTF-8 encoding (RFC 8259).
    * @see {{{parseRFC7158}}} if you need automatic encoding sniffing.
    */
   def parse(bytes: Array[Byte]): Json =
@@ -18,7 +18,7 @@ private object Deserializer:
 
 
 
-  /** 
+  /**
    * Parses a byte array automatically detecting JSON encoding.
    * The RFC 8259 makes UTF-8 the only supported format thus the default read method change.
    */
@@ -28,7 +28,7 @@ private object Deserializer:
 
 
   /** Parses a JSON value from the underlying stream. */
-  def parse(rdr: Reader): Json = 
+  def parse(rdr: Reader): Json = {
     val stream = JsonStream(rdr)
     val res = readValue(stream)
 
@@ -36,8 +36,7 @@ private object Deserializer:
     if !stream.eof() then
       throw Json.Exception("Trailing data after the end of json at " + stream.location())
     res
-  end parse
-
+  }
 
 
   /** Parses array of bytes with the provided encoding. */
@@ -47,10 +46,10 @@ private object Deserializer:
 
 
   /** Reads a single value from the input stream. */
-  private def readValue(stream: JsonStream): Json =
+  private def readValue(stream: JsonStream): Json = {
     skipWhites(stream)
-    stream.peek() match
-      case 't' => 
+    stream.peek() match {
+      case 't' =>
         skipLiteral(stream, "true")
         Json.True
       case 'f' =>
@@ -68,28 +67,28 @@ private object Deserializer:
         throw Json.Exception("Unexpected end of file at " + stream.location() + " while looking for value")
       case x =>
         throw Json.Exception("Illegal start of json value at " + stream.location() + " char = " + x)
-    end match
-  end readValue
+    }
+  }
 
 
 
-  /** 
+  /**
    * Skips a single JSON literal from the input stream.
    * @param stream stream to skip.
    * @param repr representation of the literal to read.
    * @throws Json.Exception if the next characters does not match literal representation.
    */
-  private def skipLiteral(stream: JsonStream, repr: String): Unit =
+  private def skipLiteral(stream: JsonStream, repr: String): Unit = {
     val start = stream.location()
     val len = repr.length()
-    
+
     var ptr = 0
     while ptr < len do
       if stream.eof() then
         throw Json.Exception(
           s"Unexpected EOF at ${stream.location()} while reading literal ${repr} started at ${start}"
         )
-      
+
       val nxt = stream.read()
       if repr.charAt(ptr) != nxt then
         throw Json.Exception(
@@ -98,48 +97,46 @@ private object Deserializer:
 
       ptr += 1
     end while
-
-  end skipLiteral
+  }
 
 
 
   /** Reads a string from the stream. */
-  private def readString(stream: JsonStream): String =
+  private def readString(stream: JsonStream): String = {
     val start = stream.location()
     stream.read() // '"'
 
     val buf = StringBuilder()
-    while stream.peek() != '"' do
+    while stream.peek() != '"' do {
       if stream.eof() then
         throw Json.Exception(
           s"Malformed string at ${start}, could not find closing quote till stream end at ${stream.location()}"
         )
       buf += readStringChar(stream)
-    end while
+    }
     stream.read() // '"'
 
     buf.toString()
-  end readString
-
+  }
 
 
   /** Reads one string character (unescaping if needed). */
-  private def readStringChar(stream: JsonStream): Char =
-    if stream.peek() != '\\' then
+  private def readStringChar(stream: JsonStream): Char = {
+    if stream.peek() != '\\' then {
       if stream.peek() < 0x0020 then
         throw Json.Exception(
           s"Unescaped special character in string at ${stream.location()}"
         )
       return stream.read()
-    end if
-    
+    }
+
     stream.read() // '\\'
 
     val escapeLoc = stream.location()
     if stream.eof() then
       throw Json.Exception(s"EOF after escape at ${escapeLoc}")
 
-    stream.read() match 
+    stream.read() match {
       case '"' => '"'
       case '\\' => '\\'
       case '/' => '/'
@@ -149,12 +146,12 @@ private object Deserializer:
       case 'r' => '\r'
       case 't' => '\t'
       case 'u' => readUnicodeChar(stream)
-      case x => 
+      case x =>
         throw Json.Exception(
           s"Unrecognizeable escaped character ${x} at ${escapeLoc}"
         )
-    end match
-  end readStringChar
+    }
+  }
 
 
 
@@ -169,25 +166,25 @@ private object Deserializer:
 
 
   /** Reads a single unicode digit (hex digit as part of an unicode escape). */
-  private def readUnicodeDigit(stream: JsonStream): Int =
+  private def readUnicodeDigit(stream: JsonStream): Int = {
     if stream.eof() then
       throw Json.Exception(
         s"Unexpected EOF inside unicode escape at ${stream.location()}"
       )
 
-    stream.read() match 
+    stream.read() match {
       case n if '0' <= n && n <= '9' => n - '0'
       case n if 'A' <= n && n <= 'F' => n - 'A' + 10
       case n if 'a' <= n && n <= 'f' => n - 'a' + 10
       case other =>
         throw Json.Exception(s"Invalid unicode digit before ${stream.location()}")
-    end match
-  end readUnicodeDigit
+    }
+  }
 
 
 
   /** Reads a number from the stream. */
-  private def readNumber(stream: JsonStream): Json =
+  private def readNumber(stream: JsonStream): Json = {
     val res = StringBuilder()
 
     /* Sign. */
@@ -199,50 +196,50 @@ private object Deserializer:
         s"Unexpected EOF while expecting a number at ${stream.location()}"
       )
 
-    if stream.peek() == '0' then
+    if stream.peek() == '0' then {
       res += stream.read()
       if !stream.eof() && Character.isDigit(stream.peek()) then
         throw Json.Exception(
           s"Could not read a number with leading zero at ${stream.location()}"
         )
-    else if Character.isDigit(stream.peek()) then
+    } else if Character.isDigit(stream.peek()) then
       while !stream.eof() && Character.isDigit(stream.peek()) do
         res += stream.read()
-    else 
+    else
       throw Json.Exception(
         s"Illegal number start character ${stream.peek()} at ${stream.location()}"
       )
 
     /* Frac. */
-    if stream.peek() == '.' then
+    if stream.peek() == '.' then {
       res += stream.read() // '.'
       if stream.eof() || !Character.isDigit(stream.peek()) then
         throw Json.Exception(s"Illegal fractional part at ${stream.location()}")
-      
+
       while !stream.eof() && Character.isDigit(stream.peek()) do
         res += stream.read()
-    end if /* Frac. */
+    }
 
     /* Exp. */
-    if stream.peek() == 'e' || stream.peek() == 'E' then
+    if stream.peek() == 'e' || stream.peek() == 'E' then {
       res += stream.read() // 'e' or 'E'
 
       if stream.peek() == '+' || stream.peek() == '-' then
         res += stream.read()
-        
+
       if stream.eof() || !Character.isDigit(stream.peek()) then
         throw Json.Exception(s"Illegal exponent at ${stream.location()}")
       while !stream.eof() && Character.isDigit(stream.peek()) do
         res += stream.read()
-    end if /* Exp. */
+    }
 
     Json.Number(res.toString())
-  end readNumber
+  }
 
 
 
   /** Reads a JSON object value. */
-  private def readJsonObject(stream: JsonStream): Json =
+  private def readJsonObject(stream: JsonStream): Json = {
     val start = stream.location()
     stream.read() // '{'
     skipWhites(stream)
@@ -256,7 +253,7 @@ private object Deserializer:
     skipWhites(stream)
 
     /* Scan through entries. */
-    while stream.peek() != '}' do
+    while stream.peek() != '}' do {
       if stream.peek() != ',' then
         throw Json.Exception(
           s"Malformed object at ${start}, got ${stream.peek()} at ${stream.location()} while looking for '}' or ','"
@@ -266,26 +263,25 @@ private object Deserializer:
 
       val (key, (loc, value)) = readObjectEntry(stream)
 
-      defMap.get(key) match
+      defMap.get(key) match {
         case Some((prevLoc, _)) =>
           throw Json.Exception(
             s"Redifinition of ${key} at ${loc}, previously defined at ${prevLoc}"
           )
         case None => ()
-      end match
+      }
 
       defMap += (key -> (loc, value))
       skipWhites(stream)
-    end while /* Scan through entries. */
+    }
 
     stream.read() // '}'
     Json.Object(defMap.view.mapValues(_._2).toMap)
-  end readJsonObject
-
+  }
 
 
   /** Reads one object entry (key-value pair). */
-  private def readObjectEntry(stream: JsonStream): (String, (String, Json)) = 
+  private def readObjectEntry(stream: JsonStream): (String, (String, Json)) = {
     if stream.peek() != '"' then
       throw Json.Exception(
         s"Bad object entry start at ${stream.location()}, expected '\"' but got ${stream.peek()}"
@@ -302,39 +298,39 @@ private object Deserializer:
     stream.read() // ':'
 
     (name, (defStart, readValue(stream)))
-  end readObjectEntry
-
+  }
 
 
   /** Reads a json array from the stream. */
-  private def readJsonArray(stream: JsonStream): Json = 
+  private def readJsonArray(stream: JsonStream): Json = {
     val start = stream.location()
 
     stream.read() // '['
     skipWhites(stream)
 
-    if stream.peek() == ']' then
+    if stream.peek() == ']' then {
       stream.read() // ']'
       return Json.Array(Seq.empty)
-    
+    }
+
     val items = scala.collection.mutable.ArrayBuffer[Json]()
     items += readValue(stream)
     skipWhites(stream)
 
-    while stream.peek() != ']' do
+    while stream.peek() != ']' do {
       if stream.peek() != ',' then
         throw Json.Exception(
           s"Malformed array at ${start}, got ${stream.peek()} while looking for ',' or ']' at ${stream.location()}"
         )
-      
+
       stream.read() // ','
       items += readValue(stream)
       skipWhites(stream)
-    end while
+    }
     stream.read() // ']'
 
     Json.Array(items.toSeq)
-  end readJsonArray
+  }
 
 
 
@@ -346,25 +342,27 @@ private object Deserializer:
 
 
   /** Checks if the character is JSON whitespace. */
-  private def isWhitespace(c: Int): Boolean = 
-    c match 
+  private def isWhitespace(c: Int): Boolean =
+    c match {
       case ' ' | '\t' | '\r' | '\n' => true
       case _ => false
+    }
 
 
 
-  /** 
-   * Sniffs encoding according to RFC 4627, chapter 3 
-   * (the same alternatives are supported by RFC 7159). 
+  /**
+   * Sniffs encoding according to RFC 4627, chapter 3
+   * (the same alternatives are supported by RFC 7159).
    */
-  private def sniffEncoding(bytes: Array[Byte]): String =
-    if bytes.length == 2 then
-      if bytes(0) == 0 then 
+  private def sniffEncoding(bytes: Array[Byte]): String = {
+    if bytes.length == 2 then {
+      if bytes(0) == 0 then
         return "UTF-16BE"
-      else if bytes(1) == 0 then 
+      else if bytes(1) == 0 then
         return "UTF-16LE"
-      else 
+      else
         return "UTF-8"
+    }
 
     /* 0, 1 or 3 bytes. */
     if (bytes.length < 4)
@@ -381,6 +379,5 @@ private object Deserializer:
     if bytes(0) != 0 && bytes(1) != 0 && bytes(2) != 0 && bytes(3) != 0 then
       return "UTF-8"
     throw Json.Exception(s"Invalid byte start pattern ${bytes(0)},${bytes(1)},${bytes(2)},${bytes(3)}")
-  end sniffEncoding
-  
-end Deserializer
+  }
+}
