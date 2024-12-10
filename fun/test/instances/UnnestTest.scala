@@ -4,7 +4,7 @@ package fun.instances
 import fun.typeclass.Monad
 
 /** Tests for the Unnest monad. */
-final class UnnestTest extends org.scalatest.funsuite.AnyFunSuite:
+final class UnnestTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Some "operation". */
   def getV[M[_]: Monad](x: Int): M[Int] =
     Monad.pure(x)
@@ -53,5 +53,4 @@ final class UnnestTest extends org.scalatest.funsuite.AnyFunSuite:
 
     assert(iterCount === Unnest.run(base))
   }
-
-end UnnestTest
+}

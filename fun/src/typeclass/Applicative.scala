@@ -2,7 +2,7 @@ package io.github.maxkar
 package fun.typeclass
 
 /** Standard Applicative typeclass. */
-trait Applicative[M[_]] extends Functor[M]:
+trait Applicative[M[_]] extends Functor[M] {
   /** Creates a "pure" value from regular value. */
   def pure[T](v: T): M[T]
 
@@ -15,16 +15,14 @@ trait Applicative[M[_]] extends Functor[M]:
     aapply(v, pure(fn))
 
 
-  extension [S, R](fn: M[S => R])
+  extension [S, R](fn: M[S => R]) {
     inline infix def |>(v: M[S]): M[R] =
       Applicative.this.aapply(v, fn)
+  }
+}
 
-end Applicative
 
-
-
-object Applicative:
+object Applicative {
   inline def pure[M[_], T](v: T)(using app: Applicative[M]): M[T] =
     app.pure(v)
-
-end Applicative
+}

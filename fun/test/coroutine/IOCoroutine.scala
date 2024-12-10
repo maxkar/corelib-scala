@@ -8,7 +8,7 @@ import fun.typeclass.Monad
  * Implementation of the Input/Output coroutine.
  * Illustrates potential IO as coroutine (where IO may be asynchronous).
  */
-final class IOCoroutine extends org.scalatest.funsuite.AnyFunSuite:
+final class IOCoroutine extends org.scalatest.funsuite.AnyFunSuite {
   import IOCoroutine._
 
 
@@ -41,10 +41,10 @@ final class IOCoroutine extends org.scalatest.funsuite.AnyFunSuite:
 
     assert((hugeO, hugeNum + 2) === runIO(hugeI, incrIO))
   }
-end IOCoroutine
+}
 
 
-object IOCoroutine:
+object IOCoroutine {
   /** Coroutine module. */
   val module = new Coroutine[IOSus]
   import module._
@@ -54,10 +54,10 @@ object IOCoroutine:
 
 
   /** State suspension. Hard-coded state type. */
-  enum IOSus[T]:
+  enum IOSus[T] {
     case Read extends IOSus[Option[Char]]
     case Write(value: Char) extends IOSus[Unit]
-  end IOSus
+  }
 
 
   /** Reads next value from the "input stream". */
@@ -77,8 +77,8 @@ object IOCoroutine:
     /* Classical const-stack runner. Real IO (with async/nio streams) would probably
      * be const-stack as well but with results achieved by different means.
      */
-    while true do
-      module.run(proc) match
+    while true do {
+      module.run(proc) match {
         case Coroutine.RunResult.Finished(x) =>
           return (output.toString(), x)
         case Coroutine.RunResult.Suspended(IOSus.Read, c) =>
@@ -94,8 +94,8 @@ object IOCoroutine:
         case Coroutine.RunResult.Suspended(IOSus.Write(v), c) =>
           output += v
           proc = c(())
-      end match
-    end while
+      }
+    }
     throw new Error("Please stop reaching unreacheable code")
   end runIO
-end IOCoroutine
+}

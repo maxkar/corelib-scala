@@ -6,15 +6,15 @@ package fun.typeclass
  * This transformation may be implemented using fold over the monad, but monads may have
  * monad-specific implementation (faster or using less stack).
  */
-trait Collect[M[_]]:
-  /**
+trait Collect[M[_]] {
+  /*
    * Collects multiple operations into one operation returning the sequence of results.
    */
   def collect[T](items: Seq[M[T]]): M[Seq[T]]
-end Collect
+}
 
 
-object Collect:
+object Collect {
   /**
    * A nice invocation syntax that may be used to launch multiple operations:
    * {{{
@@ -38,4 +38,4 @@ object Collect:
    */
   inline def seq[M[_], T](items: Seq[M[T]])(using col: Collect[M]): M[Seq[T]] =
     col.collect(items)
-end Collect
+}

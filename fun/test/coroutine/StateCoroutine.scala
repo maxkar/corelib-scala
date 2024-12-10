@@ -3,7 +3,7 @@ package fun.coroutine
 
 
 /** Implementation of the "State" monad using coroutine and some tests of the combination. */
-final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite:
+final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite {
   import StateCoroutine._
 
 
@@ -36,11 +36,10 @@ final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite:
     assert(20609 === runState(2, doSomething))
     assert(30812 === runState(3, doSomething))
   }
+}
 
-end StateCoroutine
 
-
-object StateCoroutine:
+object StateCoroutine {
   /** Coroutine module. */
   val module = new Coroutine[StateSus]
   import module._
@@ -49,10 +48,10 @@ object StateCoroutine:
   export module.Routine
 
   /** State suspension. Hard-coded state type. */
-  enum StateSus[T]:
+  enum StateSus[T] {
     case Read extends StateSus[Int]
     case Write(value: Int) extends StateSus[Unit]
-  end StateSus
+  }
 
 
   /** Monad/operation for getting the current state. */
@@ -66,21 +65,20 @@ object StateCoroutine:
   /**
    * Runs the state monad (using coroutine module as the base).
    */
-  def runState[T](state: Int, routine: Routine[T]): T =
+  def runState[T](state: Int, routine: Routine[T]): T = {
     /* Stackless (non-recursive) loop here. Just for fun and consistency. */
     var curState = state
     var proc = routine
-    while true do
-      module.run(proc) match
+    while true do {
+      module.run(proc) match {
         case Coroutine.RunResult.Suspended(StateSus.Read, cont) =>
           proc = cont(curState)
         case Coroutine.RunResult.Suspended(StateSus.Write(v), cont) =>
           curState = v
           proc = cont(())
         case Coroutine.RunResult.Finished(x) => return x
-      end match
-    end while
+      }
+    }
     throw new Error("Please stop reaching unreacheable code")
-  end runState
-
-end StateCoroutine
+  }
+}

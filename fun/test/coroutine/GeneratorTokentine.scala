@@ -5,7 +5,7 @@ import fun.typeclass.Monad
 
 
 /** Implementation of the generator coroutine (yield-method from C#/Javascript). */
-final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite:
+final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite {
   import GeneratorCoroutine._
 
   /** Recursive (yep!) implementation of the sequence generator. */
@@ -39,10 +39,10 @@ final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite:
     assert((fwd, ()) === runGenerator(genSeq(1, limit)))
     assert((fwd ++ rwd, ()) === runGenerator(genBackAndForth(1, limit)))
   }
-end GeneratorCoroutine
+}
 
 
-object GeneratorCoroutine:
+object GeneratorCoroutine {
 
   /** Type of the suspension. */
   abstract sealed class GeneratorSus[T]
@@ -60,13 +60,13 @@ object GeneratorCoroutine:
 
 
   /** Runs the generator and returns both generated sequence and result. */
-  def runGenerator[T](gen: Routine[T]): (Seq[Int], T) =
+  def runGenerator[T](gen: Routine[T]): (Seq[Int], T) = {
     var acc = new scala.collection.mutable.ArrayBuffer[Int]
 
     var routine = gen
 
     /* Also "stackless" implementation. */
-    while true do
+    while true do {
       module.run(routine) match
         case Coroutine.RunResult.Suspended(Yield(v), cont) =>
           acc += v
@@ -74,8 +74,7 @@ object GeneratorCoroutine:
         case Coroutine.RunResult.Finished(v) =>
           return (acc.toSeq, v)
       end match
-    end while
+    }
     throw new Error("Please stop reaching unreacheable code")
-  end runGenerator
-
-end GeneratorCoroutine
+  }
+}

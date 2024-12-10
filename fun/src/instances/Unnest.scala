@@ -89,12 +89,13 @@ import fun.typeclass.Monad
  * operations like pure, map and flatMap. The system uses monad laws to rewrite some forms of nesting
  * thus reducing amount of the stack required for the computation.
  */
-abstract sealed class Unnest[+T]:
+abstract sealed class Unnest[+T] {
   /** Evaluates value of this monad. */
-  def run(): T = Unnest.run(this)
-end Unnest
+  inline def run(): T = Unnest.run(this)
+}
 
-object Unnest:
+
+object Unnest {
   /** "Just a value" without any computation. */
   private final case class Pure[+T](value: T) extends Unnest[T]
 
@@ -103,19 +104,19 @@ object Unnest:
 
 
   /** Implementation of the monad on the Unnest computation. */
-  given unnestMonad: Monad[Unnest] with
+  given unnestMonad: Monad[Unnest] with {
     override def pure[T](v: T): Unnest[T] = Pure(v)
 
     override def bind[S, R](v: Unnest[S], fn: S => Unnest[R]): Unnest[R] =
       FlatMap(v, fn)
-  end unnestMonad
+  }
 
 
   /** Performs the computation and returns the value evaluated by the monad. */
-  def run[T](v: Unnest[T]): T =
+  def run[T](v: Unnest[T]): T = {
     var cur: Unnest[T] = v
-    while true do
-      cur match
+    while true do {
+      cur match {
         case Pure(v) => return v
         case FlatMap(Pure(v), fn) => cur = fn(v)
         case FlatMap(FlatMap(v, fn1), fn) =>
@@ -149,8 +150,8 @@ object Unnest:
            * stack requirement for evaluation is satisfied.
            */
           cur = FlatMap(v, x => FlatMap(fn1(x), fn))
-      end match
-    end while
+      }
+    }
     throw new Error("Unreacheable code reached")
-  end run
-end Unnest
+  }
+}
