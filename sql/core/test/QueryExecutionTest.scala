@@ -14,7 +14,7 @@ import scala.language.implicitConversions
  *  * SQL Query interpolation
  *  * Result (row) parsing
  */
-final class QueryExecutionTest extends DbTest:
+final class QueryExecutionTest extends DbTest {
   import QueryExecutionTest.*
 
 
@@ -64,9 +64,9 @@ final class QueryExecutionTest extends DbTest:
   /** Parses a greeting line. */
   private def greetLine(row: Row): GreetLine =
     GreetLine(row.id, row.value)
-end QueryExecutionTest
+}
 
 
-object QueryExecutionTest:
+object QueryExecutionTest {
   case class GreetLine(id: Int, word: String)
-end QueryExecutionTest
+}

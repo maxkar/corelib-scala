@@ -5,7 +5,7 @@ package sql.database.static
 /**
  * Sensor for various database events. May be called from multiple threads.
  */
-trait Sensor:
+trait Sensor {
   /** Invoked when a new connection is about to be created. */
   def createConnectionStarted(): Unit
 
@@ -38,10 +38,10 @@ trait Sensor:
 
   /** Invoked when a general (mysterious) exception occurs. */
   def generalError(e: Throwable): Unit
-end Sensor
+}
 
 
-object Sensor:
+object Sensor {
   /** No-operation sensor. */
   val noop: Sensor =
     new Sensor {
@@ -59,4 +59,4 @@ object Sensor:
 
       override def generalError(e: Throwable): Unit = ()
     }
-end Sensor
+}

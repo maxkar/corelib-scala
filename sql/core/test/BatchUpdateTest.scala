@@ -13,7 +13,7 @@ import scala.language.implicitConversions
 /**
  * Test for batch update(s).
  */
-final class BatchUpdateTest extends DbTest:
+final class BatchUpdateTest extends DbTest {
   dbTest("Default batch test")(
     """CREATE TABLE test(
         id INT PRIMARY KEY NOT NULL
@@ -66,4 +66,4 @@ final class BatchUpdateTest extends DbTest:
     assert(10 === (sql"""SELECT count(*) FROM test""" select one(int)))
     assert(updateCounts === Seq.fill(10) {1})
   }
-end BatchUpdateTest
+}

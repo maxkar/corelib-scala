@@ -16,42 +16,42 @@ final class Service private(
       isAlive: AtomicBoolean,
       threads: Seq[(Thread, ConnectTimeout)],
       tasks: TaskProvider
-    ):
+    ) {
 
   /**
    * Requests that all processing is stopped but does not await until
    * threads are terminated.
    */
-  def requestShutdown(): Unit =
+  def requestShutdown(): Unit = {
     isAlive.set(false)
     tasks.shutdown()
     threads.foreach { t => t._2.cancel() }
-  end requestShutdown
+  }
 
 
   /**
    * Awaits until all the processing is terminated (i.e. until all
    * active requests complete).
    */
-  def awaitShutdown(): Unit =
+  def awaitShutdown(): Unit = {
     if isAlive.get() then
       throw new IllegalStateException("Could not await shutdown as it was not requested")
     threads.foreach(_._1.join())
-  end awaitShutdown
+  }
 
 
   /**
    * Requests processing termination and awaits until all the active operations
    * are complete.
    */
-  def shutdown(): Unit =
+  def shutdown(): Unit = {
     requestShutdown()
     awaitShutdown()
-  end shutdown
-end Service
+  }
+}
 
 
-object Service:
+object Service {
   /**
    * Creates and starts a new database access service.
    * @param configuration database access configuration.
@@ -62,7 +62,7 @@ object Service:
         configuration: Configuration,
         tasks: TaskProvider,
         sensor: Sensor,
-      ): Service =
+      ): Service = {
 
     /* Validate the URL by opening and then closing the connection. */
     if configuration.validation.validateUrl then
@@ -88,5 +88,5 @@ object Service:
       }
 
     new Service(alive, threads, tasks)
-  end apply
-end Service
+  }
+}

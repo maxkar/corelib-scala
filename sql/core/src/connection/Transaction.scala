@@ -24,7 +24,7 @@ import java.sql.{Connection => JdbcConnection}
  *
  * @tparam I isolation level of the current transaction.
  */
-final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jdbcConnection):
+final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jdbcConnection) {
   /** Indicates that the transaction was marked as rollback-only. */
   private[connection] var rollbackOnly = false
 
@@ -50,7 +50,7 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
    *
    * @param callback callback to execute on the "nested" transaction.
    */
-  def nested[T](callback: Transaction[I] ?=> T): T =
+  def nested[T](callback: Transaction[I] ?=> T): T = {
     val savepoint = jdbcConnection.setSavepoint()
     val nestedTx = new Transaction[I](jdbcConnection)
 
@@ -61,20 +61,20 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
      * on the child, it is incorrect to attempt another rollback here).
      */
     val res =
-      try
+      try {
         callback(using nestedTx)
-      catch
+      } catch {
         case e: Throwable =>
           jdbcConnection.rollback(savepoint)
           throw e
-      end try
+      }
 
     if nestedTx.rollbackOnly then
       jdbcConnection.rollback(savepoint)
     else
       commitListeners ++= nestedTx.commitListeners
     return res
-  end nested
+  }
 
 
 
@@ -101,4 +101,4 @@ final class Transaction[I](jdbcConnection: JdbcConnection) extends Connection(jd
 
   override def allOrNothing[T](cb: Transaction[?] ?=> T): T =
     nested(cb)
-end Transaction
+}

@@ -11,7 +11,7 @@ import java.sql.BatchUpdateException
  * Batch processing utility able to use JDBC SQL Batch capabilities and re-use
  * the same prepared statement for multiple operations.
  */
-object Batch:
+object Batch {
   /** Default size of the batch, used when no custom size was specified. */
   val defaultBatchSize = 1000
 
@@ -58,29 +58,29 @@ object Batch:
 
 
   /** Executes the batch with the given size and queries. */
-  private def execute(batchSize: Int, queries: Iterable[Query])(using conn: Connection): Seq[Int] =
+  private def execute(batchSize: Int, queries: Iterable[Query])(using conn: Connection): Seq[Int] = {
     val itr = queries.iterator
     if !itr.hasNext then
       return Seq.empty
 
     val ctx = new Context(batchSize, conn)
-    try
+    try {
       while itr.hasNext do
         ctx.next(itr.next())
 
       return ctx.finish()
-    catch
+    } catch {
       case e: SQLException =>
         ctx.raise(e)
       case e: Throwable =>
         ctx.abort()
         throw e
-    end try
-  end execute
+    }
+  }
 
 
   /** Context of one operation. */
-  private class Context(maxBatchSize: Int, conn: Connection):
+  private class Context(maxBatchSize: Int, conn: Connection) {
     import scala.collection.mutable.ArrayBuffer
 
     /** Offset of the current batch first element in the overall list. */
@@ -103,7 +103,7 @@ object Batch:
 
 
     /** Sends next query to the database. */
-    def next(query: Query): Unit =
+    def next(query: Query): Unit = {
       val text = query.getQueryText()
       if text != lastText then
         setNewQuery(text)
@@ -113,19 +113,19 @@ object Batch:
       query.setParameters(ps, 1)
       ps.addBatch()
       thisBatchSize += 1
-    end next
+    }
 
 
     /** Finishes the processing. */
-    def finish(): Seq[Int] =
+    def finish(): Seq[Int] = {
       flush()
       closeStatement()
       return updateCounts.toSeq
-    end finish
+    }
 
 
     /** Raises a batch update exception. */
-    def raise(e: SQLException): Nothing =
+    def raise(e: SQLException): Nothing = {
       abort()
       throw new BatchException(
           updateCounts = updateCounts.toSeq,
@@ -134,23 +134,23 @@ object Batch:
           statementText = lastText,
           cause = e
       )
-    end raise
+    }
 
 
     /** Aborts the execution and cleans up resources. */
-    def abort(): Unit =
-      try
+    def abort(): Unit = {
+      try {
         closeStatement()
-      catch
+      } catch {
         case _: Throwable =>
           /* Ignore issues in close as we'll be throwing another exception. */
           ()
-      end try
-    end abort
+      }
+    }
 
 
     /** Sets the new query for the database. */
-    private def setNewQuery(newQuery: String): Unit =
+    private def setNewQuery(newQuery: String): Unit = {
       /* Send the existing portion if needed. */
       flush()
 
@@ -160,33 +160,33 @@ object Batch:
       /* Init new statement. */
       lastText = newQuery
       ps = conn.jdbcConnection.prepareStatement(newQuery)
-    end setNewQuery
+    }
 
 
     /** Flushes the current batch. */
-    private def flush(): Unit =
+    private def flush(): Unit = {
       if thisBatchSize == 0 then
         return
 
       updateCounts ++= ps.executeBatch()
       batchOffset += thisBatchSize
       thisBatchSize = 0
-    end flush
+    }
 
 
     /**
      * Closes the statement and clears the private field indicating no more
      * processing should happen.
      */
-    private def closeStatement(): Unit =
+    private def closeStatement(): Unit = {
       if ps == null then
         return
-      try
+      try {
         ps.close()
-      finally
+      } finally {
         /* Clear the state so we won't attempt to close it again. */
         ps = null
-    end closeStatement
-  end Context
-
-end Batch
+      }
+    }
+  }
+}

@@ -16,7 +16,7 @@ import java.sql.PreparedStatement
  * operations. Clients using this fields could use it for running queries but
  * must not change transaction isolation level or close the connection.
  */
-abstract class Connection(val jdbcConnection: JdbcConnection):
+abstract class Connection(val jdbcConnection: JdbcConnection) {
   /** Performs a callback over the active (low-level) JDBC connection. */
   def withJdbcConnection[T](cb: JdbcConnection => T): T =
     cb(jdbcConnection)
@@ -30,10 +30,10 @@ abstract class Connection(val jdbcConnection: JdbcConnection):
    * be applied.
    */
   def allOrNothing[T](cb: Transaction[?] ?=> T): T
-end Connection
+}
 
 
-object Connection:
+object Connection {
   /**
    * Executes a callback on a prepared statement obtained from this connection.
    * @param statement statement text to prepare and provide to the callback.
@@ -46,11 +46,11 @@ object Connection:
         cb: PreparedStatement => T
       )(using
         conn: Connection
-      ): T =
+     ): T = {
     val ps = conn.jdbcConnection.prepareStatement(statement)
     try
       cb(ps)
     finally
       ps.close()
-  end withPreparedStatement
-end Connection
+  }
+}

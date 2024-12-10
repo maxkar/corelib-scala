@@ -15,17 +15,17 @@ import sql.connection.Isolation
  * on the database operations only, it should not perform other types
  * of IO like file reading or network communication calls.
  */
-trait Database[M[_]]:
+trait Database[M[_]] {
   /**
    * Executes callback on the autocommit connection. The database may
    * delay execution of the block until an actual database connection
    * is available.
    */
   def withAutocommitConnection[T](cb: AutocommitConnection ?=> T): M[T]
-end Database
+}
 
 
-object Database:
+object Database {
   /** Executes the code block with the default autocommit mode. */
   def withAutocommit[M[_], T](
         cb: AutocommitConnection ?=> T
@@ -69,5 +69,4 @@ object Database:
         db: Database[M]
       ): M[T] =
     db.withAutocommitConnection(conn ?=> conn.atSerializable(cb))
-
-end Database
+}

@@ -11,11 +11,11 @@ import scala.language.dynamics
  *
  * @param rs result set that would be accessed for fields.
  */
-final class Row(rs: ResultSet) extends Dynamic:
+final class Row(rs: ResultSet) extends Dynamic {
   /**
    * Selects a field from the row and returns the data that could be
    * used by a database integration dialect to extract a value of an expected type.
    */
   def selectDynamic(field: String): RowField =
     new RowField(rs, field)
-end Row
+}

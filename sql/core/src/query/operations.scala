@@ -14,8 +14,8 @@ import java.sql.ResultSet
  * updates that integrate with an application telemetry thus requiring additional
  * sensors or context to be passed into the operation.
  */
-object operations:
-  extension (q: Query)
+object operations {
+  extension (q: Query) {
     /** Performs an update of the database and returns number of rows updated. */
     def updateCount()(using Connection, Timeout): Int =
       withPreparedStatement { _.executeUpdate() }
@@ -66,5 +66,5 @@ object operations:
         q.setParameters(ps, 1)
         cb(ps)
       }
-  end extension
-end operations
+  }
+}

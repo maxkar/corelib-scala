@@ -9,7 +9,7 @@ import scala.collection.mutable.Queue
  * First-in/first-out implementation of the task provider.
  * @tparam T type of the task managed by the queue.
  */
-final class FifoTaskProvider extends TaskProvider:
+final class FifoTaskProvider extends TaskProvider {
   /** Synchronization primitive. */
   private val lock = new Object()
 
@@ -34,7 +34,7 @@ final class FifoTaskProvider extends TaskProvider:
     lock synchronized {
       while !stopped && queue.isEmpty do
         lock.wait()
-      return if stopped then null else queue.dequeue()
+      if stopped then null else queue.dequeue()
     }
 
 
@@ -45,4 +45,4 @@ final class FifoTaskProvider extends TaskProvider:
       stopped = true
       lock.notifyAll()
     }
-end FifoTaskProvider
+}

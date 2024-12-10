@@ -6,7 +6,7 @@ import sql.connection.AutocommitConnection
 /**
  * A provider of tasks that would be executed on the connection pool.
  */
-trait TaskProvider:
+trait TaskProvider {
   /**
    * Gets a next task to execute on the connection (if any). This method
    * may be called from multiple threads simultaneously.
@@ -24,4 +24,4 @@ trait TaskProvider:
    * instances and is safe to terminate.
    */
   def shutdown(): Unit
-end TaskProvider
+}

@@ -12,12 +12,13 @@ import sql.query.Fragment
  * the same to be included into the query.
  */
 def nullOfType(sqlType: Int): Fragment =
-  new Fragment:
+  new Fragment {
     override def appendQuery(sb: StringBuilder): Unit =
       sb.append('?')
-    override def setParameters(statement: PreparedStatement, startIndex: Int): Int =
+
+    override def setParameters(statement: PreparedStatement, startIndex: Int): Int = {
       statement.setNull(startIndex, sqlType)
       startIndex + 1
-  end new
-end nullOfType
+    }
+  }
 

@@ -7,7 +7,7 @@ import java.sql.PreparedStatement
  * A "fragment" of a query it knows how to build a query text and then provide
  * parameters to the PreparedStatement.
  */
-trait Fragment:
+trait Fragment {
   /** Appends the fragment's text to the string builder. */
   def appendQuery(sb: StringBuilder): Unit
 
@@ -22,23 +22,22 @@ trait Fragment:
    *   the last parameter filled by this fragment).
    */
   def setParameters(statement: PreparedStatement, startIndex: Int): Int
-end Fragment
+}
 
 
 
-object Fragment:
+object Fragment {
 
   /**
    * Creates a "raw" fragment - text that would be interpreted "as-is", without any
    * safety measures. This method should be used with trusted input only.
    */
   def raw(text: String): Fragment =
-    new Fragment:
+    new Fragment {
       override def appendQuery(sb: StringBuilder): Unit =
         sb.append(text)
 
       override def setParameters(statement: PreparedStatement, startIndex: Int): Int =
         startIndex
-    end new
-  end raw
-end Fragment
+    }
+}

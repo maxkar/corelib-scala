@@ -2,6 +2,6 @@ package io.github.maxkar
 package sql.result
 
 /** Combined syntax extentsions. */
-object syntax:
+object syntax {
   export Multiplicity.*
-end syntax
+}

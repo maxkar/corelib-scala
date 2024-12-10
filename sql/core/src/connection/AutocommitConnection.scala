@@ -9,16 +9,16 @@ import java.sql.{Connection => JdbcConnection}
  * commited immediately. New transactions could be started on these connections.
  */
 final class AutocommitConnection(jdbcConnection: JdbcConnection)
-    extends Connection(jdbcConnection):
+    extends Connection(jdbcConnection) {
 
-  override def allOrNothing[T](cb: Transaction[?] ?=> T): T =
+  override def allOrNothing[T](cb: Transaction[?] ?=> T): T = {
     jdbcConnection.setAutoCommit(false)
-    try
+    try {
       invokeCallback(cb)
-    finally
+    } finally {
       jdbcConnection.setAutoCommit(true)
-    end try
-  end allOrNothing
+    }
+  }
 
 
   /** Runs the callback at the "read uncommitted" isolation level. */
@@ -48,45 +48,45 @@ final class AutocommitConnection(jdbcConnection: JdbcConnection)
    * @param level JDBC transaction isolation level.
    * @param cb callback to execute on the transaction.
    */
-  private def runTx[T, I](level: Int, cb: Transaction[I] ?=> T): T =
+  private def runTx[T, I](level: Int, cb: Transaction[I] ?=> T): T = {
     jdbcConnection.setAutoCommit(false)
-    try
+    try {
       jdbcConnection.setTransactionIsolation(level)
       invokeCallback(cb)
-    finally
+    } finally {
       jdbcConnection.setAutoCommit(true)
-    end try
-  end runTx
+    }
+  }
 
 
   /**
    * Invokes the callback on the transaction. Commits or rolls back the transaction
    * as needed.
    */
-  private inline def invokeCallback[T, I](cb: Transaction[I] ?=> T): T =
+  private inline def invokeCallback[T, I](cb: Transaction[I] ?=> T): T = {
     val tx = new Transaction[I](jdbcConnection)
     val res =
-      try
+      try {
         cb(using tx)
-      catch
+      } catch {
         case e: Throwable =>
           jdbcConnection.rollback()
           throw e
-      end try
+      }
 
     if tx.rollbackOnly then
       jdbcConnection.rollback()
-    else
+    else {
       jdbcConnection.commit()
       fireCommitListeners(tx)
-    end if
+    }
 
     res
-  end invokeCallback
+  }
 
 
   /** Runs the commit listeners of the given transaction. */
-  private def fireCommitListeners(tx: Transaction[?]): Unit =
+  private def fireCommitListeners(tx: Transaction[?]): Unit = {
     val listeners = tx.commitListeners
     /* Expected fast path for most transactions, don't create extra iterators. */
     if listeners.isEmpty then
@@ -94,5 +94,5 @@ final class AutocommitConnection(jdbcConnection: JdbcConnection)
     val itr = listeners.iterator
     while itr.hasNext do
       itr.next()()
-  end fireCommitListeners
-end AutocommitConnection
+  }
+}

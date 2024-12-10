@@ -26,16 +26,16 @@ case class Configuration(
     )
 
 
-object Configuration:
+object Configuration {
   /** How to connect to the database. */
-  enum Connection:
+  enum Connection {
     /** Simple URL but no login/password. */
     case NoCredentials(url: String)
     /** Login and password are available for connection. */
     case LoginPassword(url: String, login: String, password: String)
     /** Property-based configuration. */
     case PropertyBased(url: String, properties: java.util.Properties)
-  end Connection
+  }
 
 
   /**
@@ -65,18 +65,16 @@ object Configuration:
       /** Counter of the threads. */
       private val threadCounter = new java.util.concurrent.atomic.AtomicInteger()
 
-      override def newThread(x: Runnable): Thread =
+      override def newThread(x: Runnable): Thread = {
         val res = new Thread(x)
         res.setDaemon(true)
         res.setName(s"Database access thread ${threadCounter.incrementAndGet()}")
         res
-      end newThread
+      }
     }
 
 
   /** Default backoff strategy (randomized doubling of timeout). */
   private lazy val defaultBackoffStrategy: BackoffStrategy =
     BackoffStrategy.randomizedDouble(25, 60_000)
-
-
-end Configuration
+}

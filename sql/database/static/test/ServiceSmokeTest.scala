@@ -14,7 +14,7 @@ import io.github.maxkar.sql.connection.AutocommitConnection
 /**
  * Very basic smoke test for the connection service.
  */
-final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite {
   /**
    * An ID of the "next" database to run.
    * Tests are run in parallel. We can prevent them from doing so. Or we can
@@ -24,14 +24,14 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Thread factory that counts threads. */
-  final class CountingThreadFactory extends java.util.concurrent.ThreadFactory:
+  final class CountingThreadFactory extends java.util.concurrent.ThreadFactory {
     private val threadCounter = new java.util.concurrent.atomic.AtomicInteger()
 
     /** Returns current number of active threads. */
     def activeThreadCount: Int = threadCounter.get()
 
 
-    override def newThread(x: Runnable): Thread =
+    override def newThread(x: Runnable): Thread = {
       val t = new Thread(new Runnable() {
         override def run(): Unit =
           threadCounter.incrementAndGet()
@@ -42,8 +42,8 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
       })
       t.setDaemon(true)
       t
-    end newThread
-  end CountingThreadFactory
+    }
+  }
 
 
   test("Attempt to connect to non-existend DB should throw an exception") {
@@ -185,7 +185,7 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
   /**
    * Creates a temp database server and invokes the callback with the DB URL provided.
    */
-  private def withTempServer[T](callback: String => T): T =
+  private def withTempServer[T](callback: String => T): T = {
     import org.hsqldb.Server
 
     val idx = dbIndex.incrementAndGet()
@@ -200,5 +200,5 @@ final class ServiceSmokeTest extends org.scalatest.funsuite.AnyFunSuite:
       callback(s"jdbc:hsqldb:hsql://localhost:${dbPort}/${dbName}")
     finally
       server.shutdown()
-  end withTempServer
-end ServiceSmokeTest
+  }
+}

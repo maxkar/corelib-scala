@@ -12,7 +12,7 @@ import scala.language.implicitConversions
 /**
  * Test than validates basic transaction logic.
  */
-final class TransactionTest extends DbTest:
+final class TransactionTest extends DbTest {
   dbTest("Basic Transaction Test")(
     """CREATE TABLE test(
         id INT PRIMARY KEY NOT NULL,
@@ -228,4 +228,4 @@ final class TransactionTest extends DbTest:
 
     assert(1 === callCount)
   }
-end TransactionTest
+}

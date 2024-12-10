@@ -7,7 +7,7 @@ import sql.query.Fragment
 
 
 /** Standard dialect - the very basic and universal things. */
-object standard:
+object standard {
   export std.Ints.given
   export std.Ints.{int, optInt}
   export std.Longs.given
@@ -24,11 +24,10 @@ object standard:
 
   /** Setter for null value. Uses NULL text and no parameters. */
   val nullValue: Fragment =
-    new Fragment:
+    new Fragment {
       override def appendQuery(sb: StringBuilder): Unit =
         sb.append("NULL")
       override def setParameters(statement: PreparedStatement, startIndex: Int): Int =
         startIndex
-    end new
-  end nullValue
-end standard
+    }
+}

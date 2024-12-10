@@ -5,7 +5,7 @@ import java.sql.DriverManager
 import java.sql.{Connection => JdbcConnection}
 
 /** Utilities for working with temporary database. */
-object TempDb:
+object TempDb {
   /**
    * An ID of the "next" database to run.
    * Tests are run in parallel. We can prevent them from doing so. Or we can
@@ -39,4 +39,4 @@ object TempDb:
     finally
       conn.close()
   end withTestConnection
-end TempDb
+}

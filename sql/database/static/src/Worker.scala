@@ -30,59 +30,59 @@ private final class Worker(
       taskProvider: TaskProvider,
       sensor: Sensor,
       alive: AtomicBoolean,
-    ) extends Runnable:
+    ) extends Runnable {
 
 
-  override def run(): Unit =
+  override def run(): Unit = {
     var conn = connect()
 
-    while conn != null && alive.get() do
-      try
+    while conn != null && alive.get() do {
+      try {
         serveUsing(conn)
-      catch
+      } catch {
         case e: Throwable => sensor.generalError(e)
-      finally
-        try
+      } finally {
+        try {
           conn.close()
-        catch
+        } catch {
           case e: Throwable => sensor.generalError(e)
-        end try
-      end try
+        }
+      }
 
       conn = connect()
-    end while
-  end run
+    }
+  }
 
 
   /**
    * Attempts to get a connection using connection properties and back-off strategy.
    * Returns a connection or `null` if termination condition was reached.
    */
-  private def connect(): JdbcConnection =
-    while alive.get() do
+  private def connect(): JdbcConnection = {
+    while alive.get() do {
       sensor.createConnectionStarted()
-      try
+      try {
         val res = Worker.openConnection(connection)
         sensor.createConnectionSuccessful()
         backoffStrategy.reset()
         return res
-      catch
+      } catch {
         case e: Throwable =>
           sensor.createConnectionFailed(e)
           backoffStrategy.waitForRetry()
-      end try
-    end while
+      }
+    }
 
     return null
-  end connect
+  }
 
 
   /**
    * Runs the process using the active connection. Returns at the moment
    * connection is indicated to be invalid.
    */
-  private def serveUsing(conn: JdbcConnection): Unit =
-    while alive.get() do
+  private def serveUsing(conn: JdbcConnection): Unit = {
+    while alive.get() do {
       val task = taskProvider.getNextTask(validation.validateOnIdleMsTimeout)
       /* If the task is not null, then there is no timeout and we should execute
        * the task. Otherwise it was either shutdown or timeout before validation,
@@ -98,60 +98,59 @@ private final class Worker(
          */
         if !runTask(conn, task) && !validate(conn) then
           return
-      else
+      else {
         if !validate(conn) then
           return
-      end if
-    end while
-  end serveUsing
+      }
+    }
+  }
 
 
   /**
    * Runs one task on the connection.
    * @return `true` if task completed successfully and `false` otherwise.
    */
-  private def runTask(conn: JdbcConnection, task: AutocommitConnection => Unit): Boolean =
+  private def runTask(conn: JdbcConnection, task: AutocommitConnection => Unit): Boolean = {
     sensor.taskStarted()
-    try
+    try {
       task(new AutocommitConnection(conn))
       sensor.taskSuccess()
       true
-    catch
+    } catch {
       case e: Throwable =>
         sensor.taskFailed(e)
         false
-    end try
-  end runTask
+    }
+  }
 
 
   /** Checks if the existing connection is valid and could be used. */
-  private def validate(conn: JdbcConnection): Boolean =
+  private def validate(conn: JdbcConnection): Boolean = {
     if !alive.get() then
       return false
     sensor.validationStarted()
-    try
+    try {
       val res = conn.isValid(validation.validationTimeoutMs)
       sensor.validationComplete(res)
       res
-    catch
+    } catch {
       case e: Throwable =>
         sensor.validationFailed(e)
         false
-    end try
-  end validate
-end Worker
+    }
+  }
+}
 
 
-
-private object Worker:
+private object Worker {
   /** Opens a new JDBC connection to the database. */
   def openConnection(connection: Configuration.Connection): JdbcConnection =
-    connection match
+    connection match {
       case Configuration.Connection.NoCredentials(url) =>
         DriverManager.getConnection(url)
       case Configuration.Connection.LoginPassword(url, login, password) =>
         DriverManager.getConnection(url, login, password)
       case Configuration.Connection.PropertyBased(url, properties) =>
         DriverManager.getConnection(url, properties)
-    end match
-end Worker
+    }
+}

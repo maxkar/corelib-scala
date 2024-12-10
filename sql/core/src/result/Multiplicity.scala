@@ -7,7 +7,7 @@ import java.sql.SQLException
 import scala.collection.mutable.ArrayBuffer
 
 /** Multiplicity specifiers and combinators for result set parsing. */
-object Multiplicity:
+object Multiplicity {
   /**
    * Selects exactly one row and raises an exception if there is less than
    * or more than one row.
@@ -69,4 +69,4 @@ object Multiplicity:
   /** Synonym for `many` which works with the row parser. */
   def many[T](rowParser: Row => T): ResultSet => Seq[T] =
     many(RowExtractor.rowSyntaxParser(rowParser))
-end Multiplicity
+}
