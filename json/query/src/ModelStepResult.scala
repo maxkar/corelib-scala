@@ -5,7 +5,7 @@ package json.query
  * Outcome of navigating one step in the model.
  * @tparam T type of the model elements.
  */
-enum ModelStepResult[+T]:
+enum ModelStepResult[+T] {
   /**
    * Navigation was successfull and the {{{value}}} is the requested child.
    * @param value value at the given selector.
@@ -24,4 +24,4 @@ enum ModelStepResult[+T]:
    * (for example, integer index was provided for json object).
    */
   case IllegalSelector
-end ModelStepResult
+}

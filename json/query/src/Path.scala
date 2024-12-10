@@ -5,35 +5,32 @@ package json.query
  * Path in the JSON value (i.e. how to navigate from some unspecificed root
  * to a specific element).
  */
-abstract sealed class Path:
+abstract sealed class Path {
   import Path._
 
   /** Append step at the end of the path. */
   def /(step: Step): Path =
-    this match
+    this match {
       case Empty => NonEmpty(Vector(step))
       case NonEmpty(prefix) => NonEmpty(prefix :+ step)
-    end match
-  end /
+    }
 
 
   /** Concatenates paths. */
   def +(other: Path): Path =
-    (this, other) match
+    (this, other) match {
       case (Empty, _) => other
       case (_, Empty) => this
       case (NonEmpty(thisSteps), NonEmpty(otherSteps)) => NonEmpty(thisSteps ++ otherSteps)
-    end match
-  end +
+    }
 
 
   /** Steps comprising this path (from the "outermost" to innermost). */
   def steps: Seq[Step] =
-    this match
+    this match {
       case Empty => Seq.empty
       case NonEmpty(path) => path
-    end match
-  end steps
+    }
 
 
   /** Checks if this path is empty. */
@@ -47,20 +44,18 @@ abstract sealed class Path:
    * Returns an iterator over steps of this path.
    */
   def stepIterator: Iterator[Step] =
-    this match
+    this match {
       case Empty => Iterator.empty
       case NonEmpty(steps) => steps.iterator
-    end match
-  end stepIterator
-
-end Path
+    }
+}
 
 
-object Path:
+object Path {
   /** There is no steps to take, the path denotes the "root" object of the hierarchy. */
-  private case object Empty extends Path:
+  private case object Empty extends Path {
     override def toString(): String = "<root>"
-  end Empty
+  }
 
 
   /**
@@ -69,8 +64,8 @@ object Path:
    *   vector as these provide better "append" operations and avoid the need to reverse
    *   elements (if reverse lists are used).
    */
-  private case class NonEmpty(pathElements: Vector[Step]) extends Path:
-    override def toString(): String =
+  private case class NonEmpty(pathElements: Vector[Step]) extends Path {
+    override def toString(): String = {
       val res = new StringBuilder()
       val itr = pathElements.iterator
 
@@ -79,8 +74,8 @@ object Path:
         res.append(itr.next().encode())
 
       res.toString()
-    end toString
-  end NonEmpty
+    }
+  }
 
 
   /** An "empty" path - the path denotes the object being queried. */
@@ -97,4 +92,4 @@ object Path:
    */
   def apply(steps: Step*): Path =
     if steps.isEmpty then empty else NonEmpty(steps.toVector)
-end Path
+}

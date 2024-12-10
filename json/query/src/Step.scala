@@ -5,7 +5,7 @@ package json.query
  * One navigation step in the JSON query. The "step" indicates how to
  * get to a next element (i.e. by indexing or by name).
  */
-enum Step:
+enum Step {
   /**
    * An element is assumed to be an array and the next step is indexing in that array.
    * @param index index of the element in the array.
@@ -21,11 +21,10 @@ enum Step:
 
   /** Checks if this step is just a simple name (and could be written using dot notation). */
   def isSimpleName(): Boolean =
-    this match
+    this match {
       case Index(_) => false
       case Name(name) => Step.isSimpleName(name)
-    end match
-  end isSimpleName
+    }
 
 
   /**
@@ -36,12 +35,11 @@ enum Step:
    * @return encoded form of the step.
    */
   def encode(): String =
-    this match
+    this match {
       case Index(idx) => s"[${idx}]"
       case Name(name) if Step.isSimpleName(name) => s".${name}"
       case Name(name) => s"[\"${Step.escapeName(name)}\"]"
-    end match
-  end encode
+    }
 
 
   /**
@@ -53,27 +51,27 @@ enum Step:
    * @return encoded form of the step.
    */
   def encodeNoLeadingDot(): String =
-    this match
+    this match {
       case Index(idx) => s"[${idx}]"
       case Name(name) if Step.isSimpleName(name) => s"${name}"
       case Name(name) => s"[\"${Step.escapeName(name)}\"]"
-    end match
-  end encodeNoLeadingDot
-end Step
+    }
+}
 
-
-object Step:
+object Step {
   /**
    * Conversion from int values to step values.
    */
-  given intToStepConversion: Conversion[Int, Step] with
+  given intToStepConversion: Conversion[Int, Step] with {
     def apply(x: Int): Step = Step.Index(x)
+  }
 
   /**
    * Conversion from strings to step values.
    */
-  given stringToStepConversion: Conversion[String, Step] with
+  given stringToStepConversion: Conversion[String, Step] with {
     def apply(x: String): Step = Step.Name(x)
+  }
 
 
   /** Hexadecimal digits. */
@@ -81,7 +79,7 @@ object Step:
 
 
   /** Converts code into hexadecimal digit. */
-  private def toHexDigit(char: Char): Char =
+  private inline def toHexDigit(char: Char): Char =
     HEX_CHARS.charAt(char)
 
 
@@ -89,11 +87,11 @@ object Step:
    * Checks if the given string name is "simple" name (i.e. does not contain any
    * special characters and could be written as ".name" in the path)
    */
-  private def isSimpleName(name: String): Boolean =
+  private def isSimpleName(name: String): Boolean = {
     if name.isEmpty() then return false
     if !java.lang.Character.isLetter(name.charAt(0)) then return false
     return name.forall(java.lang.Character.isLetterOrDigit)
-  end isSimpleName
+  }
 
 
   /**
@@ -101,12 +99,12 @@ object Step:
    * @param name name to escape.
    * @return escaped name (without additional quotes around it).
    */
-  private def escapeName(name: String): String =
+  private def escapeName(name: String): String = {
     val res = new StringBuilder()
     var ptr = 0
 
-    while ptr < name.length() do
-      name.charAt(ptr) match
+    while ptr < name.length() do {
+      name.charAt(ptr) match {
         case '"' => res ++= "\\\""
         case '\\' => res ++= "\\\\"
         case '\b' => res ++= "\\b"
@@ -122,11 +120,10 @@ object Step:
           res += toHexDigit(x)
         case other =>
           res += other
-      end match
-
+      }
       ptr += 1
-    end while
+    }
 
     res.toString()
-  end escapeName
-end Step
+  }
+}

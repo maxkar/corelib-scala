@@ -4,7 +4,7 @@ package json.query
 /**
  * Integration between model and the way it is navigated.
  */
-trait ModelNavigation[T]:
+trait ModelNavigation[T] {
   /**
    * Performs index access on the given value.
    */
@@ -20,9 +20,8 @@ trait ModelNavigation[T]:
    * Performs one step of navigation using the given step.
    */
   final def step(base: T, step: Step): ModelStepResult[T] =
-    step match
+    step match {
       case Step.Index(idx) => index(base, idx)
       case Step.Name(nm) => key(base, nm)
-    end match
-  end step
-end ModelNavigation
+    }
+}

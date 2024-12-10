@@ -22,7 +22,7 @@ import scala.language.implicitConversions
  *
  * @tparam T type of the underlying JSON model.
  */
-abstract sealed class Query[T] extends Dynamic:
+abstract sealed class Query[T] extends Dynamic {
   /** Navigates to a child of this query. */
   def /(step: Step)(using ModelNavigation[T]): Query[T]
 
@@ -86,7 +86,7 @@ abstract sealed class Query[T] extends Dynamic:
    */
   def as[R](implicit conv: Conversion[Query[T], R]): R =
     conv.convert(this)
-end Query
+}
 
 
 /**
@@ -96,31 +96,30 @@ end Query
  * the specific json modules (json model integrations) so this approach won't be a huge
  * inconvenience.
  */
-object Query:
+object Query {
   /**
    * The query is valid and corresponds to the given value (model element).
    * @tparam T type of the underlying model.
    * @tparam path path captured so far.
    * @tparam value value at the given path.
    */
-  case class ValidQuery[T](path: Path, value: T) extends Query[T]:
+  case class ValidQuery[T](path: Path, value: T) extends Query[T] {
     override def /(step: Step)(implicit mn: ModelNavigation[T]): Query[T] =
-      mn.step(value, step) match
+      mn.step(value, step) match {
         case ModelStepResult.Success(s) => ValidQuery(path / step, s)
         case ModelStepResult.IllegalSelector =>
           InvalidSelector(path, value, Path(step))
         case ModelStepResult.MissingValue =>
           MissingElement(path, value, Path(step))
-      end match
-    end /
+      }
 
-    override def /(path: Path)(implicit mn: ModelNavigation[T]): Query[T] =
+    override def /(path: Path)(implicit mn: ModelNavigation[T]): Query[T] = {
       var curPath = this.path
       var curValue = value
       val itr = path.stepIterator
-      while itr.hasNext do
+      while itr.hasNext do {
         val curStep = itr.next
-        mn.step(curValue, curStep) match
+        mn.step(curValue, curStep) match {
           case ModelStepResult.Success(s) =>
             curPath = curPath / curStep
             curValue = s
@@ -128,10 +127,11 @@ object Query:
             return InvalidSelector(curPath, curValue, Path(curStep) + Path(itr.toSeq*))
           case ModelStepResult.MissingValue =>
             return MissingElement(curPath, curValue, Path(curStep) + Path(itr.toSeq*))
-      end while
+        }
+      }
       ValidQuery(curPath, curValue)
-    end /
-  end ValidQuery
+    }
+  }
 
 
   /**
@@ -152,13 +152,13 @@ object Query:
    * @param validValue last value observed on the path.
    * @param invalidPath path since the last valid value.
    */
-  case class MissingElement[T](validPath: Path, validValue: T, invalidPath: Path) extends InvalidQuery[T]:
+  case class MissingElement[T](validPath: Path, validValue: T, invalidPath: Path) extends InvalidQuery[T] {
     override def /(step: Step)(implicit mn: ModelNavigation[T]): Query[T] =
       copy(invalidPath = invalidPath / step)
 
     override def /(path: Path)(implicit mn: ModelNavigation[T]): Query[T] =
       copy(invalidPath = invalidPath + path)
-  end MissingElement
+  }
 
 
   /**
@@ -170,27 +170,26 @@ object Query:
    * @param invalidPath path that was requested to apply at the {{{vaildValue}}} but could
    *   not be used as selector is not applicable to the actual type.
    */
-  case class InvalidSelector[T](validPath: Path, validValue: T, invalidPath: Path) extends InvalidQuery[T]:
+  case class InvalidSelector[T](validPath: Path, validValue: T, invalidPath: Path) extends InvalidQuery[T] {
     override def /(step: Step)(implicit mn: ModelNavigation[T]): Query[T] =
       copy(invalidPath = invalidPath / step)
 
     override def /(path: Path)(implicit mn: ModelNavigation[T]): Query[T] =
       copy(invalidPath = invalidPath + path)
-  end InvalidSelector
+  }
 
 
   /**
    * Returns full path specified by the selector.
    */
   def fullPath(q: Query[?]): Path =
-    q match
+    q match {
       case ValidQuery(path, _) => path
       case MissingElement(validPath, _, invalidPath) => validPath + invalidPath
       case InvalidSelector(validPath, _, invalidPath) => validPath + invalidPath
-    end match
-  end fullPath
+    }
 
   /** Creates a new query using the given value as root. */
   def apply[T](v: T): Query[T] =
     ValidQuery(Path.empty, v)
-end Query
+}

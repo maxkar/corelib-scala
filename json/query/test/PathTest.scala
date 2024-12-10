@@ -3,7 +3,7 @@ package json.query
 
 import scala.language.implicitConversions
 
-final class PathTest extends org.scalatest.funsuite.AnyFunSuite:
+final class PathTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Basic path equalities and properties hold") {
     assert(Path.empty === Path.empty)
     assert(Path.root === Path.empty)
@@ -39,4 +39,4 @@ final class PathTest extends org.scalatest.funsuite.AnyFunSuite:
     assert(Path(" ").toString() === "[\" \"]")
     assert(Path("cat\"").toString() === "[\"cat\\\"\"]")
   }
-end PathTest
+}
