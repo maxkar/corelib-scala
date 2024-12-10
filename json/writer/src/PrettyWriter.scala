@@ -10,21 +10,21 @@ private final class PrettyWriter[M[_]: Monad, T](
       format: PrettyPrintOptions,
       classifier: Values.ValueClassifier[T],
     )
-    extends Writer[M, T]:
+    extends Writer[M, T] {
 
   override def write(value: T, stream: Stream[M]): M[Unit] =
     new PrettyWriter.InstanceWriter(format, classifier, stream).write(value)
-end PrettyWriter
+}
 
 
-private object PrettyWriter:
+private object PrettyWriter {
   /** Writer for one value instance. */
   private[writer] final class InstanceWriter[M[_]: Monad, T](
         format: PrettyPrintOptions,
         classifier: Values.ValueClassifier[T],
         stream: Stream[M]
       )
-      extends Values.ValueCallback[T, M[Unit]]:
+      extends Values.ValueCallback[T, M[Unit]] {
 
     /** Current indent level. */
     private var indentLevel: Int = 0
@@ -42,52 +42,58 @@ private object PrettyWriter:
     /** Array whitespaces. */
     private val arrayWhitespaces =
       new Arrays.Whitespaces[M, Stream[M]] {
-        override def beforeArray(stream: Stream[M]): M[Unit] =
+        override def beforeArray(stream: Stream[M]): M[Unit] = {
           contextStack = context :: contextStack
           pass
+        }
 
-        override def afterArray(stream: Stream[M]): M[Unit] =
+        override def afterArray(stream: Stream[M]): M[Unit] = {
           contextStack = contextStack.tail
           pass
+        }
 
-        override def beforeFirstValue(stream: Stream[M]): M[Unit] =
+        override def beforeFirstValue(stream: Stream[M]): M[Unit] = {
           context = Context.InArray
           indentLevel += 1
           beforeValue(stream)
+        }
 
         override def beforeValue(stream: Stream[M]): M[Unit] =
           wrapAndIndent()
 
         override def afterValue(stream: Stream[M]): M[Unit] = pass
 
-        override def afterLastValue(stream: Stream[M]): M[Unit] =
+        override def afterLastValue(stream: Stream[M]): M[Unit] = {
           indentLevel -= 1
           wrapAndIndent()
+        }
 
         override def insideEmptyArray(stream: Stream[M]): M[Unit] =
           if context.shouldWrap(format.emptyArrayWrap) then
             wrapAndIndent()
           else
             pass
-        end insideEmptyArray
       }
 
 
     /** Object whitespaces logic. */
     val objectWhitespaces =
       new Objects.Whitespaces[M, Stream[M]] {
-        override def beforeObject(stream: Stream[M]): M[Unit] =
+        override def beforeObject(stream: Stream[M]): M[Unit] = {
           contextStack = context :: contextStack
           pass
+        }
 
-        override def afterObject(stream: Stream[M]): M[Unit] =
+        override def afterObject(stream: Stream[M]): M[Unit] = {
           contextStack = contextStack.tail
           pass
+        }
 
-        override def beforeFirstKey(stream: Stream[M]): M[Unit] =
+        override def beforeFirstKey(stream: Stream[M]): M[Unit] = {
           indentLevel += 1
           context = Context.InObject
           beforeKey(stream)
+        }
 
         override def beforeKey(stream: Stream[M]): M[Unit] =
           wrapAndIndent()
@@ -99,16 +105,16 @@ private object PrettyWriter:
 
         override def afterValue(stream: Stream[M]): M[Unit] = pass
 
-        override def afterLastValue(stream: Stream[M]): M[Unit] =
+        override def afterLastValue(stream: Stream[M]): M[Unit] = {
           indentLevel -= 1
           wrapAndIndent()
+        }
 
         override def insideEmptyObject(stream: Stream[M]): M[Unit] =
           if context.shouldWrap(format.emptyObjectWrap) then
             wrapAndIndent()
           else
             pass
-        end insideEmptyObject
       }
 
 
@@ -140,7 +146,6 @@ private object PrettyWriter:
         objectFromIter(iter.toSeq.sortBy(_._1).iterator)
       else
         objectFromIter(iter)
-    end unorderedObject
 
     override def orderedObject(iter: Iterator[(String, T)]): M[Unit] =
       objectFromIter(iter)
@@ -156,7 +161,7 @@ private object PrettyWriter:
 
 
     /** Writes `n` indents. */
-    private def writeIdents(n: Int): M[Unit] =
+    private def writeIdents(n: Int): M[Unit] = {
       if n == 0 then
         Monad.pure(())
       else if n == 1 then
@@ -165,12 +170,12 @@ private object PrettyWriter:
         stream.write(format.indent).flatMap { _ =>
           writeIdents(n-1)
         }
-    end writeIdents
-  end InstanceWriter
+    }
+  }
 
 
   /** Where we are in the process of printing. */
-  enum Context:
+  enum Context {
     /** We are at the root. */
     case TopLevel
     /** We are inside object (field). */
@@ -180,13 +185,10 @@ private object PrettyWriter:
 
     /** Checks if things should be wrapped based on options and context. */
     def shouldWrap(options: PrettyPrintOptions.WrapEmptyOptions): Boolean =
-      this match
+      this match {
         case TopLevel => options.wrapAtTopLevel
         case InObject => options.wrapInObjects
         case InArray => options.wrapInArrays
-      end match
-    end shouldWrap
-  end Context
-end PrettyWriter
-
-
+      }
+  }
+}

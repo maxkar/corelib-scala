@@ -7,13 +7,13 @@ import fun.typeclass.Monad
 
 
 /** General value output utilities. */
-object Values:
+object Values {
   /**
    * Visitor (callback) that knows how to handle a value of the json type.
    * @tparam T type of the JSON DOM value (i.e. element of an array or object).
    * @tparam R visitor's return value.
    */
-  trait ValueCallback[-T, +R]:
+  trait ValueCallback[-T, +R] {
     /**
      * The value is represented as json boolean.
      * @param v value as a boolean.
@@ -59,8 +59,7 @@ object Values:
      */
     def orderedObject(iter: Iterator[(String, T)]): R =
       unorderedObject(iter)
-
-  end ValueCallback
+  }
 
 
   /**
@@ -69,7 +68,7 @@ object Values:
    *
    * @tparam T specific type of JSON model.
    */
-  trait ValueClassifier[T]:
+  trait ValueClassifier[T] {
     /**
      * Classifies the model value to a specific JSON type and extracts underlying data.
      *
@@ -79,7 +78,7 @@ object Values:
      *   JSON and return it.
      */
     def classifyValue[R](jsonValue: T, callback: ValueCallback[T, R]): R
-  end ValueClassifier
+  }
 
 
   /**
@@ -136,4 +135,4 @@ object Values:
         classifier: ValueClassifier[B],
       ): M[Unit] =
     new PrettyWriter.InstanceWriter(format, classifier, stream).write(value)
-end Values
+}

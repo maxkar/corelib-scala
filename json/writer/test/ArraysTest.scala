@@ -8,10 +8,10 @@ import fun.instances.Identity
 import fun.instances.Identity.given
 
 /** Test for array writers and formatters.  */
-final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /* Internal spacing implementation. */
-  private object spacing extends Arrays.Whitespaces[Identity, Stream[Identity]]:
+  private object spacing extends Arrays.Whitespaces[Identity, Stream[Identity]] {
     override def beforeArray(stream: Stream[Identity]): Unit =
       stream.write(" ")
     override def afterArray(stream: Stream[Identity]): Unit =
@@ -31,7 +31,7 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
 
     override def afterValue(stream: Stream[Identity]): Unit =
       stream.write("  ")
-  end spacing
+  }
 
 
   test("Empty array") {
@@ -51,17 +51,17 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
 
-  private def expect(expected: String, elems: Int): Unit =
+  private def expect(expected: String, elems: Int): Unit = {
     val stream = StringBuilderStream()
     val w = Arrays.newWriter(spacing, Literals.writeBoolean, stream)
 
     var idx = elems
-    while idx > 0 do
+    while idx > 0 do {
       w.element(true)
       idx -= 1
-    end while
+    }
     w.end()
 
     assert(expected === stream.data)
-  end expect
-end ArraysTest
+  }
+}

@@ -8,7 +8,7 @@ import java.io.OutputStream
 
 
 /** String-related output functions. */
-object Strings:
+object Strings {
   /** String boundary. */
   val STRING_BOUNDARY: String = "\""
 
@@ -85,14 +85,14 @@ object Strings:
         data: CharSequence,
         start: Int,
         stream: Stream[M]
-      ): M[Unit] =
+      ): M[Unit] = {
     if data.length() <= start then
       return Monad.pure(())
 
     var ptr = start
 
-    while ptr < data.length() do
-      data.charAt(ptr) match
+    while ptr < data.length() do {
+      data.charAt(ptr) match {
         case '"' =>
           return writeStringWithSpecial(data, start, ptr, ESC_QUOTE, stream)
         case '\\' =>
@@ -110,11 +110,11 @@ object Strings:
         case x if x < 0x0020 =>
           return writeStringWithSpecial(data, start, ptr, LOWER_UNICODE(x), stream)
         case other => ptr += 1
-      end match
-    end while
+      }
+    }
 
     stream.write(data.subSequence(start, ptr))
-  end writeStringRest
+  }
 
 
   /**
@@ -126,7 +126,7 @@ object Strings:
         regularEnd: Int,
         special: String,
         stream: Stream[M],
-      ): M[Unit] =
+      ): M[Unit] = {
     var base =
       if start < regularEnd then
         stream.write(data.subSequence(start, regularEnd)).flatMap { _ =>
@@ -143,6 +143,5 @@ object Strings:
       }
     else
       base
-  end writeStringWithSpecial
-
-end Strings
+  }
+}

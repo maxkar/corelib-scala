@@ -4,7 +4,7 @@ package json.writer
 import text.output.Stream
 
 /** Literal writers. */
-object Literals:
+object Literals {
   /** Writes the `true` literal. */
   def writeTrue[M[_]](stream: Stream[M]): M[Unit] =
     stream.write("true")
@@ -20,4 +20,4 @@ object Literals:
   /** Writes a boolean value. */
   def writeBoolean[M[_]](v: Boolean, stream: Stream[M]): M[Unit] =
     if v then writeTrue(stream) else writeFalse(stream)
-end Literals
+}

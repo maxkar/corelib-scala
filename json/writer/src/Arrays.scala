@@ -8,7 +8,7 @@ import fun.typeclass.Applicative
 
 
 /** Array output utilities. */
-object Arrays:
+object Arrays {
   /** Array start sequence. */
   val ARRAY_START = "["
 
@@ -23,7 +23,7 @@ object Arrays:
    * Whitespace writer for arrays. Methods of this whitespacer are invoked to
    * format the output being generated.
    */
-  trait Whitespaces[M[_], -S]:
+  trait Whitespaces[M[_], -S] {
     /** Outputs whitespaces before the array. */
     def beforeArray(stream: S): M[Unit]
 
@@ -44,13 +44,13 @@ object Arrays:
 
     /** Outputs whitespaces after (non-last) array value. */
     def afterValue(stream: S): M[Unit]
-  end Whitespaces
+  }
 
 
-  object Whitespaces:
+  object Whitespaces {
     /** Creates a whitespace placement strategy that puts no whitespaces. */
     def nothing[M[_]: Applicative, Any]: Whitespaces[M, Any] =
-      new Whitespaces[M, Any]:
+      new Whitespaces[M, Any] {
         /** Universal return value. */
         private val pass = Monad.pure(())
 
@@ -61,9 +61,8 @@ object Arrays:
         override def beforeValue(stream: Any): M[Unit] = pass
         override def afterLastValue(stream: Any): M[Unit] = pass
         override def afterValue(stream: Any): M[Unit] = pass
-      end new
-    end nothing
-  end Whitespaces
+      }
+  }
 
 
   /**
@@ -72,7 +71,7 @@ object Arrays:
    */
   final class Layout[M[_]: Monad, S <: Stream[M]] private[Arrays](
         whitespaces: Whitespaces[M, S]
-      ):
+      ) {
     /** If any values were observed. */
     private var seenValue = false
 
@@ -86,11 +85,10 @@ object Arrays:
         prepareNext(stream)
       else
         prepareFirst(stream)
-    end prepareValue
 
 
     /** Finishes the stream by writing appropriate whitespaces and array terminator. */
-    def end(stream: S): M[Unit] =
+    def end(stream: S): M[Unit] = {
       val base =
         if seenValue then
           whitespaces.afterLastValue(stream)
@@ -102,7 +100,7 @@ object Arrays:
         _ <- writeArrayEnd(stream)
         res <- whitespaces.afterArray(stream)
       yield res
-    end end
+    }
 
 
     /** Prepares for the "next" (non-first) value. */
@@ -112,15 +110,14 @@ object Arrays:
         _ <- writeArraySeparator(stream)
         res <- whitespaces.beforeValue(stream)
       yield res
-    end prepareNext
 
 
     /** Prepares for the first value in the stream. */
-    private def prepareFirst(stream: S): M[Unit] =
+    private def prepareFirst(stream: S): M[Unit] = {
       seenValue = true
       whitespaces.beforeFirstValue(stream)
-    end prepareFirst
-  end Layout
+    }
+  }
 
 
   /**
@@ -128,13 +125,13 @@ object Arrays:
    * @tparam M type of IO monad.
    * @tparam T type of the element being written.
    */
-  abstract sealed class Writer[M[_], -T]:
+  abstract sealed class Writer[M[_], -T] {
     /** Outputs next array element. */
     def element(v: T): M[Unit]
 
     /** Finishes writing and closes the array output. */
     def end(): M[Unit]
-  end Writer
+  }
 
 
   /** Array writer implementation (hides some types). */
@@ -142,8 +139,7 @@ object Arrays:
         layout: Layout[M, S],
         writeElement: (T, S) => M[Unit],
         stream: S
-      ) extends Writer[M, T]:
-
+      ) extends Writer[M, T] {
     override def element(v: T): M[Unit] =
       layout.prepareValue(stream).flatMap { _ =>
         writeElement(v, stream)
@@ -151,7 +147,7 @@ object Arrays:
 
     override def end(): M[Unit] =
       layout.end(stream)
-  end WriterImpl
+  }
 
 
   /** Writes array start (prologue). */
@@ -196,7 +192,6 @@ object Arrays:
       _ <- writeArrayStart(stream)
     yield
       new Layout(whitespaces)
-  end beginArray
 
 
   /**
@@ -222,7 +217,6 @@ object Arrays:
     beginArray(whitespaces, stream).map { layout =>
       new WriterImpl(layout, writeElement, stream)
     }
-  end newWriter
 
 
   /** Writes the `data` as an array. */
@@ -246,5 +240,4 @@ object Arrays:
       writer.element(data.next()).flatMap { _ => writeAllNext(data, writer) }
     else
       writer.end()
-  end writeAllNext
-end Arrays
+}

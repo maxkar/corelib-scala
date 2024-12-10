@@ -9,7 +9,7 @@ import fun.instances.Identity.given
 
 
 /** Test for string writers.  */
-final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
+final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /** Very simple strings - no special encoding happens. */
   private val simpleStrings = Seq(
@@ -83,5 +83,4 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite:
       Strings.writeString(input, stream)
       assert("\"" + expected + "\""=== stream.data)
     }
-  end expect
-end StringsTest
+}

@@ -8,10 +8,10 @@ import fun.instances.Identity
 import fun.instances.Identity.given
 
 /** Test for object writers and formatters.  */
-final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /* Internal spacing implementation. */
-  private object spacing extends Objects.Whitespaces[Identity, Stream[Identity]]:
+  private object spacing extends Objects.Whitespaces[Identity, Stream[Identity]] {
     override def beforeObject(stream: Stream[Identity]): Unit =
       stream.write(" ")
     override def afterObject(stream: Stream[Identity]): Unit =
@@ -37,7 +37,7 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
 
     override def afterValue(stream: Stream[Identity]): Unit =
       stream.write("  ")
-  end spacing
+  }
 
 
   test("Empty object") {
@@ -58,7 +58,7 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
   }
 
 
-  private def expect(expected: String, keys: String*): Unit =
+  private def expect(expected: String, keys: String*): Unit = {
     val stream = StringBuilderStream()
     val w = Objects.newWriter(spacing, Literals.writeBoolean, stream)
 
@@ -67,5 +67,5 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite:
     w.end()
 
     assert(expected === stream.data)
-  end expect
-end ObjectsTest
+  }
+}

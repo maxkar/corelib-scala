@@ -9,20 +9,20 @@ import fun.typeclass.Monad
 private final class CompactWriter[M[_]: Monad, T](
       classifier: Values.ValueClassifier[T],
     )
-    extends Writer[M, T]:
+    extends Writer[M, T] {
 
   override def write(value: T, stream: Stream[M]): M[Unit] =
     new CompactWriter.InstanceWriter(classifier, stream).write(value)
-end CompactWriter
+}
 
 
-private object CompactWriter:
+private object CompactWriter {
   /** Writer for one value instance. */
   private[writer] final class InstanceWriter[M[_]: Monad, T](
         classifier: Values.ValueClassifier[T],
         stream: Stream[M]
       )
-      extends Values.ValueCallback[T, M[Unit]]:
+      extends Values.ValueCallback[T, M[Unit]] {
 
     /** Writes single value into the stream. */
     def write(value: T): M[Unit] = classifier.classifyValue(value, this)
@@ -48,5 +48,5 @@ private object CompactWriter:
 
     override def unorderedObject(iter: Iterator[(String, T)]): M[Unit] =
       Objects.writeAll(Objects.Whitespaces.nothing, writeElt, iter, stream)
-  end InstanceWriter
-end CompactWriter
+  }
+}

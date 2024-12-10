@@ -7,7 +7,7 @@ import fun.typeclass.Monad
 import fun.typeclass.Applicative
 
 /** Object output utilities. */
-object Objects:
+object Objects {
   /** Object start sequence. */
   val OBJECT_START = "{"
 
@@ -24,7 +24,7 @@ object Objects:
    * Whitespace writer for objects. Methods of this whitespacer are invoked to
    * format the output being generated.
    */
-  trait Whitespaces[M[_], S]:
+  trait Whitespaces[M[_], S] {
     /** Outputs whitespaces before the object. */
     def beforeObject(stream: S): M[Unit]
 
@@ -51,13 +51,13 @@ object Objects:
 
     /** Outputs whitespaces after (non-last) object value. */
     def afterValue(stream: S): M[Unit]
-  end Whitespaces
+  }
 
 
-  object Whitespaces:
+  object Whitespaces {
     /** Creates a whitespace placement strategy that puts no whitespaces. */
     def nothing[M[_]: Applicative, Any]: Whitespaces[M, Any] =
-      new Whitespaces[M, Any]:
+      new Whitespaces[M, Any] {
         /** Universal return value. */
         private val pass = Monad.pure(())
 
@@ -70,9 +70,8 @@ object Objects:
         override def beforeValue(stream: Any): M[Unit] = pass
         override def afterLastValue(stream: Any): M[Unit] = pass
         override def afterValue(stream: Any): M[Unit] = pass
-      end new
-    end nothing
-  end Whitespaces
+      }
+  }
 
 
   /**
@@ -81,7 +80,7 @@ object Objects:
    */
   final class Layout[M[_]: Monad, S <: Stream[M]] private[Objects](
         whitespaces: Whitespaces[M, S]
-      ):
+      ) {
     /** If any values were observed. */
     private var seenValue = false
 
@@ -95,7 +94,6 @@ object Objects:
         prepareNext(stream)
       else
         prepareFirst(stream)
-    end prepareKey
 
 
     /** Prepares the stream for writing value (after key was written). */
@@ -108,7 +106,7 @@ object Objects:
 
 
     /** Finishes the stream by writing appropriate whitespaces and object terminator. */
-    def end(stream: S): M[Unit] =
+    def end(stream: S): M[Unit] = {
       val base =
         if seenValue then
           whitespaces.afterLastValue(stream)
@@ -120,7 +118,7 @@ object Objects:
         _ <- writeObjectEnd(stream)
         res <- whitespaces.afterObject(stream)
       yield res
-    end end
+    }
 
 
     /** Prepares for the "next" (non-first) value. */
@@ -130,15 +128,14 @@ object Objects:
         _ <- writeElementSeparator(stream)
         res <- whitespaces.beforeKey(stream)
       yield res
-    end prepareNext
 
 
     /** Prepares for the first value in the stream. */
-    private def prepareFirst(stream: S): M[Unit] =
+    private def prepareFirst(stream: S): M[Unit] = {
       seenValue = true
       whitespaces.beforeFirstKey(stream)
-    end prepareFirst
-  end Layout
+    }
+  }
 
 
   /**
@@ -146,13 +143,13 @@ object Objects:
    * @tparam M type of IO monad.
    * @tparam T type of the element being written.
    */
-  abstract sealed class Writer[M[_], -T]:
+  abstract sealed class Writer[M[_], -T] {
     /** Outputs next key-value pair. */
     def entry(key: String, v: T): M[Unit]
 
     /** Finishes writing and closes the array output. */
     def end(): M[Unit]
-  end Writer
+  }
 
 
   /** Array writer implementation (hides some types). */
@@ -160,7 +157,7 @@ object Objects:
         layout: Layout[M, S],
         writeElement: (T, S) => M[Unit],
         stream: S
-      ) extends Writer[M, T]:
+      ) extends Writer[M, T] {
 
     override def entry(key: String, v: T): M[Unit] =
       for
@@ -169,11 +166,11 @@ object Objects:
         _ <- layout.prepareValue(stream)
         res <- writeElement(v, stream)
       yield res
-    end entry
+
 
     override def end(): M[Unit] =
       layout.end(stream)
-  end WriterImpl
+  }
 
 
   /** Writes object start sequence (prologue). */
@@ -226,7 +223,6 @@ object Objects:
       _ <- writeObjectStart(stream)
     yield
       new Layout(whitespaces)
-  end beginObject
 
 
   /**
@@ -253,7 +249,6 @@ object Objects:
     beginObject(whitespaces, stream).map { layout =>
       new WriterImpl(layout, writeElement, stream)
     }
-  end newWriter
 
 
   /** Writes the `data` as an object. */
@@ -267,6 +262,7 @@ object Objects:
       writeAllNext(data, w)
     }
 
+
   /** Pass rest of the data (one by one) to the writer. */
   private def writeAllNext[M[_]: Monad, T](
         data: Iterator[(String, T)],
@@ -277,5 +273,4 @@ object Objects:
       writer.entry(key, value).flatMap { _ => writeAllNext(data, writer) }
     else
       writer.end()
-  end writeAllNext
-end Objects
+}

@@ -22,7 +22,7 @@ case class PrettyPrintOptions(
 /**
  * Options for pretty-printing JSON values.
  */
-object PrettyPrintOptions:
+object PrettyPrintOptions {
   /**
    * Wrap options for objects and arrays.
    * @param wrapInObjects set to true when values should use newline when occurs inside object.
@@ -83,4 +83,4 @@ object PrettyPrintOptions:
       emptyObjectWrap = noWrapEmpty,
       emptyArrayWrap = noWrapEmpty
     )
-end PrettyPrintOptions
+}

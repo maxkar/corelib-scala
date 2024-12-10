@@ -8,7 +8,7 @@ import fun.instances.Identity
 import fun.instances.Identity.given
 
 /** Test for literal writers.  */
-final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite:
+final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
   test("true") {
     expect("true", Literals.writeTrue)
   }
@@ -27,9 +27,9 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite:
     expect("false", Literals.writeBoolean(false, _))
   }
 
-  private def expect(expected: String, writer: Stream[Identity] => Unit): Unit =
+  private def expect(expected: String, writer: Stream[Identity] => Unit): Unit = {
     val stream = StringBuilderStream()
     writer(stream)
     assert(expected === stream.data)
-  end expect
-end LiteralsTest
+  }
+}
