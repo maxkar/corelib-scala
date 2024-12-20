@@ -2,12 +2,12 @@ package io.github.maxkar
 package text.input.instances
 
 import text.Location
+import text.LocationTracker
 import text.input.typeclass.Input
 import text.input.typeclass.LookAhead
 import text.input.typeclass.InputLocation
 
 import fun.typeclass.Monad
-import io.github.maxkar.text.input.typeclass.Input.read
 
 
 /**
@@ -83,7 +83,6 @@ final class BufferedInput[M[_], T](
     if buffer.eof || buffer.size > limit then
       return mmonad.pure(buffer.size)
 
-    buffer.ensureCapacity(limit)
     fillUpTo(buffer, limit)
   }
 
@@ -135,7 +134,7 @@ final class BufferedInput[M[_], T](
 
   /** Fills the buffer up to the limit. */
   private def fillUpTo(buffer: Buffer, limit: Int): M[Int] =
-    input.read(buffer.buffer, buffer.readStart, buffer.readEnd) <||| { readCount =>
+    input.read(buffer.buffer, buffer.writeStart, buffer.writeEnd) <||| { readCount =>
       if readCount < 0 then {
         buffer.eof = true
         mmonad.pure(buffer.size)
@@ -240,7 +239,6 @@ object BufferedInput {
    */
   private final class Buffer(
       var buffer: Array[Char],
-      val maxCapacity: Int,
   ) {
     /** The "read offset" in the buffer. */
     var offset: Int = 0
@@ -255,8 +253,8 @@ object BufferedInput {
     var location: Location = new Location(0, 1, 1)
 
 
-    /** Position where the read should start. */
-    def readStart: Int = {
+    /** Position where write to the buffer should start. */
+    def writeStart: Int = {
       val target = offset + size
       if target < buffer.length then
         target
@@ -265,37 +263,18 @@ object BufferedInput {
     }
 
 
-    /** Position where the read should end. */
-    def readEnd: Int = {
-      val readStart = offset + size
-      if readStart > buffer.length then
+    /** Position where write to the buffer should end. */
+    def writeEnd: Int = {
+      val writeStart = offset + size
+      if writeStart < buffer.length then
         buffer.length
       else
         offset
     }
 
 
-    /**
-     * Ensures that there is enough capacity in the buffer to hold the
-     * `requestedCapacity` bytes.
-     */
-    def ensureCapacity(requestedCapacity: Int): Unit = {
-      if (buffer.length >= requestedCapacity) then
-        return
-
-      /* Allocate the buffer. */
-      val newCapacity = Math.min(maxCapacity, Math.max(requestedCapacity, 2 * buffer.length))
-      val newBuffer = new Array[Char](newCapacity)
-
-      /* Move the data (and compact it if necessary). */
-      val tailPartLength = Math.min(buffer.length, size) - offset
-      System.arraycopy(buffer, offset, newBuffer, 0, tailPartLength)
-      if tailPartLength < size then
-        System.arraycopy(buffer, 0, newBuffer, tailPartLength, size - tailPartLength)
-
-      this.offset = 0
-      this.buffer = newBuffer
-    }
+    /** Maximal capacity of this buffer. */
+    def maxCapacity: Int = buffer.length
 
 
     /** Updates the buffer status after some characters were added. */
