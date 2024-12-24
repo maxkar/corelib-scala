@@ -32,6 +32,15 @@ trait Monad[M[_]] extends Applicative[M] {
 
     inline infix def <|||[R](fn: S => M[R]) =
       Monad.this.bind(v, fn)
+
+    /**
+     * Evaluates "this" monad then runs continuation.
+     * Continuation is passed by name as some monads may be lazy
+     * (has to be started explicitly). We need to re-do calculation
+     * if the lazy monad is "re-run" multiple times.
+     */
+    inline infix def <+>[R](continuation: => M[R]) =
+      Monad.this.bind(v, _ => continuation)
   }
 
 
