@@ -2,6 +2,7 @@ package io.github.maxkar
 package fun.instances
 
 import fun.typeclass.Monad
+import fun.typeclass.Effect
 
 /**
  * An on-demand constant-stack evaluation monad. The monad has following properties
@@ -102,6 +103,9 @@ object Unnest {
   /** Flat map node (i.e. function that has to be applied to the pure value). */
   private final case class FlatMap[S, +R](base: Unnest[S], fn: S => Unnest[R]) extends Unnest[R]
 
+  /** Delayed/lazy execution (effect). */
+  private final case class NewEffect[+T](effect: () => T) extends Unnest[T]
+
 
   /** Implementation of the monad on the Unnest computation. */
   given unnestMonad: Monad[Unnest] with {
@@ -111,6 +115,10 @@ object Unnest {
       FlatMap(v, fn)
   }
 
+  given unnestEffect: Effect[Unnest] with {
+    override def apply[T](effect: => T): Unnest[T] = new NewEffect(() => effect)
+  }
+
 
   /** Performs the computation and returns the value evaluated by the monad. */
   def run[T](v: Unnest[T]): T = {
@@ -118,7 +126,9 @@ object Unnest {
     while true do {
       cur match {
         case Pure(v) => return v
+        case NewEffect(eff) => eff()
         case FlatMap(Pure(v), fn) => cur = fn(v)
+        case FlatMap(NewEffect(eff), fn) => cur = fn(eff())
         case FlatMap(FlatMap(v, fn1), fn) =>
           /* FlatMap rewrite is "lazy" - it is done at the time of evaluation and
            * not at the time of bind. This is crucial for doing constant-stack evaluation

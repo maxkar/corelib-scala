@@ -2,6 +2,7 @@ package io.github.maxkar
 package fun.instances
 
 import fun.typeclass.Monad
+import fun.typeclass.Effect
 import fun.typeclass.Collect
 
 /** Identity type constructor. */
@@ -15,6 +16,12 @@ object Identity {
     override def aapply[S, R](v: S, fn: S => R): R = fn(v)
     override def fmap[S, R](v: S, fn: S => R): R = fn(v)
     override def flatten[T](v: T): T = v
+  }
+
+
+  /** Effect for the identity monad. */
+  given identityEffect: Effect[Identity] with {
+    override def apply[T](effect: => T): Identity[T] = effect
   }
 
 

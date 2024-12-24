@@ -61,6 +61,8 @@ object BufferedLookAhead {
       stream.peer.read(stream.buffer.writeBuffer, stream.buffer.writeStart, stream.buffer.writeEnd) <| { readCount =>
         if readCount <= 0 then
           stream.buffer.markEof()
+        else
+          stream.buffer.dataWritten(readCount)
       }
 
 
