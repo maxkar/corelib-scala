@@ -2,6 +2,7 @@ package io.github.maxkar
 package text.v2.input
 
 import fun.typeclass.Monad
+import fun.typeclass.Effect
 import io.github.maxkar.text.LocationInfo
 import io.github.maxkar.text.Location
 
@@ -36,21 +37,22 @@ object BufferedLookAhead {
     new BufferedLookAhead(stream, LookAheadBuffer(bufferSize))
 
 
-  given locationInfo[M[_]: Monad, T]: LocationInfo[M, BufferedLookAhead[T]] with {
+  given locationInfo[M[_]: Effect, T]: LocationInfo[M, BufferedLookAhead[T]] with {
     override def getLocation(stream: BufferedLookAhead[T]): M[Location] =
-      Monad.pure(stream.buffer.location)
+      Effect(stream.buffer.location)
   }
 
 
   /** Given instances for buffered look-ahead stream. */
-  given bufferedOps[M[_]: Monad: IOErrors, T: ReadsIn[M]]: LookAhead[M, BufferedLookAhead[T]] with {
-    override def fill(stream: BufferedLookAhead[T], request: Int): M[Int] = {
-      if stream.buffer.size >= request || stream.buffer.isEof then
-        Monad.pure(stream.buffer.size)
-      else if stream.buffer.capacity < request then
-        IOErrors.lookAheadTooBig(request, stream.buffer.capacity)
-      else
-        readPortion(stream) <+> fill(stream, request)
+  given bufferedOps[M[_]: Monad: IOErrors: Effect, T: ReadsIn[M]]: LookAhead[M, BufferedLookAhead[T]] with {
+    override def fill(stream: BufferedLookAhead[T], request: Int): M[Int] =
+      Effect.make {
+        if stream.buffer.size >= request || stream.buffer.isEof then
+          Monad.pure(stream.buffer.size)
+        else if stream.buffer.capacity < request then
+          IOErrors.lookAheadTooBig(request, stream.buffer.capacity)
+        else
+          readPortion(stream) <+> fill(stream, request)
     }
 
 
@@ -76,28 +78,28 @@ object BufferedLookAhead {
         ): M[Int] = {
       val buffer = stream.buffer
 
-      def doRead(writePtr: Int = 0): M[Int] = {
+      def doRead(writePtr: Int = 0): M[Int] = Effect.make {
         val bytesWritten = buffer.read(target, writePtr, targetEnd)
         val newPtr = writePtr + bytesWritten
 
         if newPtr == targetEnd || buffer.isEof then
-          return Monad.pure(newPtr - targetStart)
-
-        readPortion(stream) <+> doRead(newPtr)
+          Monad.pure(newPtr - targetStart)
+        else
+          readPortion(stream) <+> doRead(newPtr)
       }
       doRead(targetStart)
     }
 
 
-    override def skip(stream: BufferedLookAhead[T], count: Int): M[Unit] = {
+    override def skip(stream: BufferedLookAhead[T], count: Int): M[Unit] = Effect.make {
       val toDrop = Math.min(count, stream.buffer.size)
       stream.buffer.skip(toDrop)
 
       val remaining = count - toDrop
       if remaining == 0 || stream.buffer.isEof then
-        return Monad.pure(())
-
-      readPortion(stream) <+> skip(stream, remaining)
+        Monad.pure(())
+      else
+        readPortion(stream) <+> skip(stream, remaining)
     }
 
 
@@ -110,25 +112,27 @@ object BufferedLookAhead {
         ): M[Int] = {
       val buffer = stream.buffer
 
-      def doRead(writePtr: Int): M[Int] = {
+      def doRead(writePtr: Int): M[Int] = Effect.make {
         val written = buffer.readWhile(target, writePtr, targetEnd, predicate)
 
         val newWritePtr = written + writePtr
         if newWritePtr == targetEnd || buffer.size > 0 || buffer.isEof then
-          return Monad.pure(newWritePtr - targetStart)
-
-        readPortion(stream) <+> doRead(newWritePtr)
+          Monad.pure(newWritePtr - targetStart)
+        else
+          readPortion(stream) <+> doRead(newWritePtr)
       }
 
       doRead(0)
     }
 
 
-    override def skipWhile(stream: BufferedLookAhead[T], predicate: Char => Boolean): M[Unit] = {
-      stream.buffer.skipWhile(predicate)
-      if stream.buffer.size > 0 || stream.buffer.isEof  then
-        return Monad.pure(())
-      readPortion(stream) <+> skipWhile(stream, predicate)
-    }
+    override def skipWhile(stream: BufferedLookAhead[T], predicate: Char => Boolean): M[Unit] =
+      Effect.make {
+        stream.buffer.skipWhile(predicate)
+        if stream.buffer.size > 0 || stream.buffer.isEof  then
+          Monad.pure(())
+        else
+          readPortion(stream) <+> skipWhile(stream, predicate)
+      }
   }
 }
