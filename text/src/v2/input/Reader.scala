@@ -2,7 +2,6 @@ package io.github.maxkar
 package text.v2.input
 
 import fun.typeclass.Monad
-import fun.typeclass.Effect
 
 import scala.annotation.targetName
 
@@ -29,22 +28,21 @@ trait Reader[M[_], T] {
 
 
     /** Reads the content of the reader as a string. */
-    def readString()(using Monad[M], Effect[M]): M[String] =
-      Effect.make {
-        val res = new StringBuilder()
-        val buf = new Array[Char](1024)
+    def readString()(using Monad[M]): M[String] = {
+      val res = new StringBuilder()
+      val buf = new Array[Char](1024)
 
-        def rd(): M[String] =
-          t.read(buf, 0, buf.length) <||| { readCount =>
-            if (readCount <= 0) then
-              Monad.pure(res.toString())
-            else Effect.make {
-              res.appendAll(buf, 0, readCount)
-              rd()
-            }
+      def rd(): M[String] =
+        t.read(buf, 0, buf.length) <||| { readCount =>
+          if (readCount <= 0) then
+            Monad.pure(res.toString())
+          else {
+            res.appendAll(buf, 0, readCount)
+            rd()
           }
-        rd()
-      }
+        }
+      rd()
+    }
   }
 }
 

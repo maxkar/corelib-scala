@@ -2,10 +2,10 @@ package io.github.maxkar
 package json.parser.v2
 
 import text.v2.input.Reader
+import text.v2.input.BufferedLookAhead
 
+import fun.typeclass.Monad
 import fun.instances.Unnest
-import fun.typeclass.Effect
-import io.github.maxkar.text.v2.input.BufferedLookAhead
 import java.io.IOException
 
 
@@ -44,11 +44,9 @@ final class WhitespaceReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
   /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Effect, T <: java.io.Reader]: Reader[M, T] with {
+  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
     override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
-      Effect {
-        source.read(target, targetStart, targetEnd - targetStart)
-      }
+      Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
    }
 }
 
