@@ -66,7 +66,7 @@ object BufferedLookAhead {
 
     override def peek(stream: BufferedLookAhead[T], offset: Int): M[Int] =
       stream.fill(offset) <| { available =>
-        if available <= stream.buffer.size then -1 else stream.buffer.lookAhead(offset)
+        if available <= offset then -1 else stream.buffer.lookAhead(offset)
       }
 
 
