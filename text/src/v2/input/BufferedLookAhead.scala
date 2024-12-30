@@ -57,7 +57,7 @@ object BufferedLookAhead {
     /** Reads a portion of data into the buffer. */
     private def readPortion(stream: BufferedLookAhead[T]): M[Unit] =
       stream.peer.read(stream.buffer.writeBuffer, stream.buffer.writeStart, stream.buffer.writeEnd) <| { readCount =>
-        if readCount <= 0 then
+        if readCount < 0 then
           stream.buffer.markEof()
         else
           stream.buffer.dataWritten(readCount)
@@ -65,7 +65,7 @@ object BufferedLookAhead {
 
 
     override def peek(stream: BufferedLookAhead[T], offset: Int): M[Int] =
-      stream.fill(offset) <| { available =>
+      stream.fill(offset + 1) <| { available =>
         if available <= offset then -1 else stream.buffer.lookAhead(offset)
       }
 
@@ -122,7 +122,7 @@ object BufferedLookAhead {
           readPortion(stream) <+> doRead(newWritePtr)
       }
 
-      doRead(0)
+      doRead(targetStart)
     }
 
 

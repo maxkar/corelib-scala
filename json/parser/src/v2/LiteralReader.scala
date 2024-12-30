@@ -12,12 +12,13 @@ import text.v2.input.LooksAheadIn
  */
 final class LiteralReader[M[_]: Monad, T: LooksAheadIn[M]](
       expected: String,
-      errors: LiteralReader.Errors[M]
+      errors: LiteralReader.Errors[M, T]
     ) {
 
   /** Reads the literal from the stream. */
   def read(stream: T): M[Unit] =
     stream.fill(expected.length()) <+> check(stream, 0)
+
 
   /** Another name for read. */
   inline def apply(stream: T): M[Unit] = read(stream)
@@ -27,7 +28,7 @@ final class LiteralReader[M[_]: Monad, T: LooksAheadIn[M]](
   private def check(stream: T, offset: Int): M[Unit] =
     stream.peek(offset) <||| { chr =>
       if chr != expected.charAt(offset) then
-        errors.badLiteral(expected, offset, chr)
+        errors.badLiteral(stream, expected, offset, chr)
       else {
         val nextOffset = offset + 1
         if nextOffset == expected.length then
@@ -51,7 +52,7 @@ object LiteralReader {
   val NULL = "null"
 
   /** Error handler for literal parsing errors. */
-  trait Errors[M[_]] {
+  trait Errors[M[_], S] {
     /**
      * Indicates the reader about invalid literal.
      * @param expected expected literal.
@@ -59,8 +60,10 @@ object LiteralReader {
      *   expected character.
      * @param actualChar actual character to read.
      */
-    def badLiteral[T](expected: String, mismatchOffset: Int, actualChar: Int): M[T]
+    def badLiteral[T](stream: S, expected: String, mismatchOffset: Int, actualChar: Int): M[T]
   }
+
+  type ErrorsIn[M[_]] = [S] =>> Errors[M, S]
 
 
   /** Readers for all literals. */
@@ -71,16 +74,16 @@ object LiteralReader {
   )
 
 
-  def trueReader[M[_]: Monad, T: LooksAheadIn[M]](using errors: Errors[M]): LiteralReader[M, T] =
+  def trueReader[M[_]: Monad, T: LooksAheadIn[M]](using errors: Errors[M, T]): LiteralReader[M, T] =
     new LiteralReader(TRUE, errors)
 
-  def falseReader[M[_]: Monad, T: LooksAheadIn[M]](using errors: Errors[M]): LiteralReader[M, T] =
+  def falseReader[M[_]: Monad, T: LooksAheadIn[M]](using errors: Errors[M, T]): LiteralReader[M, T] =
     new LiteralReader(FALSE, errors)
 
-  def nullReader[M[_]: Monad, T: LooksAheadIn[M]](using errors: Errors[M]): LiteralReader[M, T] =
+  def nullReader[M[_]: Monad, T: LooksAheadIn[M]](using errors: Errors[M, T]): LiteralReader[M, T] =
     new LiteralReader(NULL, errors)
 
-  def all[M[_]: Monad: Errors, T: LooksAheadIn[M]](): Readers[M, T] =
+  def all[M[_]: Monad, T: LooksAheadIn[M]: ErrorsIn[M]](): Readers[M, T] =
     Readers(
       trueLiteral = trueReader,
       falseLiteral = falseReader,

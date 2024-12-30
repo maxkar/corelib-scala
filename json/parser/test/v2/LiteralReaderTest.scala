@@ -75,8 +75,8 @@ final class LiteralReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
 
-  private given literalError: LiteralReader.Errors[Unnest] with {
-    override def badLiteral[T](expected: String, mismatchOffset: Int, actualChar: Int): Unnest[T] =
+  private given literalError: LiteralReader.Errors[Unnest, IOStream] with {
+    override def badLiteral[T](stream: IOStream, expected: String, mismatchOffset: Int, actualChar: Int): Unnest[T] =
       throw new Err(expected, mismatchOffset, actualChar)
   }
 
