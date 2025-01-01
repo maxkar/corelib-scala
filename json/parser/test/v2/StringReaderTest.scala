@@ -7,7 +7,6 @@ import text.v2.input.BufferedLookAhead
 import fun.typeclass.Monad
 import fun.instances.Unnest
 import java.io.IOException
-import scala.StringContext.InvalidEscapeException
 
 /** Tests for the string reader. */
 final class StringReaderTest extends org.scalatest.funsuite.AnyFunSuite {
@@ -175,9 +174,8 @@ final class StringReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
 
-  private def checkSimpleSuccess(expected: String, input: String): Unit = {
+  private def checkSimpleSuccess(expected: String, input: String): Unit =
     assert(expected === read(input))
-  }
 
 
   /** Checks that error is raised. */
