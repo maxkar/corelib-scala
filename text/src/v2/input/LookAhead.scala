@@ -1,6 +1,8 @@
 package io.github.maxkar
 package text.v2.input
 
+import fun.typeclass.Applicative
+
 import scala.annotation.targetName
 
 /**
@@ -81,5 +83,13 @@ trait LookAhead[M[_], T] extends Reader[M, T] {
           predicate: Char => Boolean
         ): M[Int] =
       this.readWhile(t, target, targetStart, targetEnd, predicate)
+  }
+}
+
+object LookAhead {
+  /** End-of-input implementation for look-ahead streams. */
+  given endOfInput[M[_]: Applicative, S](using la: LookAhead[M, S]): EndOfInput[M, S] with {
+    override def atEndOfInput(stream: S): M[Boolean] =
+      stream.peek(0) <| { next => next < 0 }
   }
 }
