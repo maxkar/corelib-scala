@@ -80,7 +80,7 @@ private final class LookAheadBuffer(buffer: Array[Char]) {
       remaining -= buffer.length - readOffset
     }
 
-    locationTracker.update(buffer, readOffset, remaining)
+    locationTracker.update(buffer, readOffset, readOffset + remaining)
     readOffset += remaining
     size -= count
   }
@@ -95,15 +95,16 @@ private final class LookAheadBuffer(buffer: Array[Char]) {
     if buffer.length - readCount <= readOffset then {
       val batchSize = buffer.length - readOffset
       System.arraycopy(buffer, readOffset, target, targetStart, batchSize)
+      locationTracker.update(buffer, readOffset, readOffset + batchSize)
       readOffset = 0
       targetPos += batchSize
       readRemaining -= batchSize
     }
 
     System.arraycopy(buffer, readOffset, target, targetPos, readRemaining)
+    locationTracker.update(buffer, readOffset, readOffset + readRemaining)
     readOffset += readRemaining
 
-    locationTracker.update(target, targetStart, targetStart + readCount)
     size -= readCount
 
     readCount
@@ -139,6 +140,7 @@ private final class LookAheadBuffer(buffer: Array[Char]) {
 
     while readRemaining > 0 && predicate(buffer(readPtr)) do {
       target(targetPtr) = buffer(readPtr)
+      locationTracker.update(buffer(readPtr))
       targetPtr += 1
       readRemaining -= 1
       readPtr += 1
@@ -149,7 +151,6 @@ private final class LookAheadBuffer(buffer: Array[Char]) {
     val readCount = targetPtr - targetStart
     readOffset = readPtr
     size -= readCount
-    locationTracker.update(target, targetStart, targetPtr)
     readCount
   }
 }
