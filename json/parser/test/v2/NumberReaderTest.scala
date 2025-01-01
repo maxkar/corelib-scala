@@ -83,11 +83,6 @@ final class NumberReaderTest extends org.scalatest.funsuite.AnyFunSuite {
     )
 
 
-  test("Debug") {
-    checkSimpleSuccess("236", "236")
-  }
-
-
   test("Happy path tests") {
     for
       num <- validNumbers
