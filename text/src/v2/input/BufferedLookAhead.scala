@@ -133,5 +133,9 @@ object BufferedLookAhead {
       else
         readPortion(stream) <+> skipWhile(stream, predicate)
     }
+
+
+    override def atEnd(stream: BufferedLookAhead[T]): M[Boolean] =
+      peek(stream, 0) <| { _ < 0 }
   }
 }

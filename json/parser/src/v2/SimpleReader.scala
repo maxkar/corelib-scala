@@ -3,7 +3,6 @@ package json.parser.v2
 
 import fun.typeclass.Monad
 import text.v2.input.LookAhead
-import text.v2.input.EndOfInput
 import text.v2.input.LooksAheadIn
 
 final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
@@ -11,8 +10,6 @@ final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
       errs: SimpleReader.Errors[M, S],
     ) extends ValueReader.ValueReader[S, M[V]] {
   import errs.given
-  import text.v2.input.LookAhead.given
-  import text.v2.input.EndOfInput.ensureAtEnd
 
   private val literalReader = LiteralReader.all()
 
@@ -50,13 +47,21 @@ final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
     for {
       res <- readValue(stream)
       _ <- skipWhitespaces(stream)
-      _ <- stream.ensureAtEnd()
+      _ <- ensureAtEnd(stream)
     } yield res
 
 
   /** Reads object key. */
   private def readKey(stream: S): M[String] =
     new StringReader(stream).readString()
+
+
+  /** Checks if the stream is at the end. */
+  private def ensureAtEnd(stream: S): M[Unit] =
+    stream.atEnd() <| {
+      case true => Monad.pure(())
+      case false => errs.trailingData(stream)
+    }
 }
 
 object SimpleReader {
@@ -101,8 +106,8 @@ object SimpleReader {
     given arrayErrors: ArrayReader.Errors[M, S]
     /** Object error handlers. */
     given objectErrors: ObjectReader.Errors[M, S]
-    /** End-of-input checks. */
-    given eofErrors: EndOfInput.Errors[M, S]
+    /** Handles a case where there is trailing data after value. */
+    def trailingData[T](stream: S): M[T]
   }
 
 
@@ -159,9 +164,7 @@ object SimpleReader {
           raise(stream, "Invalid key/value separator")
       }
 
-      override given eofErrors: EndOfInput.Errors[M, S] with {
-        override def missingEndOfInput[T](stream: S): M[T] =
-          raise(stream, "Trailing data, expected EOF")
-      }
+      override def trailingData[T](stream: S): M[T] =
+        raise(stream, "Trailing data, expected EOF")
     }
 }

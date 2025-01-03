@@ -48,6 +48,10 @@ trait LookAhead[M[_], -T] extends Reader[M, T] {
   def skipWhile(stream: T, predicate: Char => Boolean): M[Unit]
 
 
+  /** Checks if the stream is at end.  */
+  def atEnd(stream: T): M[Boolean]
+
+
   /** Reads the characters and populates the buffer only while the predicate is satisfied. */
   def readWhile(
         stream: T,
@@ -83,13 +87,9 @@ trait LookAhead[M[_], -T] extends Reader[M, T] {
           predicate: Char => Boolean
         ): M[Int] =
       this.readWhile(t, target, targetStart, targetEnd, predicate)
-  }
-}
 
-object LookAhead {
-  /** End-of-input implementation for look-ahead streams. */
-  given endOfInput[M[_]: Applicative, S](using la: LookAhead[M, S]): EndOfInput[M, S] with {
-    override def atEndOfInput(stream: S): M[Boolean] =
-      stream.peek(0) <| { next => next < 0 }
+    @targetName("atEndExt")
+    inline def atEnd(): M[Boolean] =
+      this.atEnd(t)
   }
 }
