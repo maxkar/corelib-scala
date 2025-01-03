@@ -22,16 +22,16 @@ final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
     literalReader.trueLiteral(stream) <| { _ => builder.fromBoolean(true) }
 
   override def readFalse(stream: S): M[V] =
-    literalReader.trueLiteral(stream) <| { _ => builder.fromBoolean(false) }
+    literalReader.falseLiteral(stream) <| { _ => builder.fromBoolean(false) }
 
   override def readNull(stream: S): M[V] =
-    literalReader.trueLiteral(stream) <| { _ => builder.fromNull() }
+    literalReader.nullLiteral(stream) <| { _ => builder.fromNull() }
 
   override def readString(stream: S): M[V] =
     new StringReader(stream).readString() <| builder.fromString
 
   override def readNumber(stream: S): M[V] =
-    new NumberReader(stream).readString() <| builder.fromString
+    new NumberReader(stream).readString() <| builder.fromNumber
 
   override def readArray(stream: S): M[V] =
     ArrayReader(stream, skipWhitespaces).readSequence(readValue) <| builder.fromArray
