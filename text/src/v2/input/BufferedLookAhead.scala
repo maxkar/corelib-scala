@@ -11,7 +11,10 @@ import io.github.maxkar.text.Location
 final class BufferedLookAhead[+T] private(
     private val peer: T,
     private val buffer: LookAheadBuffer
-)
+) {
+  /** A base stream (the one being buffered). */
+  def baseStream: T = peer
+}
 
 object BufferedLookAhead {
   /** IO errors that may happen with the look ahead. */
