@@ -60,7 +60,7 @@ final class ArrayReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   private def read(source: String): Seq[String] = {
     import Unnest.given
 
-    val sr = new java.io.StringReader(source): java.io.Reader
+    val sr = new java.io.StringReader(source)
     val br = BufferedLookAhead(sr, 100)
     val nr = ArrayReader(br)
 

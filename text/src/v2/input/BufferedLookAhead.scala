@@ -8,7 +8,7 @@ import io.github.maxkar.text.Location
 /**
  * Buffered look-ahead stream backed up by the input stream of the type `T`.
  */
-final class BufferedLookAhead[T] private(
+final class BufferedLookAhead[+T] private(
     private val peer: T,
     private val buffer: LookAheadBuffer
 )

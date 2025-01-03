@@ -9,7 +9,7 @@ import scala.annotation.targetName
  * A support for look-ahead on streams with type `T` and using
  * `M` as the operation type.
  */
-trait LookAhead[M[_], T] extends Reader[M, T] {
+trait LookAhead[M[_], -T] extends Reader[M, T] {
   /**
    * Fill the look-ahead buffer for the stream and returns a number
    * of characters available.

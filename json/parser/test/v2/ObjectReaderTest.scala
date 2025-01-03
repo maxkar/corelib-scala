@@ -60,7 +60,7 @@ final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   private def read(source: String): Map[String, String] = {
-    val sr = new java.io.StringReader(source): java.io.Reader
+    val sr = new java.io.StringReader(source)
     val br = BufferedLookAhead(sr, 100)
     val or = ObjectReader(br)
 

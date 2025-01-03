@@ -189,7 +189,7 @@ final class StringReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   private def read(source: String): String = {
     import Unnest.given
 
-    val sr = new java.io.StringReader(source): java.io.Reader
+    val sr = new java.io.StringReader(source)
     val br = BufferedLookAhead(sr, 100)
     val jssr = StringReader(br)
 

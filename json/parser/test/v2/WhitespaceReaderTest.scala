@@ -44,8 +44,8 @@ final class WhitespaceReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
   /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
-    override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
+  private given javaReaderReader[M[_]: Monad]: Reader[M, java.io.Reader] with {
+    override def read(source: java.io.Reader, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
       Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
    }
 }

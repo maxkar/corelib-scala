@@ -11,7 +11,7 @@ import text.v2.input.LooksAheadIn
  * Reader for JSON Strings.
  * @tparam T type of the underlying stream.
  */
-final class StringReader[T](private val stream: T) {
+final class StringReader[+T](private val stream: T) {
   /** State of the reading (i.e. what we would read next). */
   private var state: StringReader.State = StringReader.State.BeforeOpening
 }

@@ -12,6 +12,7 @@ final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
     ) extends ValueReader.ValueReader[S, M[V]] {
   import errs.given
   import text.v2.input.LookAhead.given
+  import text.v2.input.EndOfInput.ensureAtEnd
 
   private val literalReader = LiteralReader.all()
 

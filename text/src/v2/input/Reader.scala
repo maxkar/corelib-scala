@@ -8,7 +8,7 @@ import scala.annotation.targetName
 /**
  * Reader from the type `T` using the execution monad `M`.
  */
-trait Reader[M[_], T] {
+trait Reader[M[_], -T] {
   /**
    * Reads data from the `source` into the `target` and returns a number
    * of characters filled by the operation.
