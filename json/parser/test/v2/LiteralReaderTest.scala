@@ -67,12 +67,8 @@ final class LiteralReaderTest extends org.scalatest.funsuite.AnyFunSuite {
     BufferedLookAhead(new java.io.StringReader(source), 100)
 
 
-  private given unnestError: BufferedLookAhead.IOErrors[Unnest] with {
-    override def lookAheadTooBig[T](requested: Int, supported: Int): Unnest[T] =
-      throw new IOException(
-        s"Look ahead ${requested} is greater than the supported amount of ${supported}"
-      )
-  }
+  private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
+    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
 
 
   private given literalError: LiteralReader.Errors[Unnest, IOStream] with {

@@ -78,12 +78,8 @@ object SimpleReaderTest {
   import Unnest.given
   type IOStream = BufferedLookAhead[java.io.Reader]
 
-  private given unnestError: BufferedLookAhead.IOErrors[Unnest] with {
-    override def lookAheadTooBig[T](requested: Int, supported: Int): Unnest[T] =
-      throw new IOException(
-        s"Look ahead ${requested} is greater than the supported amount of ${supported}"
-      )
-  }
+  private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
+    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
 
 
   /** Reader for java instances. */

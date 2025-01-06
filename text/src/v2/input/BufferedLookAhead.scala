@@ -19,11 +19,21 @@ final class BufferedLookAhead[+S] private(
 
 object BufferedLookAhead {
   /** IO errors that may happen with the look ahead. */
-  trait IOErrors[M[_]] {
+  trait IOErrors[M[_], S] {
     /** Look ahead requested is more than supported by the buffer. */
-    def lookAheadTooBig[T](requested: Int, supported: Int): M[T]
+    def lookAheadTooBig[T](stream: BufferedLookAhead[S], requested: Int, supported: Int): M[T]
   }
+  type IOErrorsIn[M[_]] = [S] =>> IOErrors[M, S]
 
+
+  object IOErrors {
+    /** Creates an error handler that fails execution with the given message. */
+    def raise[M[_], S](raiseFn: [T] => (BufferedLookAhead[S], String) => M[T]): IOErrors[M, S] =
+      new IOErrors[M, S] {
+        override def lookAheadTooBig[T](stream: BufferedLookAhead[S], requested: Int, supported: Int): M[T] =
+          raiseFn(stream, s"Requested look-ahead ${requested} is more than the max supported ${supported}")
+      }
+  }
 
   /** Creates a new buffered look ahead. */
   def apply[S](stream: S, bufferSize: Int): BufferedLookAhead[S] =
@@ -37,12 +47,12 @@ object BufferedLookAhead {
 
 
   /** Given instances for buffered look-ahead stream. */
-  given bufferedOps[M[_]: Monad: IOErrors, S: ReadsIn[M]]: LookAhead[M, BufferedLookAhead[S]] with {
+  given bufferedOps[M[_]: Monad, S: ReadsIn[M]: IOErrorsIn[M]]: LookAhead[M, BufferedLookAhead[S]] with {
     override def fill(stream: BufferedLookAhead[S], request: Int): M[Int] = {
       if stream.buffer.size >= request || stream.buffer.isEof then
         Monad.pure(stream.buffer.size)
       else if stream.buffer.capacity < request then
-        summon[IOErrors[M]].lookAheadTooBig(request, stream.buffer.capacity)
+        summon[IOErrors[M, S]].lookAheadTooBig(stream, request, stream.buffer.capacity)
       else
         readPortion(stream) <+> fill(stream, request)
     }
