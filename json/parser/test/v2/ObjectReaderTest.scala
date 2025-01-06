@@ -11,7 +11,8 @@ import scala.StringContext.InvalidEscapeException
 
 
 final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
-  import Unnest.given
+  import TestIO.*
+  import TestIO.given
   import ObjectReaderTest.given
   import ObjectReaderTest.*
 
@@ -60,9 +61,7 @@ final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   private def read(source: String): Map[String, String] = {
-    val sr = new java.io.StringReader(source)
-    val br = BufferedLookAhead(sr, 100)
-    val or = ObjectReader(br)
+    val or = ObjectReader(stringInput(source))
 
     Unnest.run(or.readMap(e => StringReader(e).readString(), e => NumberReader(e).readString()))
   }
@@ -71,12 +70,8 @@ final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
 object ObjectReaderTest {
-  import Unnest.given
-  type IOStream = BufferedLookAhead[java.io.Reader]
-
-
-  private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
-    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
+  import TestIO.*
+  import TestIO.given
 
 
   private given objectErrors: ObjectReader.Errors[Unnest, IOStream] with {
@@ -114,13 +109,6 @@ object ObjectReaderTest {
 
     private def fail(): Nothing =
       throw new IOException("Unexpected number format exception")
-  }
-
-
-  /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
-    override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
-      Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
   }
 
   private final case class InvalidObjectStart(offset: Int) extends IOException

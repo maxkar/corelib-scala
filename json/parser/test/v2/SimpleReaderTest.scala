@@ -9,9 +9,12 @@ import fun.instances.Unnest
 import java.io.IOException
 
 final class SimpleReaderTest extends org.scalatest.funsuite.AnyFunSuite {
-  import Unnest.given
+  import TestIO.*
+  import TestIO.given
   import SimpleReaderTest.*
   import SimpleReaderTest.given
+
+  private val jsonReader = new SimpleReader(TestValueBuilder, SimpleReaderTest.parseErrors)
 
 
   test("Basic smoke tests") {
@@ -64,29 +67,14 @@ final class SimpleReaderTest extends org.scalatest.funsuite.AnyFunSuite {
       }
   }
 
-  private def read(source: String): Object = {
-    val sr = new java.io.StringReader(source)
-    val br = BufferedLookAhead(sr, 100)
-    val jsonReader = new SimpleReader(TestValueBuilder, SimpleReaderTest.parseErrors)
-
-    Unnest.run(jsonReader.readValue(br))
-  }
+  private def read(source: String): Object =
+    Unnest.run(jsonReader.readValue(stringInput(source)))
 }
 
 
 object SimpleReaderTest {
-  import Unnest.given
-  type IOStream = BufferedLookAhead[java.io.Reader]
-
-  private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
-    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
-
-
-  /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
-    override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
-      Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
-   }
+  import TestIO.*
+  import TestIO.given
 
 
   given parseErrors: SimpleReader.Errors[Unnest, IOStream] =

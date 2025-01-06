@@ -10,7 +10,8 @@ import java.io.IOException
 
 /** Tests for the string reader. */
 final class StringReaderTest extends org.scalatest.funsuite.AnyFunSuite {
-  import Unnest.given
+  import TestIO.*
+  import TestIO.given
   import StringReaderTest.given
 
   test("Smoke tests") {
@@ -187,19 +188,14 @@ final class StringReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   private def read(source: String): String = {
-    import Unnest.given
-
-    val sr = new java.io.StringReader(source)
-    val br = BufferedLookAhead(sr, 100)
-    val jssr = StringReader(br)
-
+    val jssr = StringReader(stringInput(source))
     Unnest.run(jssr.readString())
   }
 }
 
 object StringReaderTest {
-  import Unnest.given
-  type IOStream = BufferedLookAhead[java.io.Reader]
+  import TestIO.*
+  import TestIO.given
 
 
   private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
@@ -226,12 +222,6 @@ object StringReaderTest {
       stream.getLocation() <| (_.offset)
   }
 
-
-  /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
-    override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
-      Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
-   }
 
   private final case class IllegalStringStart(offset: Int) extends IOException
   private final case class InvalidCharacter(offset: Int) extends IOException

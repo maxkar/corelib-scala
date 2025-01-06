@@ -10,7 +10,8 @@ import java.io.IOException
 import scala.StringContext.InvalidEscapeException
 
 final class NumberReaderTest extends org.scalatest.funsuite.AnyFunSuite {
-  import Unnest.given
+  import TestIO.*
+  import TestIO.given
   import NumberReaderTest.given
 
   /** Valid numbers - should be parsed fully. */
@@ -131,24 +132,15 @@ final class NumberReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
   private def read(source: String): String = {
-    import Unnest.given
-
-    val sr = new java.io.StringReader(source)
-    val br = BufferedLookAhead(sr, 100)
-    val nr = NumberReader(br)
+    val nr = NumberReader(stringInput(source))
 
     Unnest.run(nr.readString())
   }
 }
 
 object NumberReaderTest {
-  import Unnest.given
-  type IOStream = BufferedLookAhead[java.io.Reader]
-
-
-  private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
-    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
-
+  import TestIO.IOStream
+  import TestIO.given
 
   private given numberErrors: NumberReader.Errors[Unnest, IOStream] with {
     override def leadingIntegerZero[T](stream: IOStream): Unnest[T] =
@@ -166,13 +158,6 @@ object NumberReaderTest {
     private def offset(stream: IOStream): Unnest[Int] =
       stream.getLocation() <| (_.offset)
   }
-
-
-  /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
-    override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
-      Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
-   }
 
   private final case class LeadingIntegerZero(offset: Int) extends IOException
   private final case class MissingIntegerDigits(offset: Int) extends IOException

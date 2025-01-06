@@ -10,10 +10,11 @@ import java.io.IOException
 
 /** Tests for the literal reader. */
 final class LiteralReaderTest extends org.scalatest.funsuite.AnyFunSuite {
-  import LiteralReaderTest._
-  import Unnest.given
+  import TestIO.*
+  import TestIO.given
 
-  type IOStream = BufferedLookAhead[java.io.Reader]
+  import LiteralReaderTest.*
+
   private val reader = LiteralReader.all[Unnest, IOStream]()
 
 
@@ -60,28 +61,15 @@ final class LiteralReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   private def runReader(reader: LiteralReader[Unnest, IOStream], input: String): Unit =
-    Unnest.run(reader(streamFor(input)))
+    Unnest.run(reader(stringInput(input)))
 
 
-  private def streamFor(source: String): IOStream =
-    BufferedLookAhead(new java.io.StringReader(source), 100)
-
-
-  private given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
-    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
 
 
   private given literalError: LiteralReader.Errors[Unnest, IOStream] with {
     override def badLiteral[T](stream: IOStream, expected: String, mismatchOffset: Int, actualChar: Int): Unnest[T] =
       throw new Err(expected, mismatchOffset, actualChar)
   }
-
-
-  /** Reader for java instances. */
-  private given javaReaderReader[M[_]: Monad, T <: java.io.Reader]: Reader[M, T] with {
-    override def read(source: T, target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
-      Monad.pure(source.read(target, targetStart, targetEnd - targetStart))
-   }
 }
 
 object LiteralReaderTest {
