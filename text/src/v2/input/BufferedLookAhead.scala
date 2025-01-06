@@ -6,15 +6,16 @@ import io.github.maxkar.text.LocationInfo
 import io.github.maxkar.text.Location
 
 /**
- * Buffered look-ahead stream backed up by the input stream of the type `T`.
+ * Buffered look-ahead stream backed up by the input stream of the type `S`.
  */
-final class BufferedLookAhead[+T] private(
-    private val peer: T,
+final class BufferedLookAhead[+S] private(
+    private val peer: S,
     private val buffer: LookAheadBuffer
 ) {
   /** A base stream (the one being buffered). */
-  def baseStream: T = peer
+  def baseStream: S = peer
 }
+
 
 object BufferedLookAhead {
   /** IO errors that may happen with the look ahead. */
@@ -23,42 +24,32 @@ object BufferedLookAhead {
     def lookAheadTooBig[T](requested: Int, supported: Int): M[T]
   }
 
-  object IOErrors {
-    inline def lookAheadTooBig[M[_], T](
-          requested: Int,
-          supported: Int
-        )(using
-          errs: IOErrors[M]
-        ): M[T] =
-      errs.lookAheadTooBig(requested, supported)
-  }
-
 
   /** Creates a new buffered look ahead. */
-  def apply[T](stream: T, bufferSize: Int): BufferedLookAhead[T] =
+  def apply[S](stream: S, bufferSize: Int): BufferedLookAhead[S] =
     new BufferedLookAhead(stream, LookAheadBuffer(bufferSize))
 
 
-  given locationInfo[M[_]: Monad, T]: LocationInfo[M, BufferedLookAhead[T]] with {
-    override def getLocation(stream: BufferedLookAhead[T]): M[Location] =
+  given locationInfo[M[_]: Monad, S]: LocationInfo[M, BufferedLookAhead[S]] with {
+    override def getLocation(stream: BufferedLookAhead[S]): M[Location] =
       Monad.pure(stream.buffer.location)
   }
 
 
   /** Given instances for buffered look-ahead stream. */
-  given bufferedOps[M[_]: Monad: IOErrors, T: ReadsIn[M]]: LookAhead[M, BufferedLookAhead[T]] with {
-    override def fill(stream: BufferedLookAhead[T], request: Int): M[Int] = {
+  given bufferedOps[M[_]: Monad: IOErrors, S: ReadsIn[M]]: LookAhead[M, BufferedLookAhead[S]] with {
+    override def fill(stream: BufferedLookAhead[S], request: Int): M[Int] = {
       if stream.buffer.size >= request || stream.buffer.isEof then
         Monad.pure(stream.buffer.size)
       else if stream.buffer.capacity < request then
-        IOErrors.lookAheadTooBig(request, stream.buffer.capacity)
+        summon[IOErrors[M]].lookAheadTooBig(request, stream.buffer.capacity)
       else
-          readPortion(stream) <+> fill(stream, request)
+        readPortion(stream) <+> fill(stream, request)
     }
 
 
     /** Reads a portion of data into the buffer. */
-    private def readPortion(stream: BufferedLookAhead[T]): M[Unit] =
+    private def readPortion(stream: BufferedLookAhead[S]): M[Unit] =
       stream.peer.read(stream.buffer.writeBuffer, stream.buffer.writeStart, stream.buffer.writeEnd) <| { readCount =>
         if readCount < 0 then
           stream.buffer.markEof()
@@ -67,14 +58,14 @@ object BufferedLookAhead {
       }
 
 
-    override def peek(stream: BufferedLookAhead[T], offset: Int): M[Int] =
+    override def peek(stream: BufferedLookAhead[S], offset: Int): M[Int] =
       stream.fill(offset + 1) <| { available =>
         if available <= offset then -1 else stream.buffer.lookAhead(offset)
       }
 
 
     override def read(
-          stream: BufferedLookAhead[T],
+          stream: BufferedLookAhead[S],
           target: Array[Char],
           targetStart: Int,
           targetEnd: Int
@@ -94,7 +85,7 @@ object BufferedLookAhead {
     }
 
 
-    override def skip(stream: BufferedLookAhead[T], count: Int): M[Unit] = {
+    override def skip(stream: BufferedLookAhead[S], count: Int): M[Unit] = {
       val toDrop = Math.min(count, stream.buffer.size)
       stream.buffer.skip(toDrop)
 
@@ -107,7 +98,7 @@ object BufferedLookAhead {
 
 
     override def readWhile(
-          stream: BufferedLookAhead[T],
+          stream: BufferedLookAhead[S],
           target: Array[Char],
           targetStart: Int,
           targetEnd: Int,
@@ -129,7 +120,7 @@ object BufferedLookAhead {
     }
 
 
-    override def skipWhile(stream: BufferedLookAhead[T], predicate: Char => Boolean): M[Unit] = {
+    override def skipWhile(stream: BufferedLookAhead[S], predicate: Char => Boolean): M[Unit] = {
       stream.buffer.skipWhile(predicate)
       if stream.buffer.size > 0 || stream.buffer.isEof  then
         Monad.pure(())
@@ -138,7 +129,7 @@ object BufferedLookAhead {
     }
 
 
-    override def atEnd(stream: BufferedLookAhead[T]): M[Boolean] =
+    override def atEnd(stream: BufferedLookAhead[S]): M[Boolean] =
       peek(stream, 0) <| { _ < 0 }
   }
 }
