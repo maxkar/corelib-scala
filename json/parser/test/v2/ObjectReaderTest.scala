@@ -1,20 +1,17 @@
 package io.github.maxkar
 package json.parser.v2
 
-import text.v2.input.Reader
-import text.v2.input.BufferedLookAhead
-
-import fun.typeclass.Monad
-import fun.instances.Unnest
-import java.io.IOException
-import scala.StringContext.InvalidEscapeException
-
 
 final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   import TestIO.*
   import TestIO.given
-  import ObjectReaderTest.given
-  import ObjectReaderTest.*
+
+  private given numberErrors: NumberReader.Errors[Operation, IOStream] =
+    NumberReader.Errors.raise(raise)
+  private given stringErrors: StringReader.Errors[Operation, IOStream] =
+    StringReader.Errors.raise(raise)
+  private given objectErrors: ObjectReader.Errors[Operation, IOStream] =
+    ObjectReader.Errors.raise(raise)
 
 
   test("Happy path scenarios") {
@@ -42,19 +39,19 @@ final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
   test("Object format errors") {
     val data = Seq(
-      ("45", ObjectReaderTest.InvalidObjectStart(0)),
-      ("""{"a" -> 45}""", ObjectReaderTest.InvalidKeyValueSeparator(5)),
-      ("""{"a"?45}""", ObjectReaderTest.InvalidKeyValueSeparator(4)),
-      ("""{"a": 45, "b" -> 66}""", ObjectReaderTest.InvalidKeyValueSeparator(14)),
-      ("""{"a":45+"b" -> 66}""", ObjectReaderTest.InvalidObjectEnd(7)),
-      ("""{"a": 45 +"b" -> 66}""", ObjectReaderTest.InvalidObjectEnd(9)),
+      ("45", ParseException(0, "Invalid object start")),
+      ("""{"a" -> 45}""", ParseException(5, "Invalid key-value separator")),
+      ("""{"a"?45}""", ParseException(4, "Invalid key-value separator")),
+      ("""{"a": 45, "b" -> 66}""", ParseException(14, "Invalid key-value separator")),
+      ("""{"a":45+"b" -> 66}""", ParseException(7, "Invalid entry separator or object end")),
+      ("""{"a": 45 +"b" -> 66}""", ParseException(9, "Invalid entry separator or object end")),
     )
 
     for
       (inputString, exn) <- data
     do
       withClue(inputString) {
-        val actualExn = intercept[IOException] { read(inputString) }
+        val actualExn = parseWithError { read(inputString) }
         assert(exn === actualExn)
       }
   }
@@ -62,57 +59,6 @@ final class ObjectReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
   private def read(source: String): Map[String, String] = {
     val or = ObjectReader(stringInput(source))
-
-    Unnest.run(or.readMap(e => StringReader(e).readString(), e => NumberReader(e).readString()))
+    doIO(or.readMap(e => StringReader(e).readString(), e => NumberReader(e).readString()))
   }
 }
-
-
-
-object ObjectReaderTest {
-  import TestIO.*
-  import TestIO.given
-
-
-  private given objectErrors: ObjectReader.Errors[Unnest, IOStream] with {
-    override def invalidObjectStart[T](stream: IOStream): Unnest[T] =
-      offset(stream) <| { offset => throw new InvalidObjectStart(offset) }
-
-    override def invalidObjectEnd[T](stream: IOStream): Unnest[T] =
-      offset(stream) <| { offset => throw new InvalidObjectEnd(offset) }
-
-    override def invalidKeyValueSeparator[T](stream: IOStream): Unnest[T] =
-      offset(stream) <| { offset => throw new InvalidKeyValueSeparator(offset) }
-
-    private def offset(stream: IOStream): Unnest[Int] =
-      stream.getLocation() <| (_.offset)
-  }
-
-
-  private given numberErrors: NumberReader.Errors[Unnest, IOStream] with {
-    override def leadingIntegerZero[T](stream: IOStream): Unnest[T] = fail()
-    override def missingIntegerDigits[T](stream: IOStream): Unnest[T] = fail()
-    override def missingDecimalDigits[T](stream: IOStream): Unnest[T] = fail()
-    override def missingExponentDigits[T](stream: IOStream): Unnest[T] = fail()
-
-    private def fail(): Nothing =
-      throw new IOException("Unexpected number format exception")
-  }
-
-
-  private given stringErrors: StringReader.Errors[Unnest, IOStream] with {
-    override def illegalStringStart[T](stream: IOStream): Unnest[T] = fail()
-    override def invalidCharacter[T](stream: IOStream): Unnest[T] = fail()
-    override def invalidEscapeCharacter[T](stream: IOStream): Unnest[T] = fail()
-    override def invalidUnicodeEscape[T](stream: IOStream): Unnest[T] = fail()
-    override def unterminatedString[T](stream: IOStream): Unnest[T] = fail()
-
-    private def fail(): Nothing =
-      throw new IOException("Unexpected number format exception")
-  }
-
-  private final case class InvalidObjectStart(offset: Int) extends IOException
-  private final case class InvalidObjectEnd(offset: Int) extends IOException
-  private final case class InvalidKeyValueSeparator(offset: Int) extends IOException
-}
-

@@ -23,9 +23,9 @@ import text.v2.input.LooksAheadIn
  * @param stream stream used to read the array.
  * @param skipWhites function to skip whitespaces.
  */
-final class ArrayReader[M[_]: Monad, T: LooksAheadIn[M]: ArrayReader.ErrorsIn[M]] private(
-      stream: T,
-      skipWhites: T => M[Unit]) {
+final class ArrayReader[M[_]: Monad, S: LooksAheadIn[M]: ArrayReader.ErrorsIn[M]] private(
+      stream: S,
+      skipWhites: S => M[Unit]) {
   import ArrayReader.*
 
   /** State of the reading. */
@@ -58,7 +58,7 @@ final class ArrayReader[M[_]: Monad, T: LooksAheadIn[M]: ArrayReader.ErrorsIn[M]
 
 
   /** Reads the array as a sequence. */
-  def readSequence[E](readElement: T => M[E]): M[Seq[E]] = {
+  def readSequence[E](readElement: S => M[E]): M[Seq[E]] = {
     val agg = new scala.collection.mutable.ArrayBuffer[E]()
     def step(): M[Seq[E]] = {
       advanceToNext() <||| {
@@ -96,6 +96,17 @@ object ArrayReader {
   type ErrorsIn[M[_]] = [S] =>> Errors[M, S]
 
 
+  object Errors {
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S] =
+      new Errors[M, S] {
+        override def invalidArrayStart[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid array start")
+        override def invalidArrayEnd[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid array separator or end")
+      }
+  }
+
+
   private enum State {
     case BeforeArray
     case InsideArray
@@ -104,15 +115,15 @@ object ArrayReader {
 
 
   /** Creates a new array reader with the specificed function to skip whitespaces. */
-  def apply[M[_]: Monad, T: LooksAheadIn[M]: ErrorsIn[M]](
-        stream: T,
-        skipWhitespaces: T => M[Unit]
-      ): ArrayReader[M, T] =
+  def apply[M[_]: Monad, S: LooksAheadIn[M]: ErrorsIn[M]](
+        stream: S,
+        skipWhitespaces: S => M[Unit]
+      ): ArrayReader[M, S] =
     new ArrayReader(stream, skipWhitespaces)
 
 
   /** Creates a new array reader with the default function to skip whitespaces. */
-  def apply[M[_]: Monad, T: LooksAheadIn[M]: ErrorsIn[M]](stream: T): ArrayReader[M, T] =
+  def apply[M[_]: Monad, S: LooksAheadIn[M]: ErrorsIn[M]](stream: S): ArrayReader[M, S] =
     ArrayReader(stream, s => WhitespaceReader(s).skipAll())
 
 
@@ -132,10 +143,10 @@ object ArrayReader {
 
 
   /** Reads the array opening character. */
-  def readArrayStart[M[_]: Monad, T: LooksAheadIn[M]](
-        stream: T
+  def readArrayStart[M[_]: Monad, S: LooksAheadIn[M]](
+        stream: S
       )(using
-        errs: Errors[M, T]
+        errs: Errors[M, S]
       ): M[Unit] =
     stream.peek(0) <||| {
       case '[' => stream.skip(1)
@@ -147,7 +158,7 @@ object ArrayReader {
    * Checks if there is a first element or reads end of array. Consumes
    * the end of the array (if the array is empty).
    */
-  def hasFirstElement[M[_]: Monad, T: LooksAheadIn[M]](stream: T): M[Boolean] =
+  def hasFirstElement[M[_]: Monad, S: LooksAheadIn[M]](stream: S): M[Boolean] =
     stream.peek(0) <||| {
       case ']' => stream.skip(1) <| { _ => false }
       case _ => Monad.pure(true)
@@ -160,10 +171,10 @@ object ArrayReader {
    * Returns `false` if the array end was read.
    * Raises an error in all other cases.
    */
-  def readArraySeparatorOrEnd[M[_]: Monad, T: LooksAheadIn[M]](
-        stream: T
+  def readArraySeparatorOrEnd[M[_]: Monad, S: LooksAheadIn[M]](
+        stream: S
       )(using
-        errs: Errors[M, T]
+        errs: Errors[M, S]
       ): M[Boolean] =
     stream.peek(0) <||| {
       case ',' => stream.skip(1) <| { _ => true }

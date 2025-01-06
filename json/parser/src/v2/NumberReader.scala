@@ -9,9 +9,9 @@ import text.v2.input.LooksAheadIn
 
 /**
  * Reader for JSON Strings.
- * @tparam T type of the underlying stream.
+ * @tparam S type of the underlying stream.
  */
-final class NumberReader[T](private val stream: T) {
+final class NumberReader[S](private val stream: S) {
   /** State of the reading (i.e. what we would read next). */
   private var state: NumberReader.State = NumberReader.State.BeforeNumber
 }
@@ -53,9 +53,22 @@ object NumberReader {
      */
     def missingExponentDigits[T](stream: S): M[T]
   }
-
-
   type ErrorsIn[M[_]] = [S] =>> Errors[M, S]
+
+
+  object Errors {
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S] =
+      new Errors[M, S] {
+        override def missingIntegerDigits[T](stream: S): M[T] =
+          raiseFn(stream, "Missing integer digits")
+        override def leadingIntegerZero[T](stream: S): M[T] =
+          raiseFn(stream, "Leading zero is not allowed")
+        override def missingDecimalDigits[T](stream: S): M[T] =
+          raiseFn(stream, "Missing decimal digits")
+        override def missingExponentDigits[T](stream: S): M[T] =
+          raiseFn(stream, "Missing exponent digits")
+      }
+  }
 
 
   /** State of the reading. */
@@ -82,20 +95,20 @@ object NumberReader {
 
 
   /**
-   * Context for reading stream of type T.
+   * Context for reading stream of type S.
    * @param source source being read.
    * @param target target to fill.
    * @param targetStart startingPosition (as supplied by the user).
    * @param targetEnd ending position (as supplied by the user).
    */
-  private class Context[T](
-        val source: NumberReader[T],
+  private class Context[S](
+        val source: NumberReader[S],
         val target: Array[Char],
         val targetStart: Int,
         val targetEnd: Int,
       ) {
     /** Stream we are reading. */
-    val stream: T = source.stream
+    val stream: S = source.stream
     /** Current offset in the target. */
     var ptr = targetStart
 
@@ -117,13 +130,13 @@ object NumberReader {
 
 
   /** Creates a new string reader. */
-  inline def apply[T](base: T): NumberReader[T] = new NumberReader(base)
+  inline def apply[S](base: S): NumberReader[S] = new NumberReader(base)
 
 
-  given reader[M[_]: Monad, T: LooksAheadIn[M]](using errs: Errors[M, T]): Reader[M, NumberReader[T]] with {
+  given reader[M[_]: Monad, S: LooksAheadIn[M]](using errs: Errors[M, S]): Reader[M, NumberReader[S]] with {
 
     override def read(
-          source: NumberReader[T],
+          source: NumberReader[S],
           target: Array[Char],
           targetStart: Int,
           targetEnd: Int)
@@ -132,7 +145,7 @@ object NumberReader {
 
 
     /** Reads number in the context. */
-    private def read(ctx: Context[T]): M[Int] =
+    private def read(ctx: Context[S]): M[Int] =
       ctx.source.state match {
         case State.BeforeNumber => readNumberSign(ctx)
         case State.AfterSign => readNumberStart(ctx)
@@ -148,7 +161,7 @@ object NumberReader {
 
 
     /** Reads number sign. */
-    private def readNumberSign(ctx: Context[T]): M[Int] =
+    private def readNumberSign(ctx: Context[S]): M[Int] =
       ctx.stream.peek(0) <||| {
         case '-' => readOneAndContinue(ctx, State.AfterSign)
         case other => goToAndContinue(ctx, State.AfterSign)
@@ -156,7 +169,7 @@ object NumberReader {
 
 
     /** Reads number start. */
-    private def readNumberStart(ctx: Context[T]): M[Int] =
+    private def readNumberStart(ctx: Context[S]): M[Int] =
       ctx.stream.peek(1) <||| { la2 =>
         ctx.stream.peek(0) <||| { la1 =>
           if !isDigit(la1) then
@@ -172,7 +185,7 @@ object NumberReader {
 
 
     /** Reads fractional part. */
-    private def readDecimalPart(ctx: Context[T]): M[Int] =
+    private def readDecimalPart(ctx: Context[S]): M[Int] =
       ctx.stream.peek(0) <||| {
         case '.' => readOneAndContinue(ctx, State.AfterDecimalSeparator)
         case other => readExponentPart(ctx)
@@ -180,12 +193,12 @@ object NumberReader {
 
 
     /** Reads decimal digits. */
-    private def startDecimalDigits(ctx: Context[T]): M[Int] =
+    private def startDecimalDigits(ctx: Context[S]): M[Int] =
       startDigits(ctx, State.InDecimal, errs.missingDecimalDigits, readExponentPart)
 
 
     /** Reads exponent part. */
-    private def readExponentPart(ctx: Context[T]): M[Int] =
+    private def readExponentPart(ctx: Context[S]): M[Int] =
       ctx.stream.peek(0) <||| {
         case 'e' | 'E' => readOneAndContinue(ctx, State.AfterExponentSeparator)
         case _ =>
@@ -195,7 +208,7 @@ object NumberReader {
 
 
     /** Reads exponent sign. */
-    private def readExponentSign(ctx: Context[T]): M[Int] =
+    private def readExponentSign(ctx: Context[S]): M[Int] =
       ctx.stream.peek(0) <||| { maybeSign =>
         if isExponentSign(maybeSign) then
           readOneAndContinue(ctx, State.AfterExponentSign)
@@ -205,26 +218,26 @@ object NumberReader {
 
 
     /** Reads exponent digits. */
-    private def startExponentDigits(ctx: Context[T]): M[Int] =
+    private def startExponentDigits(ctx: Context[S]): M[Int] =
       startDigits(ctx, State.InExponent, errs.missingExponentDigits, endNumber)
 
 
     /** Ends processing. */
-    private def endNumber(ctx: Context[T]): M[Int] = {
+    private def endNumber(ctx: Context[S]): M[Int] = {
       ctx.goTo(State.Eof)
       Monad.pure(ctx.charactersWritten())
     }
 
 
     /** Goes to a new state (without reading) and continues reading. */
-    private def goToAndContinue(ctx: Context[T], state: State): M[Int] = {
+    private def goToAndContinue(ctx: Context[S], state: State): M[Int] = {
       ctx.goTo(state)
       read(ctx)
     }
 
 
     /** Reads one charactes, goes to a new state and continues reading. */
-    private def readOneAndContinue(ctx: Context[T], state: State): M[Int] = {
+    private def readOneAndContinue(ctx: Context[S], state: State): M[Int] = {
       val start = ctx.ptr
       ctx.ptr += 1
       ctx.goTo(state)
@@ -244,10 +257,10 @@ object NumberReader {
      * digits at all. Switches stream to the `state` for reading.
      */
     private def startDigits(
-          ctx: Context[T],
+          ctx: Context[S],
           state: State,
-          onError: T => M[Int],
-          next: Context[T] => M[Int]
+          onError: S => M[Int],
+          next: Context[S] => M[Int]
         ): M[Int] =
       ctx.stream.peek(0) <||| { maybeDigit =>
         if !isDigit(maybeDigit) then
@@ -262,7 +275,7 @@ object NumberReader {
      * Reads (non-starting) digits from the context. Invokes the `next` function
      * if there are no more digits to read but the output buffer is not full.
      */
-    private def readDigits(ctx: Context[T], next: Context[T] => M[Int]): M[Int] =
+    private def readDigits(ctx: Context[S], next: Context[S] => M[Int]): M[Int] =
       ctx.stream.readWhile(ctx.target, ctx.ptr, ctx.targetEnd, isDigit) <||| { readCount =>
         /* End of file reached. ReadDigits is always invoked "inside" the number.
          * The digits may be in the three parts: integer, decimal and exponent.

@@ -1,21 +1,12 @@
 package io.github.maxkar
 package json.parser.v2
 
-import text.v2.input.Reader
-import text.v2.input.BufferedLookAhead
-
-import fun.typeclass.Monad
-import fun.instances.Unnest
-import java.io.IOException
-
 /** Tests for the literal reader. */
 final class LiteralReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   import TestIO.*
   import TestIO.given
 
-  import LiteralReaderTest.*
-
-  private val reader = LiteralReader.all[Unnest, IOStream]()
+  private val reader = LiteralReader.all[Operation, IOStream]()
 
 
   test("Literals are read successfully") {
@@ -38,40 +29,30 @@ final class LiteralReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("Invalid literals") {
-    testFailure(reader.trueLiteral, "tru", Err("true", 3, -1))
-    testFailure(reader.falseLiteral, "fal", Err("false", 3, -1))
-    testFailure(reader.nullLiteral, "nul", Err("null", 3, -1))
+    testFailure(reader.trueLiteral, "tru", ParseException(0, "Invalid true literal"))
+    testFailure(reader.falseLiteral, "fal", ParseException(0, "Invalid false literal"))
+    testFailure(reader.nullLiteral, "nul", ParseException(0, "Invalid null literal"))
 
-    testFailure(reader.trueLiteral, "trux", Err("true", 3, 'x'))
-    testFailure(reader.falseLiteral, "falx", Err("false", 3, 'x'))
-    testFailure(reader.nullLiteral, "nulx", Err("null", 3, 'x'))
+    testFailure(reader.trueLiteral, "trux", ParseException(0, "Invalid true literal"))
+    testFailure(reader.falseLiteral, "falx", ParseException(0, "Invalid false literal"))
+    testFailure(reader.nullLiteral, "nulx", ParseException(0, "Invalid null literal"))
   }
 
 
   private def testFailure(
-        reader: LiteralReader[Unnest, IOStream],
+        reader: LiteralReader[Operation, IOStream],
         input: String,
-        failure: Err
+        failure: ParseException
       ): Unit =  {
-    val err = intercept[Err] { runReader(reader, input) }
-    assert(err.expected === failure.expected)
-    assert(err.offset === failure.offset)
-    assert(err.actual === failure.actual)
+    val err = parseWithError { runReader(reader, input) }
+    assert(failure === err)
   }
 
 
-  private def runReader(reader: LiteralReader[Unnest, IOStream], input: String): Unit =
-    Unnest.run(reader(stringInput(input)))
+  private def runReader(reader: LiteralReader[Operation, IOStream], input: String): Unit =
+    doIO(reader(stringInput(input)))
 
 
-
-
-  private given literalError: LiteralReader.Errors[Unnest, IOStream] with {
-    override def badLiteral[T](stream: IOStream, expected: String, mismatchOffset: Int, actualChar: Int): Unnest[T] =
-      throw new Err(expected, mismatchOffset, actualChar)
-  }
-}
-
-object LiteralReaderTest {
-  private final case class Err(expected: String, offset: Int, actual: Int) extends IOException
+  private given literalError: LiteralReader.Errors[Operation, IOStream] =
+    LiteralReader.Errors.raise(raise)
 }

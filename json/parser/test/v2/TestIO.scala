@@ -31,10 +31,14 @@ object TestIO {
 
 
   /** Raises an error. */
-  def raise[T](context: IOStream, message: String): Unnest[T] =
+  private def raiseImpl[T](context: IOStream, message: String): Unnest[T] =
     context.getLocation() <| { loc =>
       throw new ParseException(loc.offset, message)
     }
+
+
+  /** Raise function for use with "raise" factory methods for error handlers. */
+  val raise: [T] => (IOStream, String) => Operation[T] = [T] => (ctx, err) => raiseImpl(ctx, err)
 
 
 
@@ -58,7 +62,7 @@ object TestIO {
 
   /** Errors for unnest buffered IO. */
   given unnestError: BufferedLookAhead.IOErrors[Unnest, java.io.Reader] =
-    BufferedLookAhead.IOErrors.raise { [T] => (ctx, msg) => throw new IOException(msg) }
+    BufferedLookAhead.IOErrors.raise(raise)
 
 
   /** Reader for java instances. */

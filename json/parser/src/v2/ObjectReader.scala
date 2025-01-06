@@ -25,9 +25,9 @@ import text.v2.input.LooksAheadIn
  * @param stream stream used to read the array.
  * @param skipWhites function to skip whitespaces.
  */
-final class ObjectReader[M[_]: Monad, T: LooksAheadIn[M]: ObjectReader.ErrorsIn[M]] private(
-      stream: T,
-      skipWhites: T => M[Unit]) {
+final class ObjectReader[M[_]: Monad, S: LooksAheadIn[M]: ObjectReader.ErrorsIn[M]] private(
+      stream: S,
+      skipWhites: S => M[Unit]) {
   import ObjectReader.*
 
   /** State of the reading. */
@@ -65,7 +65,7 @@ final class ObjectReader[M[_]: Monad, T: LooksAheadIn[M]: ObjectReader.ErrorsIn[
 
 
   /** Reads the object as a map. */
-  def readMap[K, V](readKey: T => M[K], readValue: T => M[V]): M[Map[K, V]] = {
+  def readMap[K, V](readKey: S => M[K], readValue: S => M[V]): M[Map[K, V]] = {
     val agg = new scala.collection.mutable.HashMap[K, V]()
     def step(): M[Map[K, V]] = {
       advanceToNext() <||| {
@@ -112,6 +112,19 @@ object ObjectReader {
   type ErrorsIn[M[_]] = [S] =>> Errors[M, S]
 
 
+  object Errors {
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S] =
+      new Errors[M, S] {
+        override def invalidObjectStart[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid object start")
+        override def invalidObjectEnd[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid entry separator or object end")
+        override def invalidKeyValueSeparator[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid key-value separator")
+      }
+  }
+
+
   private enum State {
     case BeforeObject
     case InsideObject
@@ -119,15 +132,15 @@ object ObjectReader {
   }
 
   /** Creates a new array reader with the specificed function to skip whitespaces. */
-  def apply[M[_]: Monad, T: LooksAheadIn[M]: ErrorsIn[M]](
-        stream: T,
-        skipWhitespaces: T => M[Unit]
-      ): ObjectReader[M, T] =
+  def apply[M[_]: Monad, S: LooksAheadIn[M]: ErrorsIn[M]](
+        stream: S,
+        skipWhitespaces: S => M[Unit]
+      ): ObjectReader[M, S] =
     new ObjectReader(stream, skipWhitespaces)
 
 
   /** Creates a new array reader with the default function to skip whitespaces. */
-  def apply[M[_]: Monad, T: LooksAheadIn[M]: ErrorsIn[M]](stream: T): ObjectReader[M, T] =
+  def apply[M[_]: Monad, S: LooksAheadIn[M]: ErrorsIn[M]](stream: S): ObjectReader[M, S] =
     ObjectReader(stream, s => WhitespaceReader(s).skipAll())
 
 
@@ -152,10 +165,10 @@ object ObjectReader {
 
 
   /** Reads the object opening character. */
-  def readObjectStart[M[_]: Monad, T: LooksAheadIn[M]](
-        stream: T
+  def readObjectStart[M[_]: Monad, S: LooksAheadIn[M]](
+        stream: S
       )(using
-        errs: Errors[M, T]
+        errs: Errors[M, S]
       ): M[Unit] =
     stream.peek(0) <||| {
       case '{' => stream.skip(1)
@@ -167,7 +180,7 @@ object ObjectReader {
    * Checks if there is a first element or reads end of the object. Consumes
    * the end of the object (if the object is empty).
    */
-  def hasFirstPair[M[_]: Monad, T: LooksAheadIn[M]](stream: T): M[Boolean] =
+  def hasFirstPair[M[_]: Monad, S: LooksAheadIn[M]](stream: S): M[Boolean] =
     stream.peek(0) <||| {
       case '}' => stream.skip(1) <| { _ => false }
       case _ => Monad.pure(true)
@@ -175,10 +188,10 @@ object ObjectReader {
 
 
   /** Reads key-value separator. */
-  def readKeyValueSeparator[M[_]: Monad, T: LooksAheadIn[M]](
-        stream: T
+  def readKeyValueSeparator[M[_]: Monad, S: LooksAheadIn[M]](
+        stream: S
       )(using
-        errs: Errors[M, T]
+        errs: Errors[M, S]
       ): M[Unit] =
     stream.peek(0) <||| {
       case ':' => stream.skip(1)
@@ -192,10 +205,10 @@ object ObjectReader {
    * Returns `false` if the object end was read.
    * Raises an error in all other cases.
    */
-  def readEntrySeparatorOrEnd[M[_]: Monad, T: LooksAheadIn[M]](
-        stream: T
+  def readEntrySeparatorOrEnd[M[_]: Monad, S: LooksAheadIn[M]](
+        stream: S
       )(using
-        errs: Errors[M, T]
+        errs: Errors[M, S]
       ): M[Boolean] =
     stream.peek(0) <||| {
       case ',' => stream.skip(1) <| { _ => true }

@@ -9,9 +9,9 @@ import text.v2.input.LooksAheadIn
 
 /**
  * Reader for JSON Strings.
- * @tparam T type of the underlying stream.
+ * @tparam S type of the underlying stream.
  */
-final class StringReader[+T](private val stream: T) {
+final class StringReader[+S](private val stream: S) {
   /** State of the reading (i.e. what we would read next). */
   private var state: StringReader.State = StringReader.State.BeforeOpening
 }
@@ -59,6 +59,23 @@ object StringReader {
   type ErrorsIn[M[_]] = [S] =>> Errors[M, S]
 
 
+  object Errors {
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S] =
+      new Errors[M, S] {
+        override def illegalStringStart[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid string start")
+        override def invalidEscapeCharacter[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid escape character")
+        override def invalidUnicodeEscape[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid unicode escape")
+        override def invalidCharacter[T](stream: S): M[T] =
+          raiseFn(stream, "Illegal character")
+        override def unterminatedString[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid string end")
+      }
+  }
+
+
   /** State of the reading. */
   enum State {
     /** We are before the opening quote. */
@@ -71,12 +88,12 @@ object StringReader {
 
 
   /** Creates a new string reader. */
-  inline def apply[T](base: T): StringReader[T] = new StringReader(base)
+  inline def apply[S](base: S): StringReader[S] = new StringReader(base)
 
 
-  given reader[M[_]: Monad, T: LooksAheadIn[M]](using errs: Errors[M, T]): Reader[M, StringReader[T]] with {
+  given reader[M[_]: Monad, S: LooksAheadIn[M]](using errs: Errors[M, S]): Reader[M, StringReader[S]] with {
     override def read(
-          source: StringReader[T],
+          source: StringReader[S],
           target: Array[Char],
           targetStart: Int,
           targetEnd: Int)
@@ -100,7 +117,7 @@ object StringReader {
 
     /** Reads "body" of the string (part between the string quotes). */
     private def readStringBody(
-          source: StringReader[T],
+          source: StringReader[S],
           target: Array[Char],
           targetStart: Int,
           targetEnd: Int
@@ -145,7 +162,7 @@ object StringReader {
 
 
     /** Reads an escaped character. */
-    private def readEscape(stream: T): M[Char] =
+    private def readEscape(stream: S): M[Char] =
       stream.peek(1) <||| {
         case '"' => stream.skip(2) <| { _ => '"' }
         case '\\' => stream.skip(2) <| { _ => '\\' }
@@ -161,7 +178,7 @@ object StringReader {
 
 
     /** Reads unicode escape. */
-    private def readUnicodeEscape(stream: T): M[Char] = {
+    private def readUnicodeEscape(stream: S): M[Char] = {
       for {
         _ <- stream.fill(6)
         c1 <- peekHexDigit(stream, 2)
@@ -175,7 +192,7 @@ object StringReader {
 
 
     /** Loads hex digit from the stream. */
-    private def peekHexDigit(stream: T, offset: Int): M[Int] =
+    private def peekHexDigit(stream: S, offset: Int): M[Int] =
       stream.peek(offset) <||| {
         case d if '0' <= d && d <= '9' => Monad.pure(d - '0')
         case d if 'a' <= d && d <= 'f' => Monad.pure(10 + d - 'a')

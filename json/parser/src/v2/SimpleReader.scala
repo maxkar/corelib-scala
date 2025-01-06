@@ -111,60 +111,33 @@ object SimpleReader {
   }
 
 
-  /** Creates a simple error handler where all errors are diverted to just text. */
-  def simpleErrors[M[_], S](raise: [T] => (S, String) => M[T]): Errors[M, S] =
-    new Errors[M, S] {
-      override given valueErrors: ValueReader.Errors[M, S] with {
-        override def invalidValue[T](stream: S): M[T] =
-          raise(stream, "Invalid JSON Value")
+  object Errors {
+    /** Creates a simple error handler where all errors are diverted to just text. */
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S] =
+      new Errors[M, S] {
+        override given valueErrors: ValueReader.Errors[M, S] =
+          ValueReader.Errors.raise(raiseFn)
+        override given literalErrors: LiteralReader.Errors[M, S] =
+          LiteralReader.Errors.raise(raiseFn)
+        override given numberErrors: NumberReader.Errors[M, S] =
+          NumberReader.Errors.raise(raiseFn)
+        override given stringErrors: StringReader.Errors[M, S] =
+          StringReader.Errors.raise(raiseFn)
+        override given arrayErrors: ArrayReader.Errors[M, S] =
+          ArrayReader.Errors.raise(raiseFn)
+        override given objectErrors: ObjectReader.Errors[M, S] =
+          ObjectReader.Errors.raise(raiseFn)
+        override def trailingData[T](stream: S): M[T] =
+          raiseFn(stream, "Trailing data not allowed after value")
       }
+  }
 
-      override given literalErrors: LiteralReader.Errors[M, S] with {
-        override def badLiteral[T](stream: S, expected: String, mismatchOffset: Int, actualChar: Int): M[T] =
-          raise(stream, s"Invalid ${expected} literal")
-      }
 
-      override given numberErrors: NumberReader.Errors[M, S] with {
-        override def leadingIntegerZero[T](stream: S): M[T] =
-          raise(stream, "Leading integer 0")
-        override def missingDecimalDigits[T](stream: S): M[T] =
-          raise(stream, "Missing decimal digits")
-        override def missingExponentDigits[T](stream: S): M[T] =
-          raise(stream, "Missing exponent digits")
-        override def missingIntegerDigits[T](stream: S): M[T] =
-          raise(stream, "Missing integer digits")
-      }
-
-      override given stringErrors: StringReader.Errors[M, S] with {
-        override def illegalStringStart[T](stream: S): M[T] =
-          raise(stream, "Illegal string start")
-        override def invalidCharacter[T](stream: S): M[T] =
-          raise(stream, "Invalid character")
-        override def invalidEscapeCharacter[T](stream: S): M[T] =
-          raise(stream, "Invalid escape character")
-        override def invalidUnicodeEscape[T](stream: S): M[T] =
-          raise(stream, "Invalid unicode escape")
-        override def unterminatedString[T](stream: S): M[T] =
-          raise(stream, "Unterminated string")
-      }
-
-      override given arrayErrors: ArrayReader.Errors[M, S] with {
-        override def invalidArrayStart[T](stream: S): M[T] =
-          raise(stream, "Invalid array start")
-        override def invalidArrayEnd[T](stream: S): M[T] =
-          raise(stream, "Invalid array end")
-      }
-
-      override given objectErrors: ObjectReader.Errors[M, S] with {
-        override def invalidObjectStart[T](stream: S): M[T] =
-          raise(stream, "Invalid object start")
-        override def invalidObjectEnd[T](stream: S): M[T] =
-          raise(stream, "Invalid object end")
-        override def invalidKeyValueSeparator[T](stream: S): M[T] =
-          raise(stream, "Invalid key/value separator")
-      }
-
-      override def trailingData[T](stream: S): M[T] =
-        raise(stream, "Trailing data, expected EOF")
-    }
+  /** Creates a new parser with the given object builder. */
+  def apply[M[_]: Monad, S: LooksAheadIn[M], V](
+        builder: SimpleReader.Builder[V]
+      )(using
+        errs: Errors[M, S]
+      ): SimpleReader[M, S, V] =
+    new SimpleReader(builder, errs)
 }

@@ -6,21 +6,21 @@ import text.v2.input.LookAhead
 import text.v2.input.LooksAheadIn
 
 /** Reader for the whitespaces. */
-opaque type WhitespaceReader[T] = T
+opaque type WhitespaceReader[S] = S
 
 object WhitespaceReader {
   /** Creates a new reader of whitespaces for the given stream. */
-  inline def apply[T](base: T): WhitespaceReader[T] = base
+  inline def apply[S](base: S): WhitespaceReader[S] = base
 
 
-  given reader[M[_], T: LooksAheadIn[M]]: Reader[M, WhitespaceReader[T]] with {
-    override def read(source: WhitespaceReader[T], target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
+  given reader[M[_], S: LooksAheadIn[M]]: Reader[M, WhitespaceReader[S]] with {
+    override def read(source: WhitespaceReader[S], target: Array[Char], targetStart: Int, targetEnd: Int): M[Int] =
       source.readWhile(target, targetStart, targetEnd, isWhitespace)
   }
 
 
-  extension [T](base: WhitespaceReader[T]) {
-    def skipAll[M[_]]()(using la: LookAhead[M, T]): M[Unit] =
+  extension [S](base: WhitespaceReader[S]) {
+    def skipAll[M[_]]()(using la: LookAhead[M, S]): M[Unit] =
       base.skipWhile(isWhitespace)
   }
 

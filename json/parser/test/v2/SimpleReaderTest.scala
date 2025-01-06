@@ -1,20 +1,18 @@
 package io.github.maxkar
 package json.parser.v2
 
-import text.v2.input.Reader
-import text.v2.input.BufferedLookAhead
-
-import fun.typeclass.Monad
-import fun.instances.Unnest
-import java.io.IOException
-
 final class SimpleReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   import TestIO.*
   import TestIO.given
-  import SimpleReaderTest.*
-  import SimpleReaderTest.given
 
-  private val jsonReader = new SimpleReader(TestValueBuilder, SimpleReaderTest.parseErrors)
+  private given parseErrors: SimpleReader.Errors[Operation, IOStream] =
+    SimpleReader.Errors.raise(raise)
+
+
+  private val jsonReader =
+    SimpleReader[Operation, IOStream, AnyRef](
+      SimpleReaderTest.TestValueBuilder
+    )
 
 
   test("Basic smoke tests") {
@@ -62,28 +60,18 @@ final class SimpleReaderTest extends org.scalatest.funsuite.AnyFunSuite {
       (inputString, offset) <- data
     do
       withClue(inputString) {
-        val exn = intercept[Err] { read(inputString) }
+        val exn = parseWithError { read(inputString) }
         assert(offset === exn.offset)
       }
   }
 
+
   private def read(source: String): Object =
-    Unnest.run(jsonReader.readValue(stringInput(source)))
+    doIO(jsonReader.readValue(stringInput(source)))
 }
 
 
 object SimpleReaderTest {
-  import TestIO.*
-  import TestIO.given
-
-
-  given parseErrors: SimpleReader.Errors[Unnest, IOStream] =
-    SimpleReader.simpleErrors { [T] => (stream, message) =>
-      stream.getLocation() <| { location =>
-        throw new Err(location.offset, message)
-      }
-    }
-
   /** Simple model generator. */
   object TestValueBuilder extends SimpleReader.Builder[AnyRef] {
     override def fromNull(): AnyRef = null
@@ -93,6 +81,4 @@ object SimpleReaderTest {
     override def fromArray(items: Seq[AnyRef]): AnyRef = items
     override def fromObject(items: Map[String, AnyRef]): AnyRef = items
   }
-
-  final case class Err(offset: Int, message: String) extends IOException(s"${offset}:${message}")
 }

@@ -37,6 +37,15 @@ object ValueReader {
   type ErrorsIn[M[_]] = [T] =>> Errors[M, T]
 
 
+  object Errors {
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S] =
+      new Errors[M, S] {
+        override def invalidValue[T](stream: S): M[T] =
+          raiseFn(stream, "Invalid value")
+      }
+  }
+
+
   /** Reads value from the stream using the specified dispatch function. */
   def readValue[M[_]: Monad, S: LooksAheadIn[M], T](
         stream: S,

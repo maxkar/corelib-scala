@@ -1,18 +1,13 @@
 package io.github.maxkar
 package json.parser.v2
 
-import text.v2.input.Reader
-import text.v2.input.BufferedLookAhead
-
-import fun.typeclass.Monad
-import fun.instances.Unnest
-import java.io.IOException
-import scala.StringContext.InvalidEscapeException
-
 final class NumberReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   import TestIO.*
   import TestIO.given
-  import NumberReaderTest.given
+
+  private given numberErrors: NumberReader.Errors[Operation, IOStream] =
+    NumberReader.Errors.raise(raise)
+
 
   /** Valid numbers - should be parsed fully. */
   val validNumbers: Seq[String] = {
@@ -96,22 +91,22 @@ final class NumberReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
   test("Missing integer digits") {
-    testFailure(missingIntegerDigits, NumberReaderTest.MissingIntegerDigits.apply)
+    testFailure(missingIntegerDigits, "Missing integer digits")
   }
 
 
   test("Leading 0") {
-    testFailure(leadingInt0, NumberReaderTest.LeadingIntegerZero.apply)
+    testFailure(leadingInt0, "Leading zero is not allowed")
   }
 
 
   test("Missing decimal digits") {
-    testFailure(missingDecimalDigits, NumberReaderTest.MissingDecimalDigits.apply)
+    testFailure(missingDecimalDigits, "Missing decimal digits")
   }
 
 
   test("Missing exponent digits") {
-    testFailure(missingExponentDigits, NumberReaderTest.MissingExponentDigits.apply)
+    testFailure(missingExponentDigits, "Missing exponent digits")
   }
 
 
@@ -120,47 +115,19 @@ final class NumberReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   /** Checks that error is raised. */
-  private def testFailure(inputs: Seq[(String, Int)], error: Int => Throwable): Unit = {
+  private def testFailure(inputs: Seq[(String, Int)], error: String): Unit = {
     for {
       (data, offset) <- inputs
     } {
       withClue(data) {
-        val exn = intercept[IOException] { read(data) }
-        assert(error(offset) === exn)
+        val exn = parseWithError { read(data) }
+        assert(ParseException(offset, error) === exn)
       }
     }
   }
 
   private def read(source: String): String = {
     val nr = NumberReader(stringInput(source))
-
-    Unnest.run(nr.readString())
+    doIO(nr.readString())
   }
-}
-
-object NumberReaderTest {
-  import TestIO.IOStream
-  import TestIO.given
-
-  private given numberErrors: NumberReader.Errors[Unnest, IOStream] with {
-    override def leadingIntegerZero[T](stream: IOStream): Unnest[T] =
-      offset(stream) <||| { offset => throw new LeadingIntegerZero(offset) }
-
-    override def missingIntegerDigits[T](stream: IOStream): Unnest[T] =
-      offset(stream) <||| { offset => throw new MissingIntegerDigits(offset) }
-
-    override def missingDecimalDigits[T](stream: IOStream): Unnest[T] =
-      offset(stream) <||| { offset => throw new MissingDecimalDigits(offset) }
-
-    override def missingExponentDigits[T](stream: IOStream): Unnest[T] =
-      offset(stream) <||| { offset => throw new MissingExponentDigits(offset) }
-
-    private def offset(stream: IOStream): Unnest[Int] =
-      stream.getLocation() <| (_.offset)
-  }
-
-  private final case class LeadingIntegerZero(offset: Int) extends IOException
-  private final case class MissingIntegerDigits(offset: Int) extends IOException
-  private final case class MissingDecimalDigits(offset: Int) extends IOException
-  private final case class MissingExponentDigits(offset: Int) extends IOException
 }
