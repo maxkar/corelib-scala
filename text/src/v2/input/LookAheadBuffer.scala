@@ -161,5 +161,3 @@ private object LookAheadBuffer {
   def apply(capacity: Int): LookAheadBuffer =
     new LookAheadBuffer(new Array[Char](capacity))
 }
-
-
