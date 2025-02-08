@@ -5,6 +5,9 @@ import fun.typeclass.Applicative
 import fun.typeclass.Monad
 
 import text.input.LookAheadStream
+import text.v2.input.LooksAheadIn
+
+import json.attr.Json.ObjectEntry
 
 import json.parser.Values
 import json.parser.Literals
@@ -17,9 +20,147 @@ import json.parser.Values
 import json.parser.EndOfFile
 import json.parser.{Errors => StdErrors}
 
+import json.parser.v2.ArrayReader
+import json.parser.v2.SimpleReader
+import json.parser.v2.StringReader
+import json.parser.v2.LiteralReader
+import json.parser.v2.NumberReader
+import json.parser.v2.ObjectReader
+import json.parser.v2.WhitespaceReader
+import json.parser.v2.ValueReader
+
 import scala.collection.mutable.HashMap
 
 
+/**
+ * Reader for the JSON with the specified attributes captured for each node.
+ * @tparam M input/output monad
+ * @tparam S type of the stream being read
+ * @tparam A type of the attribute captured
+ * @param attributeFactory a factory for capturing attributes from the stream.
+ * @param attrErrors errors specific to this parser.
+ * @param simpleErrors errors specific to most JSON parsers.
+ */
+final class Reader[M[_]: Monad, S: LooksAheadIn[M], A](
+      attributeFactory: AttributeFactory[M, S, A],
+      attrErrors: Reader.Errors[M, S, A],
+      simpleErrors: SimpleReader.Errors[M, S]
+    ) extends ValueReader.ValueReader[S, M[Json[A]]] {
+  import simpleErrors.given
+
+  private val literalReader = LiteralReader.all()
+
+  def skipWhitespaces(stream: S): M[Unit] =
+    WhitespaceReader(stream).skipAll()
+
+
+  override def readTrue(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      _ <- literalReader.trueLiteral(stream)
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.True(attr)
+
+
+  override def readFalse(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      _ <- literalReader.falseLiteral(stream)
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.False(attr)
+
+
+  override def readNull(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      _ <- literalReader.nullLiteral(stream)
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.Null(attr)
+
+
+  override def readString(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      str <- StringReader(stream).readString()
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.String(str, attr)
+
+
+  override def readNumber(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      str <- NumberReader(stream).readString()
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.Number(str, attr)
+
+
+  override def readArray(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      elements <- ArrayReader(stream, skipWhitespaces).readSequence(readValue)
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.Array(elements, attr)
+
+
+  override def readObject(stream: S): M[Json[A]] =
+    for {
+      ctx <- attributeFactory.start(stream)
+      elements <- readObjectMap(stream)
+      attr <- attributeFactory.end(ctx, stream)
+    } yield Json.Object(elements, attr)
+
+
+  /** Reads a single value from the stream. */
+  def readValue(stream: S): M[Json[A]] =
+    skipWhitespaces(stream) <+> ValueReader.readValue(stream, this)
+
+
+  /** Reads the value and ensures there is no other values in the stream. */
+  def readFully(stream: S): M[Json[A]] =
+    for {
+      res <- readValue(stream)
+      _ <- skipWhitespaces(stream)
+      _ <- ensureAtEnd(stream)
+    } yield res
+
+
+  /** Reads object's key-value map. */
+  private def readObjectMap(stream: S): M[Map[String, ObjectEntry[A]]] = {
+    val agg = new scala.collection.mutable.HashMap[String, ObjectEntry[A]]()
+    val objReader = ObjectReader(stream, skipWhitespaces)
+    def step(): M[Map[String, ObjectEntry[A]]] = {
+      objReader.advanceToNext() <||| {
+        case true =>
+          for {
+            keyCtx <- attributeFactory.start(stream)
+            key <- StringReader(stream).readString()
+            keyAttrs <- attributeFactory.end(keyCtx, stream)
+            _ <- objReader.readKeyValueSeparator()
+            value <- readValue(stream)
+            _ <- agg.get(key) match {
+              case None =>
+                agg.put(key, ObjectEntry(key, keyAttrs, value))
+                Monad.pure(())
+              case Some(prevValue) =>
+                attrErrors.duplicateObjectKey(prevValue, keyAttrs, stream)
+            }
+            res <- step()
+          } yield
+            res
+        case false => Monad.pure(agg.toMap)
+      }
+    }
+    step()
+  }
+
+
+  /** Checks if the stream is at the end. */
+  private def ensureAtEnd(stream: S): M[Unit] =
+    stream.atEnd() <| {
+      case true => Monad.pure(())
+      case false => simpleErrors.trailingData(stream)
+    }
+}
 
 /** Reader for the attributed json model. */
 object Reader {
@@ -81,6 +222,14 @@ object Reader {
             s"Duplicate object entry with key '${prevEntry.key}'"
           )
       }
+
+
+    /** Creates a simple error handler where errors are converted to text and raised in the monad. */
+    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S, Any] =
+      new Reader.Errors[M, S, Any] {
+        override def duplicateObjectKey(prevEntry: ObjectEntry[Any], newKeyAttrs: Any, stream: S): M[Unit] =
+          raiseFn(stream, s"Duplicate object entry with key '${prevEntry.key}'")
+      }
   }
 
 
@@ -92,124 +241,14 @@ object Reader {
    * @param attributeFactory factory used to create JSON attributes from data
    *   available through the given stream.
    */
-  def readOneValue[M[_]: Monad, S <: LookAheadStream[M], A](
+  def readOneValue[M[_]: Monad, S: LooksAheadIn[M], A](
         stream: S,
         attributeFactory: AttributeFactory[M, S, A]
       )(using
-        errs: Values.AllErrors[M, S],
+        errs: SimpleReader.Errors[M, S],
         attrErrors: Errors[M, S, A]
-      ): M[Json[A]] = {
-    import errs.given
-
-    object reader extends Values.ValueCallback[M[Json[A]]] {
-      override def onTrue(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          _ <- Literals.readTrue(stream)
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.True(attr)
-
-
-      override def onFalse(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          _ <- Literals.readFalse(stream)
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.False(attr)
-
-
-      override def onNull(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          _ <- Literals.readNull(stream)
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.Null(attr)
-
-
-      override def onNumber(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          repr <- Numbers.readAll(stream)
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.Number(repr, attr)
-
-
-      override def onString(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          value <- Strings.readAll(stream)
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.String(value, attr)
-
-
-      override def onArray(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          elements <-
-            Arrays.readAll(
-              skipWhitespaces = Whitespaces.skipAll[M],
-              readValue = readValue,
-              stream = stream
-            )
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.Array(elements, attr)
-
-
-      override def onObject(): M[Json[A]] =
-        for {
-          ctx <- attributeFactory.start(stream)
-          _ <- Objects.readObjectStart(stream)
-          _ <- Whitespaces.skipAll(stream)
-          nonEmpty <- Objects.hasFirstValue(stream)
-          elems <-
-            if nonEmpty then
-              readObjectElements(stream, new HashMap())
-            else
-              Monad.pure(Map.empty)
-          attr <- attributeFactory.end(ctx, stream)
-        } yield Json.Object(elems, attr)
-
-
-      /**
-       * Reads object elemenst (key-value pairs) into the provided accumulator.
-       */
-      private def readObjectElements(
-            stream: S,
-            agg: HashMap[String, Json.ObjectEntry[A]],
-          ): M[Map[String, Json.ObjectEntry[A]]] =
-        for {
-          _ <- Whitespaces.skipAll(stream)
-          keyCtx <- attributeFactory.start(stream)
-          key <- Strings.readAll(stream)
-          keyAttrs <- attributeFactory.end(keyCtx, stream)
-          _ <- {
-            agg.get(key) match {
-              case None => Monad.pure(())
-              case Some(entry) => attrErrors.duplicateObjectKey(entry, keyAttrs, stream)
-            }
-          }
-          _ <- Whitespaces.skipAll(stream)
-          _ <- Objects.readKeyValueSeparator(stream)
-          _ <- Whitespaces.skipAll(stream)
-          value <- readValue(stream)
-          _ = agg.put(key, Json.ObjectEntry(key, keyAttrs, value))
-          _ <- Whitespaces.skipAll(stream)
-          hasNext <- Objects.hasNextValue(stream)
-          res <-
-            if hasNext then
-              readObjectElements(stream, agg)
-            else
-              Monad.pure(agg.toMap)
-        } yield res
-
-
-      /** Reads a value. */
-      def readValue(stream: S): M[Json[A]] =
-        Values.expectedValue(stream, this)
-    }
-
-    Whitespaces.skipAll(stream) flatMap { _ => reader.readValue(stream) }
-  }
+      ): M[Json[A]] =
+    new Reader(attributeFactory, attrErrors, errs).readValue(stream)
 
 
   /**
@@ -221,16 +260,12 @@ object Reader {
    * @param attributeFactory factory used to create JSON attributes from data
    *   available through the given stream.
    */
-  def read[M[_]: Monad, S <: LookAheadStream[M], A](
+  def read[M[_]: Monad, S: LooksAheadIn[M], A](
         stream: S,
         attributeFactory: AttributeFactory[M, S, A]
       )(using
-        errs: Values.AllErrors[M, S],
-        attrErrors: Errors[M, S, A],
-        eofErrors: EndOfFile.Errors[M, S],
+        errs: SimpleReader.Errors[M, S],
+        attrErrors: Errors[M, S, A]
       ): M[Json[A]] =
-    for {
-      res <- readOneValue(stream, attributeFactory)
-      _ <- EndOfFile.expectNoValues(stream)
-    } yield res
+    new Reader(attributeFactory, attrErrors, errs).readFully(stream)
 }

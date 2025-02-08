@@ -4,6 +4,7 @@ package json.attr
 import fun.typeclass.Monad
 
 import text.input.LookAheadStream
+import text.v2.input.LooksAheadIn
 import text.output.{Stream => OutStream}
 import text.output.StringBuilderStream
 
@@ -12,6 +13,7 @@ import json.parser.EndOfFile
 
 import json.writer.{Values => JsonWriter}
 import json.writer.PrettyPrintOptions
+import json.parser.v2.SimpleReader
 
 /**
  * Single node in the JSON tree model.
@@ -171,14 +173,15 @@ object Json {
    * @param attributeFactory factory used to create JSON attributes from data
    *   available through the given stream.
    */
-  inline def readOneValue[M[_]: Monad, S <: LookAheadStream[M], A](
+  inline def readOneValue[M[_]: Monad, S: LooksAheadIn[M], A](
         stream: S,
         attributeFactory: AttributeFactory[M, S, A]
       )(using
-        errs: Values.AllErrors[M, S],
+        errs: SimpleReader.Errors[M, S],
         attrErrors: Reader.Errors[M, S, A]
       ): M[Json[A]] =
     Reader.readOneValue(stream, attributeFactory)
+
 
   /**
    * Reads value from the stream ensuring that no other data is contained in
@@ -189,13 +192,12 @@ object Json {
    * @param attributeFactory factory used to create JSON attributes from data
    *   available through the given stream.
    */
-  inline def read[M[_]: Monad, S <: LookAheadStream[M], A](
+  inline def read[M[_]: Monad, S: LooksAheadIn[M], A](
         stream: S,
         attributeFactory: AttributeFactory[M, S, A]
       )(using
-        errs: Values.AllErrors[M, S],
+        errs: SimpleReader.Errors[M, S],
         attrErrors: Reader.Errors[M, S, A],
-        eofErrors: EndOfFile.Errors[M, S],
       ): M[Json[A]] =
     Reader.read(stream, attributeFactory)
 

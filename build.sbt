@@ -122,7 +122,7 @@ val libJsonAttributed = project.in(file("json/attributed"))
          |""".stripMargin,
     libraryDependencies += scalatest
   )
-  .dependsOn(libFun, libJsonParser, libJsonWriter, libJsonQuery)
+  .dependsOn(libFun, libJsonParser % "compile->compile;test->test", libJsonWriter, libJsonQuery)
 
 
 val sampleJsonStreamingFormatter = project.in(file("json/samples/streaming-formatter"))

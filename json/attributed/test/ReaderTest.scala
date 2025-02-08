@@ -1,54 +1,35 @@
 package io.github.maxkar
 package json.attr
 
-import fun.instances.Identity
-import fun.instances.Identity.given
-
-import java.nio.CharBuffer
-
 import text.Location
-
-import text.input.LookAheadStream
-import text.input.BufferLookAheadStream
-import text.input.LocationLookAheadStream
 
 import json.parser.Values.AllErrors
 import json.parser.Errors
 import Json.ObjectEntry
+import io.github.maxkar.json.parser.v2.SimpleReader
 
 
 /** Tests for attributed parsing reader. */
 class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
+  import json.parser.v2.TestIO.*
+  import json.parser.v2.TestIO.given
+
   /** Attributes of the resulting json. */
   type Attrs = (Location, Location)
 
   /** Factory for the attributes. */
-  private val attrFactory = AttributeFactory.span
+  private val attrFactory = new AttributeFactory[Operation, IOStream, Attrs] {
+    override type Context = text.Location
 
-  /** Simple implementation of the error handler. */
-  private object RaiseError extends Errors.SimpleHandler[Identity, LocationLookAheadStream[Identity, Any]] {
-    override def raise[T](stream: LocationLookAheadStream[Identity, Any], message: String): T =
-      throw new java.io.IOException(s"${stream.location}: ${message}")
+    override def start(stream: IOStream): Operation[Context] = stream.getLocation()
+
+    override def end(context: Context, stream: IOStream): Operation[Attrs] =
+      stream.getLocation() <| { endLoc => (context, endLoc) }
   }
-
-
-  /** Error handler for all the errors. */
-  given errorHandler: Errors.ErrorHandler[Identity, LocationLookAheadStream[Identity, Any]] =
-    Errors.simple[Identity, LocationLookAheadStream[Identity, Any]](RaiseError)
-  import errorHandler.endOfFileErrors
 
   /** Attribute-specific errors. */
-  given attrErrors: Reader.Errors[Identity, LocationLookAheadStream[Identity, Any], Attrs] with {
-    override def duplicateObjectKey(
-          prevEntry: ObjectEntry[Attrs],
-          newKeyAttrs: Attrs,
-          stream: LocationLookAheadStream[Identity, Any],
-        ): Identity[Unit] =
-      throw new java.io.IOException(
-        s"${newKeyAttrs._1}: Duplicate key ${prevEntry.key}, previous definition at ${prevEntry.keyAttrs._1}"
-      )
-  }
-
+  given attrErrors: Reader.Errors[Operation, IOStream, Attrs] = Reader.Errors.raise(raise)
+  given simpleErrors: SimpleReader.Errors[Operation, IOStream] = SimpleReader.Errors.raise(raise)
 
   test("Some basic literals work") {
     assert(runParser("true") === Json.True(lineAttr(0, 1, 1, 4)))
@@ -136,11 +117,6 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   /** Runs the parser on the given input with with the given chunk size. */
-  private def runParser(input: String): Json[Attrs] = {
-    val reader = new java.io.StringReader(input)
-    val filler = BufferLookAheadStream.Filler[Identity](reader, (), x => throw x)
-    val baseInputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
-    val inputStream = LocationLookAheadStream(baseInputStream)
-    Json.read(inputStream, attrFactory)
-  }
+  private def runParser(input: String): Json[Attrs] =
+    doIO { Json.read(stringInput(input), attrFactory) }
 }

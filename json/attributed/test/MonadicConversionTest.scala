@@ -21,6 +21,7 @@ import fun.typeclass.Monad
 import fun.typeclass.Collect
 
 import scala.language.implicitConversions
+import io.github.maxkar.json.parser.v2.SimpleReader
 
 /**
  * A test for monadic (higher-kinded) json parsing and conversion. Illustrates some
@@ -196,48 +197,37 @@ object MonadicConversionTest {
   }
 
 
-  /** Factory for the attributes. */
-  private val attrFactory = AttributeFactory.span
-
-  /** Simple implementation of the error handler. */
-  private object RaiseError extends Errors.SimpleHandler[Md, LocationLookAheadStream[Md, Any]] {
-    override def raise[T](stream: LocationLookAheadStream[Md, Any], message: String): Md[T] =
-      Left(Seq(s"${stream.location}: ${message}"))
-  }
+  def parse(str: String): Json[Attrs] =
+    TestReader.parse(str)
 
 
-  /** Error handler for all the errors. */
-  given errorHandler: Errors.ErrorHandler[Md, LocationLookAheadStream[Md, Any]] =
-    Errors.simple[Md, LocationLookAheadStream[Md, Any]](RaiseError)
-  import errorHandler.endOfFileErrors
+  object TestReader {
+    import json.parser.v2.TestIO.*
+    import json.parser.v2.TestIO.given
 
+    /** Factory for the attributes. */
+    private val attrFactory = new AttributeFactory[Operation, IOStream, Attrs] {
+      override type Context = text.Location
 
-  /** Attribute-specific errors. */
-  given attrErrors: Reader.Errors[Md, LocationLookAheadStream[Md, Any], Attrs] with {
-    override def duplicateObjectKey(
-          prevEntry: Json.ObjectEntry[Attrs],
-          newKeyAttrs: Attrs,
-          stream: LocationLookAheadStream[Md, Any],
-        ): Md[Unit] =
-      Left(Seq(
-        s"${newKeyAttrs._1}: Duplicate key ${prevEntry.key}, previous definition at ${prevEntry.keyAttrs._1}"
-      ))
-  }
+      override def start(stream: IOStream): Operation[Context] =
+        stream.getLocation()
 
-
-  /** Runs the parser on the given input with with the given chunk size. */
-  private def runParser(input: String): Md[Json[Attrs]] = {
-    val reader = new java.io.StringReader(input)
-    val filler = BufferLookAheadStream.Filler[Md](reader, Right(()), x => Left(Seq(x.toString)))
-    val baseInputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
-    val inputStream = LocationLookAheadStream(baseInputStream)
-    Reader.read(inputStream, attrFactory)
-  }
-
-
-  private def parse(input: String): Json[Attrs] =
-    runParser(input) match {
-      case Right(x) => x
-      case Left(err) => throw new java.io.IOException(s"Errors parsing json: ${err}")
+      override def end(context: Context, stream: IOStream): Operation[Attrs] =
+        stream.getLocation() <| { endLoc => (context, endLoc) }
     }
+
+    /** Attribute-specific errors. */
+    given attrErrors: Reader.Errors[Operation, IOStream, Attrs] = Reader.Errors.raise(raise)
+    given simpleErrors: SimpleReader.Errors[Operation, IOStream] = SimpleReader.Errors.raise(raise)
+
+    /** Simple implementation of the error handler. */
+    private object RaiseError extends Errors.SimpleHandler[Md, LocationLookAheadStream[Md, Any]] {
+      override def raise[T](stream: LocationLookAheadStream[Md, Any], message: String): Md[T] =
+        Left(Seq(s"${stream.location}: ${message}"))
+    }
+
+
+    def parse(input: String): Json[Attrs] =
+      doIO { Json.read(stringInput(input), attrFactory) }
+  }
 }
