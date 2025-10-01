@@ -76,8 +76,8 @@ private final class LookAheadBuffer(buffer: Array[Char]) {
     var remaining = count
     if buffer.length - count <= readOffset then {
       locationTracker.update(buffer, readOffset, buffer.length)
-      readOffset = 0
       remaining -= buffer.length - readOffset
+      readOffset = 0
     }
 
     locationTracker.update(buffer, readOffset, readOffset + remaining)
