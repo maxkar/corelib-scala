@@ -102,7 +102,7 @@ object StringReader {
         case State.BeforeOpening =>
           source.stream.peek(0) flatMap { chr =>
             if chr == '"' then
-              source.stream.skip(1) <+> {
+              source.stream.skip(1) >=|| {
                 source.state = State.InString
                 readStringBody(source, target, targetStart, targetEnd)
               }
@@ -129,7 +129,7 @@ object StringReader {
         if ptr == targetEnd then
           return Monad.pure(ptr - targetStart)
 
-        stream.readWhile(target, ptr, targetEnd, isRegularCharacter) <||| { rdc =>
+        stream.readWhile(target, ptr, targetEnd, isRegularCharacter) >=>> { rdc =>
           if rdc >= 0 then
             readSpecial(ptr + rdc)
           else if ptr == targetStart then
@@ -143,12 +143,12 @@ object StringReader {
       def readSpecial(ptr: Int): M[Int] = {
         if ptr == targetEnd then
           return Monad.pure(ptr - targetStart)
-        stream.peek(0) <||| {
+        stream.peek(0) >=>> {
           case '"' =>
             source.state = State.Eof
-            stream.skip(1) <+> Monad.pure(ptr - targetStart)
+            stream.skip(1) >=|| Monad.pure(ptr - targetStart)
           case '\\' =>
-            readEscape(stream) <||| { nc =>
+            readEscape(stream) >=>> { nc =>
               target(ptr) = nc
               fill(ptr + 1)
             }
@@ -163,15 +163,15 @@ object StringReader {
 
     /** Reads an escaped character. */
     private def readEscape(stream: S): M[Char] =
-      stream.peek(1) <||| {
-        case '"' => stream.skip(2) <| { _ => '"' }
-        case '\\' => stream.skip(2) <| { _ => '\\' }
-        case '/' => stream.skip(2) <| { _ => '/' }
-        case 'b' => stream.skip(2) <| { _ => '\b' }
-        case 'f' => stream.skip(2) <| { _ => '\f' }
-        case 'n' => stream.skip(2) <| { _ => '\n' }
-        case 'r' => stream.skip(2) <| { _ => '\r' }
-        case 't' => stream.skip(2) <| { _ => '\t' }
+      stream.peek(1) >=>> {
+        case '"' => stream.skip(2) >-| '"'
+        case '\\' => stream.skip(2) >-| '\\'
+        case '/' => stream.skip(2) >-| '/'
+        case 'b' => stream.skip(2) >-| '\b'
+        case 'f' => stream.skip(2) >-| '\f'
+        case 'n' => stream.skip(2) >-| '\n'
+        case 'r' => stream.skip(2) >-| '\r'
+        case 't' => stream.skip(2) >-| '\t'
         case 'u' => readUnicodeEscape(stream)
         case other => errs.invalidEscapeCharacter(stream)
       }
@@ -193,7 +193,7 @@ object StringReader {
 
     /** Loads hex digit from the stream. */
     private def peekHexDigit(stream: S, offset: Int): M[Int] =
-      stream.peek(offset) <||| {
+      stream.peek(offset) >=>> {
         case d if '0' <= d && d <= '9' => Monad.pure(d - '0')
         case d if 'a' <= d && d <= 'f' => Monad.pure(10 + d - 'a')
         case d if 'A' <= d && d <= 'F' => Monad.pure(10 + d - 'A')

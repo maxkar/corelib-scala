@@ -45,9 +45,9 @@ final class ArrayReader[M[_]: Monad, S: LooksAheadIn[M]: ArrayReader.ErrorsIn[M]
           hasValue
         }
       case State.InsideArray =>
-        skipWhites(stream) <+> ArrayReader.readArraySeparatorOrEnd(stream) <||| { hasNext =>
+        skipWhites(stream) >=|| ArrayReader.readArraySeparatorOrEnd(stream) >=>> { hasNext =>
           if hasNext then
-            skipWhites(stream) <+> Monad.pure(true)
+            skipWhites(stream) >=|| Monad.pure(true)
           else {
             state = State.Eof
             Monad.pure(false)
@@ -61,9 +61,9 @@ final class ArrayReader[M[_]: Monad, S: LooksAheadIn[M]: ArrayReader.ErrorsIn[M]
   def readSequence[E](readElement: S => M[E]): M[Seq[E]] = {
     val agg = new scala.collection.mutable.ArrayBuffer[E]()
     def step(): M[Seq[E]] = {
-      advanceToNext() <||| {
+      advanceToNext() >=>> {
         case true =>
-          readElement(stream) <||| { elt =>
+          readElement(stream) >=>> { elt =>
             agg += elt
             step()
           }
@@ -148,7 +148,7 @@ object ArrayReader {
       )(using
         errs: Errors[M, S]
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case '[' => stream.skip(1)
       case _ => errs.invalidArrayStart(stream)
     }
@@ -159,8 +159,8 @@ object ArrayReader {
    * the end of the array (if the array is empty).
    */
   def hasFirstElement[M[_]: Monad, S: LooksAheadIn[M]](stream: S): M[Boolean] =
-    stream.peek(0) <||| {
-      case ']' => stream.skip(1) <| { _ => false }
+    stream.peek(0) >=>> {
+      case ']' => stream.skip(1) >-| false
       case _ => Monad.pure(true)
     }
 
@@ -176,9 +176,9 @@ object ArrayReader {
       )(using
         errs: Errors[M, S]
       ): M[Boolean] =
-    stream.peek(0) <||| {
-      case ',' => stream.skip(1) <| { _ => true }
-      case ']' => stream.skip(1) <| { _ => false }
+    stream.peek(0) >=>> {
+      case ',' => stream.skip(1) >-| true
+      case ']' => stream.skip(1) >-| false
       case _ => errs.invalidArrayEnd(stream)
     }
 }

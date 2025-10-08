@@ -72,7 +72,7 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case sgn@('+' | '-') => factory.consumeSign(stream, context, 1, sgn)
       case _ => Monad.pure(())
     }
@@ -84,9 +84,9 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case '0' =>
-        stream.peek(1) <||| {
+        stream.peek(1) >=>> {
           case '0' => factory.leadingIntegerZero(stream, context)
           case _ => factory.consumeIntegerDigits(stream, context, isDigit)
         }
@@ -101,9 +101,9 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case '.' =>
-        factory.consumeDecimalSeparator(stream, context, 1, '.') <+> readDecimalDigits(stream, factory, context)
+        factory.consumeDecimalSeparator(stream, context, 1, '.') >=|| readDecimalDigits(stream, factory, context)
       case other => Monad.pure(())
     }
 
@@ -114,7 +114,7 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| { d =>
+    stream.peek(0) >=>> { d =>
       if isDigitInt(d) then
         factory.consumeDecimalDigits(stream, context, isDigit)
       else
@@ -128,10 +128,10 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case ind@('e' | 'E') =>
-        factory.consumeExponentIndicator(stream, context, 1, ind) <+>
-          readExponentSign(stream, factory, context) <+>
+        factory.consumeExponentIndicator(stream, context, 1, ind) >=||
+          readExponentSign(stream, factory, context) >=||
           readExponentDigits(stream, factory, context)
       case other => Monad.pure(())
     }
@@ -143,7 +143,7 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case sgn@('+' | '-') => factory.consumeExponentSign(stream, context, 1, sgn)
       case _ => Monad.pure(())
     }
@@ -155,7 +155,7 @@ object Numbers {
         factory: Factory[M, S, J],
         context: factory.Context
       ): M[Unit] =
-    stream.peek(0) <||| { d =>
+    stream.peek(0) >=>> { d =>
       if isDigitInt(d) then
         factory.consumeExponentDigits(stream, context, isDigit)
       else

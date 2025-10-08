@@ -76,9 +76,9 @@ object Strings {
 
   /** Reads string from the stream. */
   def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
-    stream.peek(0) <||| { c =>
+    stream.peek(0) >=>> { c =>
       if c == '"' then factory.start(stream, 1) else factory.badStringStart(stream)
-    } <||| readBody(stream, factory)
+    } >=>> readBody(stream, factory)
 
 
   /** Reads string body (after the opening marker). */
@@ -89,12 +89,12 @@ object Strings {
         ctx: factory.Context
       ): M[J] =
     def readRec(): M[J] =
-      factory.consumeWhile(stream, ctx, isRegularCharacter) <+> (
-        stream.peek(0) <||| {
+      factory.consumeWhile(stream, ctx, isRegularCharacter) >=|| (
+        stream.peek(0) >=>> {
           case '"' => factory.finish(stream, ctx, 1)
-          case '\\' => readEscape(stream, factory, ctx) <+> readRec()
+          case '\\' => readEscape(stream, factory, ctx) >=|| readRec()
           case x if x <  0 => factory.unterminatedString(stream, ctx)
-          case other => factory.invalidCharacter(stream, ctx) <+> readRec()
+          case other => factory.invalidCharacter(stream, ctx) >=|| readRec()
         }
       )
     readRec()
@@ -106,7 +106,7 @@ object Strings {
         factory: Factory[M, S, J],
         ctx: factory.Context
       ): M[Unit] =
-    stream.peek(1) <||| {
+    stream.peek(1) >=>> {
       case '"' => factory.consumeEscape(stream, ctx, 2, '"')
       case '\\' => factory.consumeEscape(stream, ctx, 2, '\\')
       case '/' => factory.consumeEscape(stream, ctx, 2, '/')
@@ -144,7 +144,7 @@ object Strings {
    * Returns negative value if character is not a valid digit.
    */
   private def peekHexDigit[M[_]: Monad, S: Peek.In[M], J](stream: S, offset: Int): M[Int] =
-    stream.peek(offset) <| {
+    stream.peek(offset) >-> {
         case d if '0' <= d && d <= '9' => d - '0'
         case d if 'a' <= d && d <= 'f' => 10 + d - 'a'
         case d if 'A' <= d && d <= 'F' => 10 + d - 'A'

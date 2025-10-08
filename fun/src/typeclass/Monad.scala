@@ -22,37 +22,26 @@ trait Monad[M[_]] extends Applicative[M] {
 
 
   extension [S](v: M[S]) {
-    inline infix def flatMap[R](fn: S => M[R]) =
-      Monad.this.bind(v, fn)
+    inline infix def flatMap[R](fn: S => M[R]) = bind(v, fn)
 
     def withFilter(fn: S => Boolean): M[S] =
-      Monad.this.fmap(v,
-        (vv: S) => if fn(vv) then vv else throw new Exception("No match in monad for comprehension")
-      )
+      v >-> { vv =>
+        if fn(vv) then vv else throw new Exception("No match in monad for comprehension")
+      }
 
-    inline infix def <|||[R](fn: S => M[R]) =
-      Monad.this.bind(v, fn)
+    inline infix def >=>>[R](fn: S => M[R]): M[R] = bind(v, fn)
 
-    /**
-     * Evaluates "this" monad then runs continuation.
-     * Continuation is passed by name as some monads may be lazy
-     * (has to be started explicitly). We need to re-do calculation
-     * if the lazy monad is "re-run" multiple times.
-     */
-    inline infix def <+>[R](continuation: => M[R]) =
-      Monad.this.bind(v, _ => continuation)
+    inline infix def >=||[R](res: => M[R]): M[R] = bind(v, _ => res)
   }
 
 
   extension [S, R](fn: S => M[R]) {
-    inline infix def |||>(v: M[S]): M[R] =
-      Monad.this.bind(v, fn)
+    inline infix def <<=<(v: M[S]): M[R] = bind(v, fn)
   }
 
 
   extension [S, R](fn: M[S => M[R]]) {
-    inline infix def |||>(v: M[S]): M[R] =
-      Monad.this.flatten(Monad.this.aapply(v, fn))
+    inline infix def <<=<<(v: M[S]): M[R] = flatten(v >=> fn)
   }
 }
 

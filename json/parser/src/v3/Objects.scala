@@ -62,13 +62,13 @@ object Objects {
 
   /** Reads the object and creates its representation by using the provided factory. */
   def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
-    stream.peek(0) <||| { chr =>
+    stream.peek(0) >=>> { chr =>
       if chr != '{' then
         factory.badObjectStart(stream)
       else
-        factory.start(stream, 1) <||| { context =>
-          factory.consumeIgnorableWhitespaces(stream) <+>
-          (stream.peek(0) <||| {
+        factory.start(stream, 1) >=>> { context =>
+          factory.consumeIgnorableWhitespaces(stream) >=||
+          (stream.peek(0) >=>> {
             case '}' => factory.finish(stream, context, 1)
             case _ => readValues(stream, factory, context)
           })
@@ -86,19 +86,19 @@ object Objects {
         factory: Factory[M, S, J],
         context: factory.Context,
       ): M[J] =
-    factory.consumeIgnorableWhitespaces(stream) <+>
-    (factory.consumeKey(stream, context) <||| { key =>
-      factory.consumeIgnorableWhitespaces(stream) <+>
-      (stream.peek(0) <|||{
+    factory.consumeIgnorableWhitespaces(stream) >=||
+    (factory.consumeKey(stream, context) >=>> { key =>
+      factory.consumeIgnorableWhitespaces(stream) >=||
+      (stream.peek(0) >=>>{
         case ':' => factory.consumeKeyValueSeparator(stream, context, key, 1)
         case _ => factory.missingKeyValueSeparator(stream, context, key)
-      }) <+>
-      factory.consumeIgnorableWhitespaces(stream) <+>
-      factory.consumeValue(stream, context, key) <+>
-      factory.consumeIgnorableWhitespaces(stream) <+>
-      (stream.peek(0) <||| {
+      }) >=||
+      factory.consumeIgnorableWhitespaces(stream) >=||
+      factory.consumeValue(stream, context, key) >=||
+      factory.consumeIgnorableWhitespaces(stream) >=||
+      (stream.peek(0) >=>> {
         case '}' => factory.finish(stream, context, 1)
-        case ',' => factory.consumeEntrySeparator(stream, context, 1) <+> readValues(stream, factory, context)
+        case ',' => factory.consumeEntrySeparator(stream, context, 1) >=|| readValues(stream, factory, context)
         case _ => factory.missingEntrySeparatorOrObjectEnd(stream, context)
       })
     })

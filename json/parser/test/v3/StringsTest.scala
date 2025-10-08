@@ -189,7 +189,7 @@ object StringsTest {
     override type Context = StringBuilder
 
     override def start(stream: JsonStream, count: Int): Operation[Context] =
-      stream.skip(1) <| { _ => new Context()}
+      stream.skip(1) >-| new Context()
 
     override def badStringStart(stream: JsonStream): Operation[StringBuilder] =
       raise(stream, s"Invalid string start")
@@ -221,7 +221,7 @@ object StringsTest {
       raise(stream, "Illegal character")
 
     override def finish(stream: JsonStream, context: Context, count: Int): Operation[String] =
-      stream.skip(count) <| { _ => context.toString() }
+      stream.skip(count) >-| context.toString()
 
     override def unterminatedString(stream: JsonStream, context: Context): Operation[String] =
       raise(stream, "Unterminated string")

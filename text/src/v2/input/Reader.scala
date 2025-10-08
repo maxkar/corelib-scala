@@ -33,7 +33,7 @@ trait Reader[M[_], -T] {
       val buf = new Array[Char](1024)
 
       def rd(): M[String] =
-        t.read(buf, 0, buf.length) <||| { readCount =>
+        t.read(buf, 0, buf.length) >=>> { readCount =>
           if (readCount <= 0) then
             Monad.pure(res.toString())
           else {

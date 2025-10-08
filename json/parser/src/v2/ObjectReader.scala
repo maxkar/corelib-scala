@@ -47,9 +47,9 @@ final class ObjectReader[M[_]: Monad, S: LooksAheadIn[M]: ObjectReader.ErrorsIn[
           hasValue
         }
       case State.InsideObject =>
-        skipWhites(stream) <+> ObjectReader.readEntrySeparatorOrEnd(stream) <||| { hasNext =>
+        skipWhites(stream) >=|| ObjectReader.readEntrySeparatorOrEnd(stream) >=>> { hasNext =>
           if hasNext then
-            skipWhites(stream) <+> Monad.pure(true)
+            skipWhites(stream) >=|| Monad.pure(true)
           else {
             state = State.Eof
             Monad.pure(false)
@@ -61,14 +61,14 @@ final class ObjectReader[M[_]: Monad, S: LooksAheadIn[M]: ObjectReader.ErrorsIn[
 
   /** Skips key-value separator and its surrounding whitespaces. */
   def readKeyValueSeparator(): M[Unit] =
-    skipWhites(stream) <+> ObjectReader.readKeyValueSeparator(stream) <+> skipWhites(stream)
+    skipWhites(stream) >=|| ObjectReader.readKeyValueSeparator(stream) >=|| skipWhites(stream)
 
 
   /** Reads the object as a map. */
   def readMap[K, V](readKey: S => M[K], readValue: S => M[V]): M[Map[K, V]] = {
     val agg = new scala.collection.mutable.HashMap[K, V]()
     def step(): M[Map[K, V]] = {
-      advanceToNext() <||| {
+      advanceToNext() >=>> {
         case true =>
           for {
             key <- readKey(stream)
@@ -170,7 +170,7 @@ object ObjectReader {
       )(using
         errs: Errors[M, S]
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case '{' => stream.skip(1)
       case _ => errs.invalidObjectStart(stream)
     }
@@ -181,8 +181,8 @@ object ObjectReader {
    * the end of the object (if the object is empty).
    */
   def hasFirstPair[M[_]: Monad, S: LooksAheadIn[M]](stream: S): M[Boolean] =
-    stream.peek(0) <||| {
-      case '}' => stream.skip(1) <| { _ => false }
+    stream.peek(0) >=>> {
+      case '}' => stream.skip(1) >-| false
       case _ => Monad.pure(true)
     }
 
@@ -193,7 +193,7 @@ object ObjectReader {
       )(using
         errs: Errors[M, S]
       ): M[Unit] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case ':' => stream.skip(1)
       case _ => errs.invalidKeyValueSeparator(stream)
     }
@@ -210,9 +210,9 @@ object ObjectReader {
       )(using
         errs: Errors[M, S]
       ): M[Boolean] =
-    stream.peek(0) <||| {
-      case ',' => stream.skip(1) <| { _ => true }
-      case '}' => stream.skip(1) <| { _ => false }
+    stream.peek(0) >=>> {
+      case ',' => stream.skip(1) >-| true
+      case '}' => stream.skip(1) >-| false
       case _ => errs.invalidObjectEnd(stream)
     }
 }

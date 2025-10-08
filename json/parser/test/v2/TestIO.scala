@@ -32,7 +32,7 @@ object TestIO {
 
   /** Raises an error. */
   private def raiseImpl[T](context: IOStream, message: String): Unnest[T] =
-    context.getLocation() <| { loc =>
+    context.getLocation() >-> { loc =>
       throw new ParseException(loc.offset, message)
     }
 

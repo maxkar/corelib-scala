@@ -162,7 +162,7 @@ object NumberReader {
 
     /** Reads number sign. */
     private def readNumberSign(ctx: Context[S]): M[Int] =
-      ctx.stream.peek(0) <||| {
+      ctx.stream.peek(0) >=>> {
         case '-' => readOneAndContinue(ctx, State.AfterSign)
         case other => goToAndContinue(ctx, State.AfterSign)
       }
@@ -170,8 +170,8 @@ object NumberReader {
 
     /** Reads number start. */
     private def readNumberStart(ctx: Context[S]): M[Int] =
-      ctx.stream.peek(1) <||| { la2 =>
-        ctx.stream.peek(0) <||| { la1 =>
+      ctx.stream.peek(1) >=>> { la2 =>
+        ctx.stream.peek(0) >=>> { la1 =>
           if !isDigit(la1) then
             errs.missingIntegerDigits(ctx.stream)
           else if la1 == '0' && isDigit(la2) then
@@ -186,7 +186,7 @@ object NumberReader {
 
     /** Reads fractional part. */
     private def readDecimalPart(ctx: Context[S]): M[Int] =
-      ctx.stream.peek(0) <||| {
+      ctx.stream.peek(0) >=>> {
         case '.' => readOneAndContinue(ctx, State.AfterDecimalSeparator)
         case other => readExponentPart(ctx)
       }
@@ -199,7 +199,7 @@ object NumberReader {
 
     /** Reads exponent part. */
     private def readExponentPart(ctx: Context[S]): M[Int] =
-      ctx.stream.peek(0) <||| {
+      ctx.stream.peek(0) >=>> {
         case 'e' | 'E' => readOneAndContinue(ctx, State.AfterExponentSeparator)
         case _ =>
           ctx.goTo(State.Eof)
@@ -209,7 +209,7 @@ object NumberReader {
 
     /** Reads exponent sign. */
     private def readExponentSign(ctx: Context[S]): M[Int] =
-      ctx.stream.peek(0) <||| { maybeSign =>
+      ctx.stream.peek(0) >=>> { maybeSign =>
         if isExponentSign(maybeSign) then
           readOneAndContinue(ctx, State.AfterExponentSign)
         else
@@ -241,7 +241,7 @@ object NumberReader {
       val start = ctx.ptr
       ctx.ptr += 1
       ctx.goTo(state)
-      ctx.stream.read(ctx.target, start, ctx.ptr) <+> {
+      ctx.stream.read(ctx.target, start, ctx.ptr) >=|| {
         if ctx.endOfOutput() then
           Monad.pure(ctx.charactersWritten())
         else
@@ -262,7 +262,7 @@ object NumberReader {
           onError: S => M[Int],
           next: Context[S] => M[Int]
         ): M[Int] =
-      ctx.stream.peek(0) <||| { maybeDigit =>
+      ctx.stream.peek(0) >=>> { maybeDigit =>
         if !isDigit(maybeDigit) then
           onError(ctx.stream)
         else {
@@ -276,7 +276,7 @@ object NumberReader {
      * if there are no more digits to read but the output buffer is not full.
      */
     private def readDigits(ctx: Context[S], next: Context[S] => M[Int]): M[Int] =
-      ctx.stream.readWhile(ctx.target, ctx.ptr, ctx.targetEnd, isDigit) <||| { readCount =>
+      ctx.stream.readWhile(ctx.target, ctx.ptr, ctx.targetEnd, isDigit) >=>> { readCount =>
         /* End of file reached. ReadDigits is always invoked "inside" the number.
          * The digits may be in the three parts: integer, decimal and exponent.
          * In all these cases the number is well-formed.

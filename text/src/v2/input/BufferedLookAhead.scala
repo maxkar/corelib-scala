@@ -54,13 +54,13 @@ object BufferedLookAhead {
       else if stream.buffer.capacity < request then
         summon[IOErrors[M, S]].lookAheadTooBig(stream, request, stream.buffer.capacity)
       else
-        readPortion(stream) <+> fill(stream, request)
+        readPortion(stream) >=|| fill(stream, request)
     }
 
 
     /** Reads a portion of data into the buffer. */
     private def readPortion(stream: BufferedLookAhead[S]): M[Unit] =
-      stream.peer.read(stream.buffer.writeBuffer, stream.buffer.writeStart, stream.buffer.writeEnd) <| { readCount =>
+      stream.peer.read(stream.buffer.writeBuffer, stream.buffer.writeStart, stream.buffer.writeEnd) >-> { readCount =>
         if readCount < 0 then
           stream.buffer.markEof()
         else
@@ -69,7 +69,7 @@ object BufferedLookAhead {
 
 
     override def peek(stream: BufferedLookAhead[S], offset: Int): M[Int] =
-      stream.fill(offset + 1) <| { available =>
+      stream.fill(offset + 1) >-> { available =>
         if available <= offset then -1 else stream.buffer.lookAhead(offset)
       }
 
@@ -89,7 +89,7 @@ object BufferedLookAhead {
         if newPtr == targetEnd || buffer.isEof then
           Monad.pure(newPtr - targetStart)
         else
-          readPortion(stream) <+> doRead(newPtr)
+          readPortion(stream) >=|| doRead(newPtr)
       }
       doRead(targetStart)
     }
@@ -103,7 +103,7 @@ object BufferedLookAhead {
       if remaining == 0 || stream.buffer.isEof then
         Monad.pure(())
       else
-        readPortion(stream) <+> skip(stream, remaining)
+        readPortion(stream) >=|| skip(stream, remaining)
     }
 
 
@@ -123,7 +123,7 @@ object BufferedLookAhead {
         if newWritePtr == targetEnd || buffer.size > 0 || buffer.isEof then
           Monad.pure(newWritePtr - targetStart)
         else
-          readPortion(stream) <+> doRead(newWritePtr)
+          readPortion(stream) >=|| doRead(newWritePtr)
       }
 
       doRead(targetStart)
@@ -135,11 +135,11 @@ object BufferedLookAhead {
       if stream.buffer.size > 0 || stream.buffer.isEof  then
         Monad.pure(())
       else
-        readPortion(stream) <+> skipWhile(stream, predicate)
+        readPortion(stream) >=|| skipWhile(stream, predicate)
     }
 
 
     override def atEnd(stream: BufferedLookAhead[S]): M[Boolean] =
-      peek(stream, 0) <| { _ < 0 }
+      peek(stream, 0) >-> { _ < 0 }
   }
 }

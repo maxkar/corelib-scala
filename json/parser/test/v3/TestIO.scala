@@ -12,7 +12,7 @@ import org.scalatest.Assertions
 object TestIO {
   export Unnest.given
   /** Type of the test operation. */
-  type Operation = Unnest
+  type Operation[T] = Unnest[T]
 
   type JsonStream = BufferedJsonReader[Operation]
 
@@ -38,7 +38,7 @@ object TestIO {
 
 
   def raise[T](stream: BufferedJsonReader[Unnest], message: String): Operation[T] =
-    stream.getLocation() <| { loc =>
+    stream.getLocation()  >-> { loc =>
       throw new JsonException(loc.offset, message)
     }
 

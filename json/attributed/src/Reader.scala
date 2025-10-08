@@ -112,7 +112,7 @@ final class Reader[M[_]: Monad, S: LooksAheadIn[M], A](
 
   /** Reads a single value from the stream. */
   def readValue(stream: S): M[Json[A]] =
-    skipWhitespaces(stream) <+> ValueReader.readValue(stream, this)
+    skipWhitespaces(stream) >=|| ValueReader.readValue(stream, this)
 
 
   /** Reads the value and ensures there is no other values in the stream. */
@@ -129,7 +129,7 @@ final class Reader[M[_]: Monad, S: LooksAheadIn[M], A](
     val agg = new scala.collection.mutable.HashMap[String, ObjectEntry[A]]()
     val objReader = ObjectReader(stream, skipWhitespaces)
     def step(): M[Map[String, ObjectEntry[A]]] = {
-      objReader.advanceToNext() <||| {
+      objReader.advanceToNext() >=>> {
         case true =>
           for {
             keyCtx <- attributeFactory.start(stream)
@@ -156,7 +156,7 @@ final class Reader[M[_]: Monad, S: LooksAheadIn[M], A](
 
   /** Checks if the stream is at the end. */
   private def ensureAtEnd(stream: S): M[Unit] =
-    stream.atEnd() <| {
+    stream.atEnd() >=>> {
       case true => Monad.pure(())
       case false => simpleErrors.trailingData(stream)
     }

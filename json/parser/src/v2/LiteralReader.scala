@@ -17,7 +17,7 @@ final class LiteralReader[M[_]: Monad, S: LooksAheadIn[M]](
 
   /** Reads the literal from the stream. */
   def read(stream: S): M[Unit] =
-    stream.fill(expected.length()) <+> check(stream, 0)
+    stream.fill(expected.length()) >=|| check(stream, 0)
 
 
   /** Another name for read. */
@@ -26,7 +26,7 @@ final class LiteralReader[M[_]: Monad, S: LooksAheadIn[M]](
 
   /** Checks the string at the given offset. */
   private def check(stream: S, offset: Int): M[Unit] =
-    stream.peek(offset) <||| { chr =>
+    stream.peek(offset) >=>> { chr =>
       if chr != expected.charAt(offset) then
         errors.badLiteral(stream, expected, offset, chr)
       else {

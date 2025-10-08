@@ -17,29 +17,29 @@ final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
     WhitespaceReader(stream).skipAll()
 
   override def readTrue(stream: S): M[V] =
-    literalReader.trueLiteral(stream) <| { _ => builder.fromBoolean(true) }
+    literalReader.trueLiteral(stream) >-| builder.fromBoolean(true)
 
   override def readFalse(stream: S): M[V] =
-    literalReader.falseLiteral(stream) <| { _ => builder.fromBoolean(false) }
+    literalReader.falseLiteral(stream) >-| builder.fromBoolean(false)
 
   override def readNull(stream: S): M[V] =
-    literalReader.nullLiteral(stream) <| { _ => builder.fromNull() }
+    literalReader.nullLiteral(stream) >-| builder.fromNull()
 
   override def readString(stream: S): M[V] =
-    new StringReader(stream).readString() <| builder.fromString
+    new StringReader(stream).readString() >-> builder.fromString
 
   override def readNumber(stream: S): M[V] =
-    new NumberReader(stream).readString() <| builder.fromNumber
+    new NumberReader(stream).readString() >-> builder.fromNumber
 
   override def readArray(stream: S): M[V] =
-    ArrayReader(stream, skipWhitespaces).readSequence(readValue) <| builder.fromArray
+    ArrayReader(stream, skipWhitespaces).readSequence(readValue) >-> builder.fromArray
 
   override def readObject(stream: S): M[V] =
-    ObjectReader(stream, skipWhitespaces).readMap(readKey, readValue) <| builder.fromObject
+    ObjectReader(stream, skipWhitespaces).readMap(readKey, readValue) >-> builder.fromObject
 
   /** Reads a single value from the stream. */
   def readValue(stream: S): M[V] =
-    skipWhitespaces(stream) <+> ValueReader.readValue(stream, this)
+    skipWhitespaces(stream) >=|| ValueReader.readValue(stream, this)
 
 
   /** Reads the value and ensures there is no other values in the stream. */
@@ -58,7 +58,7 @@ final class SimpleReader[M[_]: Monad, S: LooksAheadIn[M], V](
 
   /** Checks if the stream is at the end. */
   private def ensureAtEnd(stream: S): M[Unit] =
-    stream.atEnd() <| {
+    stream.atEnd() >=>> {
       case true => Monad.pure(())
       case false => errs.trailingData(stream)
     }

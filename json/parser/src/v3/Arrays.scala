@@ -50,13 +50,13 @@ object Arrays {
 
   /** Reads the array and creates it representation using the given factory. */
   def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
-    stream.peek(0) <||| { chr =>
+    stream.peek(0) >=>> { chr =>
       if chr != '[' then
         factory.badArrayStart(stream)
       else
-        factory.start(stream, 1) <||| { context =>
-          factory.consumeIgnorableWhitespaces(stream) <+>
-          (stream.peek(0) <||| {
+        factory.start(stream, 1) >=>> { context =>
+          factory.consumeIgnorableWhitespaces(stream) >=||
+          (stream.peek(0) >=>> {
             case ']' => factory.finish(stream, context, 1)
             case _ => readValues(stream, factory, context)
           })
@@ -74,12 +74,12 @@ object Arrays {
         factory: Factory[M, S, J],
         context: factory.Context,
       ): M[J] =
-    factory.consumeIgnorableWhitespaces(stream) <+>
-    factory.consumeValue(stream, context) <+>
-    factory.consumeIgnorableWhitespaces(stream) <+>
-    (stream.peek(0) <||| {
+    factory.consumeIgnorableWhitespaces(stream) >=||
+    factory.consumeValue(stream, context) >=||
+    factory.consumeIgnorableWhitespaces(stream) >=||
+    (stream.peek(0) >=>> {
       case ']' => factory.finish(stream, context, 1)
-      case ',' => factory.consumeValueSeparator(stream, context, 1) <+> readValues(stream, factory, context)
+      case ',' => factory.consumeValueSeparator(stream, context, 1) >=|| readValues(stream, factory, context)
       case _ => factory.missingValueSeparatorOrArrayEnd(stream, context)
     })
 }

@@ -64,15 +64,15 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /** Parse inner object in a cool way. */
   def parseInner(q: Query[Json[Attrs]]): Md[Inner] =
-    Inner.apply ||> q
+    Inner.apply <-< q
 
 
   /** Parse outer dto in a cool way. */
   def parseDto(q: Query[Json[Attrs]]): Md[Dto] =
-    Dto.apply.curried ||>
-      q.x |>
-      q.y |>
-      q.z |>
+    Dto.apply.curried <-<
+      q.x <=<
+      q.y <=<
+      q.z <=<
       parseInner(q.inner)
 
 
@@ -213,7 +213,7 @@ object MonadicConversionTest {
         stream.getLocation()
 
       override def end(context: Context, stream: IOStream): Operation[Attrs] =
-        stream.getLocation() <| { endLoc => (context, endLoc) }
+        stream.getLocation() >-> { endLoc => (context, endLoc) }
     }
 
     /** Attribute-specific errors. */

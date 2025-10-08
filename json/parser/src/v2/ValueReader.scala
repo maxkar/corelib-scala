@@ -53,7 +53,7 @@ object ValueReader {
       )(using
         errs: Errors[M, S]
       ): M[T] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case 't' => dispatch.readTrue(stream)
       case 'f' => dispatch.readFalse(stream)
       case 'n' => dispatch.readNull(stream)

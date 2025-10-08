@@ -16,8 +16,15 @@ trait Applicative[M[_]] extends Functor[M] {
 
 
   extension [S, R](fn: M[S => R]) {
-    inline infix def |>(v: M[S]): M[R] =
-      Applicative.this.aapply(v, fn)
+    inline infix def <=<(v: M[S]): M[R] = aapply(v, fn)
+  }
+
+
+  extension [S](v: M[S]) {
+    inline infix def >=>[R](fn: M[S => R]): M[R] = aapply(v, fn)
+
+    final infix def >=|[R](other: M[R]): M[R] =
+      v >-> Applicative.second[S, R] <=< other
   }
 }
 
@@ -25,4 +32,6 @@ trait Applicative[M[_]] extends Functor[M] {
 object Applicative {
   inline def pure[M[_], T](v: T)(using app: Applicative[M]): M[T] =
     app.pure(v)
+
+  private def second[F, S](f: F)(s: S): S = s
 }

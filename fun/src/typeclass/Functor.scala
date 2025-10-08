@@ -8,16 +8,15 @@ trait Functor[M[_]] {
 
 
   extension [S](x: M[S]) {
-    inline infix def map[R](fn: S => R): M[R] =
-      Functor.this.fmap(x, fn)
+    inline infix def map[R](fn: S => R): M[R] = fmap(x, fn)
 
-    inline infix def <|[R](fn: S => R): M[R]  =
-      Functor.this.fmap(x, fn)
+    inline infix def >->[R](fn: S => R): M[R] = fmap(x, fn)
+
+    inline infix def >-|[R](res: => R): M[R] = fmap(x, _ => res)
   }
 
 
   extension [S, R](fn: S => R) {
-    inline infix def ||> (v: M[S]): M[R] =
-      Functor.this.fmap(v, fn)
+    inline infix def <-<(v: M[S]): M[R] = fmap(v, fn)
   }
 }

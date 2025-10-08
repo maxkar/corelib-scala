@@ -60,7 +60,7 @@ object ObjectsTest {
       Whitespaces.skip(stream)
 
     override def start(stream: JsonStream, count: Int): Operation[Context] =
-      stream.skip(count) <| { _ => new Context() }
+      stream.skip(count) >-| new Context()
 
     override def badObjectStart(stream: JsonStream): Operation[Map[String, String]] =
       raise(stream, "Invalid object start")
@@ -88,7 +88,7 @@ object ObjectsTest {
           context: Context,
           key: Key
         ): Operation[Unit] =
-      Numbers.read(stream, NumbersTest.Factory) <| { value =>
+      Numbers.read(stream, NumbersTest.Factory) >-> { value =>
         context += (key -> value)
       }
 
@@ -105,7 +105,7 @@ object ObjectsTest {
           context: Context,
           count: Int
         ): Operation[Map[String, String]] =
-      stream.skip(count) <| { _ => context.toMap }
+      stream.skip(count) >-| context.toMap
 
 
     override def missingEntrySeparatorOrObjectEnd(

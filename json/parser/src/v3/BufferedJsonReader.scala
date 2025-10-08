@@ -31,7 +31,7 @@ object BufferedJsonReader {
     private[BufferedJsonReader] def peekImpl(offset: Int): M[Int] = {
       if size > offset then return Monad.pure(buffer(this.offset + offset))
       if streamEof then return Monad.pure(-1)
-      fillBuffer() <+> peekImpl(offset)
+      fillBuffer() >=|| peekImpl(offset)
     }
 
 
@@ -44,7 +44,7 @@ object BufferedJsonReader {
       }
       if streamEof then return Monad.pure(-1)
 
-      fillBuffer() <+> readImpl(into, offset, length)
+      fillBuffer() >=|| readImpl(into, offset, length)
     }
 
 
@@ -55,7 +55,7 @@ object BufferedJsonReader {
       consume(consumedCount)
       if consumedCount == count then return Monad.pure(())
 
-      return fillBuffer() <+> skipImpl(count)
+      return fillBuffer() >=|| skipImpl(count)
     }
 
 
@@ -66,7 +66,7 @@ object BufferedJsonReader {
       consume(consumedCount)
       if size > 0 then return Monad.pure(())
 
-      return fillBuffer() <+> skipWhileImpl(predicate)
+      return fillBuffer() >=|| skipWhileImpl(predicate)
     }
 
 
@@ -78,7 +78,7 @@ object BufferedJsonReader {
       consume(consumedCount)
       if size > 0 then return Monad.pure(())
 
-      return fillBuffer() <+> readWhileImpl(into, predicate)
+      return fillBuffer() >=|| readWhileImpl(into, predicate)
     }
 
 
@@ -96,7 +96,7 @@ object BufferedJsonReader {
 
       /* Fill more data into the buffer. */
       val writeOffset = offset + size
-      stream.read(buffer, writeOffset, buffer.length - writeOffset) <| { readCount =>
+      stream.read(buffer, writeOffset, buffer.length - writeOffset) >-> { readCount =>
         if readCount < 0 then streamEof = true else size += readCount
       }
     }

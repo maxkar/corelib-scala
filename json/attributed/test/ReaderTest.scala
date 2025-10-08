@@ -24,7 +24,7 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
     override def start(stream: IOStream): Operation[Context] = stream.getLocation()
 
     override def end(context: Context, stream: IOStream): Operation[Attrs] =
-      stream.getLocation() <| { endLoc => (context, endLoc) }
+      stream.getLocation() >-> { endLoc => (context, endLoc) }
   }
 
   /** Attribute-specific errors. */

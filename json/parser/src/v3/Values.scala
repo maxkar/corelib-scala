@@ -28,7 +28,7 @@ object Values {
 
   /** Reads JSON value from the stream. */
   def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[S, M[J]]): M[J] =
-    stream.peek(0) <||| {
+    stream.peek(0) >=>> {
       case 't' => factory.readTrue(stream)
       case 'f' => factory.readFalse(stream)
       case 'n' => factory.readNull(stream)
