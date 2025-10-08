@@ -1,35 +1,17 @@
 package io.github.maxkar
 package json.attr
 
+import fun.instances.Unnest
+
 import text.Location
 
-import json.parser.Values.AllErrors
-import json.parser.Errors
-import Json.ObjectEntry
-import io.github.maxkar.json.parser.v2.SimpleReader
+import json.parser.v3.BufferedJsonReader
+import json.parser.v3.TestIO.*
+import json.parser.v3.TestIO.given
 
+final class NewReaderTest extends org.scalatest.funsuite.AnyFunSuite {
+  import NewReaderTest.*
 
-/** Tests for attributed parsing reader. */
-class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
-  import json.parser.v2.TestIO.*
-  import json.parser.v2.TestIO.given
-
-  /** Attributes of the resulting json. */
-  type Attrs = (Location, Location)
-
-  /** Factory for the attributes. */
-  private val attrFactory = new AttributeFactory[Operation, IOStream, Attrs] {
-    override type Context = text.Location
-
-    override def start(stream: IOStream): Operation[Context] = stream.getLocation()
-
-    override def end(context: Context, stream: IOStream): Operation[Attrs] =
-      stream.getLocation() >-> { endLoc => (context, endLoc) }
-  }
-
-  /** Attribute-specific errors. */
-  given attrErrors: Reader.Errors[Operation, IOStream, Attrs] = Reader.Errors.raise(raise)
-  given simpleErrors: SimpleReader.Errors[Operation, IOStream] = SimpleReader.Errors.raise(raise)
 
   test("Some basic literals work") {
     assert(runParser("true") === Json.True(lineAttr(0, 1, 1, 4)))
@@ -98,6 +80,7 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   }
 
 
+
   /** Creates a "single-line" attribute. */
   private def lineAttr(offset: Int, row: Int, column: Int, width: Int): Attrs = {
     val start = Location(offset, row, column)
@@ -118,5 +101,30 @@ class ReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /** Runs the parser on the given input with with the given chunk size. */
   private def runParser(input: String): Json[Attrs] =
-    doIO { Json.read(stringInput(input), attrFactory) }
+    parse(input, reader.readValue)._1
+}
+
+object NewReaderTest {
+  /** Attributes of the resulting json. */
+  type Attrs = (Location, Location)
+
+  object Factory extends Reader.Factory[Operation, JsonStream, Attrs] {
+    override type Context = Location
+
+    override def start(stream: BufferedJsonReader[Operation]): Operation[Location] = stream.getLocation()
+    override def finish(context: Location, stream: BufferedJsonReader[Operation]): Unnest[Attrs] =
+      stream.getLocation() >-> ((context, _))
+
+    override def parseError[T](stream: JsonStream, error: String): Unnest[T] =
+      raise(stream, error)
+
+    override def duplicateObjectKey(
+          prevEntry: Json.ObjectEntry[Attrs],
+          newKeyAttrs: Attrs,
+          stream: JsonStream
+        ): Operation[Json[Attrs] => Json.ObjectEntry[Attrs]] =
+      throw new JsonException(newKeyAttrs._1.offset, "Duplicate object key " + prevEntry.key)
+  }
+
+  val reader = new Reader(Factory)
 }

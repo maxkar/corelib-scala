@@ -1,9 +1,11 @@
 package io.github.maxkar
 package json.attr
 
+import fun.typeclass.Functor
 import fun.typeclass.Applicative
 
 import text.Location
+import text.LocationInfo
 import text.input.LocationLookAheadStream
 
 /**
@@ -60,6 +62,15 @@ object AttributeFactory {
     }
 
 
+  /** Creates an attribute factory that captures initial (source) location. */
+  def sourceLocation[M[_]: Applicative, S: LocationInfo.In[M]]: AttributeFactory[M, S, Location] =
+    new AttributeFactory[M, S, Location] {
+      override type Context = Location
+      override def start(stream: S): M[Location] = stream.getLocation()
+      override def end(context: Location, stream: S): M[Location] = Applicative.pure(context)
+    }
+
+
   /** Creates an attribute factory that captures element span (i.e. both start and end locations). */
   def span[M[_]: Applicative]: AttributeFactory[M, LocationLookAheadStream[M, Any], (Location, Location)] =
     new AttributeFactory[M, LocationLookAheadStream[M, Any], (Location, Location)] {
@@ -75,5 +86,16 @@ object AttributeFactory {
             stream: LocationLookAheadStream[M, Any],
           ): M[(Location, Location)] =
         Applicative.pure((context, stream.location))
+    }
+
+
+  /** Creates an attribute factory that captures element span (i.e. both start and end locations). */
+  def span[M[_]: Functor, S: LocationInfo.In[M]]: AttributeFactory[M, S, (Location, Location)] =
+    new AttributeFactory[M, S, (Location, Location)] {
+      override type Context = Location
+      override def start(stream: S): M[Location] =
+        stream.getLocation()
+      override def end(context: Location, stream: S): M[(Location, Location)] =
+        stream.getLocation() >-> ((context, _))
     }
 }

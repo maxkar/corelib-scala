@@ -11,6 +11,8 @@ import org.scalatest.Assertions
 
 object TestIO {
   export Unnest.given
+  export BufferedJsonReader.given
+
   /** Type of the test operation. */
   type Operation[T] = Unnest[T]
 

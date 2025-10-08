@@ -1,271 +1,312 @@
 package io.github.maxkar
 package json.attr
 
-import fun.typeclass.Applicative
 import fun.typeclass.Monad
 
-import text.input.LookAheadStream
-import text.v2.input.LooksAheadIn
+import json.parser.v3.Peek
+import json.parser.v3.DefaultStream
+import json.parser.v3.Literals
+import json.parser.v3.Strings
+import json.parser.v3.Numbers
+import json.parser.v3.Arrays
+import json.parser.v3.Objects
+import json.parser.v3.Values
+import json.parser.v3.Whitespaces
 
-import json.attr.Json.ObjectEntry
-
-import json.parser.Values
-import json.parser.Literals
-import json.parser.Numbers
-import json.parser.Strings
-import json.parser.Objects
-import json.parser.Arrays
-import json.parser.Whitespaces
-import json.parser.Values
-import json.parser.EndOfFile
-import json.parser.{Errors => StdErrors}
-
-import json.parser.v2.ArrayReader
-import json.parser.v2.SimpleReader
-import json.parser.v2.StringReader
-import json.parser.v2.LiteralReader
-import json.parser.v2.NumberReader
-import json.parser.v2.ObjectReader
-import json.parser.v2.WhitespaceReader
-import json.parser.v2.ValueReader
-
-import scala.collection.mutable.HashMap
+/** A reader of the input stream that has default capabilities. */
+final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
+      factory: Reader.Factory[M, S, A]
+    ) {
 
 
-/**
- * Reader for the JSON with the specified attributes captured for each node.
- * @tparam M input/output monad
- * @tparam S type of the stream being read
- * @tparam A type of the attribute captured
- * @param attributeFactory a factory for capturing attributes from the stream.
- * @param attrErrors errors specific to this parser.
- * @param simpleErrors errors specific to most JSON parsers.
- */
-final class Reader[M[_]: Monad, S: LooksAheadIn[M], A](
-      attributeFactory: AttributeFactory[M, S, A],
-      attrErrors: Reader.Errors[M, S, A],
-      simpleErrors: SimpleReader.Errors[M, S]
-    ) extends ValueReader.ValueReader[S, M[Json[A]]] {
-  import simpleErrors.given
+  /** Factory for the literal values. */
+  private val literalFactory =
+    new Literals.Factory[M, S, Unit] {
+      override def read(stream: S, count: Int): M[Unit] =
+        stream.skip(count)
 
-  private val literalReader = LiteralReader.all()
-
-  def skipWhitespaces(stream: S): M[Unit] =
-    WhitespaceReader(stream).skipAll()
+      override def invalidLiteral(stream: S, expected: String): M[Unit] =
+        parseError(stream, s"Invalid ${expected} literal")
+    }
 
 
-  override def readTrue(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      _ <- literalReader.trueLiteral(stream)
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.True(attr)
+  /** Factory for string values. */
+  private val stringFactory =
+    new Strings.Factory[M, S, String] {
+      override type Context = StringBuilder
 
+      override def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| new Context()
 
-  override def readFalse(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      _ <- literalReader.falseLiteral(stream)
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.False(attr)
+      override def invalidStringStart(stream: S): M[Context] =
+        parseError(stream, "Invalid string start")
 
+      override def readWhile(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        stream.readWhile(context, predicate)
 
-  override def readNull(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      _ <- literalReader.nullLiteral(stream)
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.Null(attr)
-
-
-  override def readString(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      str <- StringReader(stream).readString()
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.String(str, attr)
-
-
-  override def readNumber(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      str <- NumberReader(stream).readString()
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.Number(str, attr)
-
-
-  override def readArray(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      elements <- ArrayReader(stream, skipWhitespaces).readSequence(readValue)
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.Array(elements, attr)
-
-
-  override def readObject(stream: S): M[Json[A]] =
-    for {
-      ctx <- attributeFactory.start(stream)
-      elements <- readObjectMap(stream)
-      attr <- attributeFactory.end(ctx, stream)
-    } yield Json.Object(elements, attr)
-
-
-  /** Reads a single value from the stream. */
-  def readValue(stream: S): M[Json[A]] =
-    skipWhitespaces(stream) >=|| ValueReader.readValue(stream, this)
-
-
-  /** Reads the value and ensures there is no other values in the stream. */
-  def readFully(stream: S): M[Json[A]] =
-    for {
-      res <- readValue(stream)
-      _ <- skipWhitespaces(stream)
-      _ <- ensureAtEnd(stream)
-    } yield res
-
-
-  /** Reads object's key-value map. */
-  private def readObjectMap(stream: S): M[Map[String, ObjectEntry[A]]] = {
-    val agg = new scala.collection.mutable.HashMap[String, ObjectEntry[A]]()
-    val objReader = ObjectReader(stream, skipWhitespaces)
-    def step(): M[Map[String, ObjectEntry[A]]] = {
-      objReader.advanceToNext() >=>> {
-        case true =>
-          for {
-            keyCtx <- attributeFactory.start(stream)
-            key <- StringReader(stream).readString()
-            keyAttrs <- attributeFactory.end(keyCtx, stream)
-            _ <- objReader.readKeyValueSeparator()
-            value <- readValue(stream)
-            _ <- agg.get(key) match {
-              case None =>
-                agg.put(key, ObjectEntry(key, keyAttrs, value))
-                Monad.pure(())
-              case Some(prevValue) =>
-                attrErrors.duplicateObjectKey(prevValue, keyAttrs, stream)
-            }
-            res <- step()
-          } yield
-            res
-        case false => Monad.pure(agg.toMap)
+      override def readEscape(stream: S, context: Context, count: Int, char: Char): M[Unit] = {
+        context += char
+        stream.skip(count)
       }
+
+      override def invalidEscapeCharacter(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Invalid escape character")
+
+      override def invalidUnicodeEscape(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Invalid unicode escape")
+
+      override def invalidCharacter(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Invalid character")
+
+      override def finish(stream: S, context: Context, count: Int): M[String] =
+        stream.skip(count) >-| context.toString()
+
+      override def invalidStringEnd(stream: S, context: Context): M[String] =
+        parseError(stream, "Invalid string end")
     }
-    step()
-  }
 
 
-  /** Checks if the stream is at the end. */
-  private def ensureAtEnd(stream: S): M[Unit] =
-    stream.atEnd() >=>> {
-      case true => Monad.pure(())
-      case false => simpleErrors.trailingData(stream)
+  /** Factory for numeric values. */
+  private val numberFactory =
+    new Numbers.Factory[M, S, String] {
+      override type Context = StringBuilder
+
+      override def start(stream: S): M[Context] = Monad.pure(new Context())
+
+      override def readSign(stream: S, context: Context, count: Int, sign: Char): M[Unit] = {
+        context += sign
+        stream.skip(count)
+      }
+
+      override def readIntegerDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        stream.readWhile(context, predicate)
+
+      override def missingIntegerDigits(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Missing integer digits")
+
+      override def leadingIntegerZero(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Leading 0 is not allowed")
+
+      override def readDecimalSeparator(stream: S, context: Context, count: Int, separator: Char): M[Unit] = {
+        context += separator
+        stream.skip(count)
+      }
+
+      override def readDecimalDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        stream.readWhile(context, predicate)
+
+      override def missingDecimalDigits(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Missing decimal digits")
+
+      override def readExponentIndicator(stream: S, context: Context, count: Int, separator: Char): M[Unit] = {
+        context += separator
+        stream.skip(count)
+      }
+
+      override def readExponentSign(stream: S, context: Context, count: Int, separator: Char): M[Unit] = {
+        context += separator
+        stream.skip(count)
+      }
+
+      override def readExponentDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        stream.readWhile(context, predicate)
+
+      override def missingExponentDigits(stream: S, context: Context): M[Unit] =
+        parseError(stream, "Missing exponent digits")
+
+      override def finish(stream: S, context: Context): M[String] = Monad.pure(context.toString())
     }
+
+
+  /** Factory for arrays. */
+  private val arrayFactory =
+    new Arrays.Factory[M, S, Seq[Json[A]]] {
+      override type Context = scala.collection.mutable.ArrayBuffer[Json[A]]
+
+      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
+        skipWhitespaces(stream)
+
+      override def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| new Context()
+
+      override def invalidArrayStart(stream: S): M[Seq[Json[A]]] =
+        parseError(stream, "Invalid array start")
+
+      override def readValue(stream: S, context: Context): M[Unit] =
+        Reader.this.readValue(stream) >-> context.append
+
+      override def skipValueSeparator(stream: S, context: Context, count: Int): M[Unit] =
+        stream.skip(1)
+
+      override def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[Seq[Json[A]]] =
+        parseError(stream, "Invalid value separator or array end")
+
+      override def finish(stream: S, context: Context, count: Int): M[Seq[Json[A]]] =
+        stream.skip(count) >-| context.toSeq
+    }
+
+
+  /** Factory for objects. */
+  private val objectFactory =
+    new Objects.Factory[M, S, Map[String, Json.ObjectEntry[A]]] {
+      override type Context = scala.collection.mutable.HashMap[String, Json.ObjectEntry[A]]
+      override type Key = (Json[A] => Json.ObjectEntry[A])
+
+      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
+        skipWhitespaces(stream)
+
+      override def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| new Context()
+
+      override def invalidObjectStart(stream: S): M[Map[String, Json.ObjectEntry[A]]] =
+        parseError(stream, "Invalid object start")
+
+      override def readKey(stream: S, context: Context): M[Key] =
+        readWithAttr(stream, Strings.read(stream, stringFactory)) >=>> { (attr, key) =>
+          context.get(key) match {
+            case Some(prev) => factory.duplicateObjectKey(prev, attr, stream)
+            case None => Monad.pure(Json.ObjectEntry(key, attr, _))
+          }
+        }
+
+      override def skipKeyValueSeparator(stream: S, context: Context, key: Key, count: Int): M[Unit] =
+        stream.skip(count)
+
+      override def invalidKeyValueSeparator(stream: S, context: Context, key: Key): M[Unit] =
+        parseError(stream, "Invalid key-value separator")
+
+      override def readValue(stream: S, context: Context, key: Key): M[Unit] =
+        Reader.this.readValue(stream) >-> { value =>
+          val entry = key(value)
+          context.put(entry.key, entry)
+        }
+
+      override def skipEntrySeparator(stream: S, context: Context, count: Int): M[Unit] =
+        stream.skip(count)
+
+      override def finish(stream: S, context: Context, count: Int): M[Map[String, Json.ObjectEntry[A]]] =
+        stream.skip(count) >-| context.toMap
+
+      override def invalidEntrySeparatorOrObjectEnd(stream: S, context: Context): M[Map[String, Json.ObjectEntry[A]]] =
+        parseError(stream, "Invalid entry separator or object end")
+    }
+
+  /** Factory for values. */
+  private val valueFactory =
+    new Values.Factory[S, M[Json[A]]] {
+      override def readTrue(stream: S): M[Json[A]] =
+        readJsonValue(stream, Literals.readTrue(stream, literalFactory), (_, attr) => Json.True(attr))
+
+      override def readFalse(stream: S): M[Json[A]] =
+        readJsonValue(stream, Literals.readFalse(stream, literalFactory), (_, attr) => Json.False(attr))
+
+      override def readNull(stream: S): M[Json[A]] =
+        readJsonValue(stream, Literals.readNull(stream, literalFactory), (_, attr) => Json.Null(attr))
+
+      override def readString(stream: S): M[Json[A]] =
+        readJsonValue(stream, Strings.read(stream, stringFactory), Json.String.apply)
+
+      override def readNumber(stream: S): M[Json[A]] =
+        readJsonValue(stream, Numbers.read(stream, numberFactory), Json.Number.apply)
+
+      override def readArray(stream: S): M[Json[A]] =
+        readJsonValue(stream, Arrays.read(stream, arrayFactory), Json.Array.apply)
+
+      override def readObject(stream: S): M[Json[A]] =
+        readJsonValue(stream, Objects.read(stream, objectFactory), Json.Object.apply)
+
+      override def invalidValue(stream: S): M[Json[A]] =
+        parseError(stream, "Invalid JSON value")
+    }
+
+
+  /** Reads one value from the stream. */
+  def readValue(stream: S): M[Json[A]] = Values.read(stream, valueFactory)
+
+
+  /** Skips whitespaces in the stream. */
+  def skipWhitespaces(stream: S): M[Unit] =
+    Whitespaces.skip(stream)
+
+
+  /** Shorthand for factory.parseError. */
+  private def parseError[T](stream: S, message: String): M[T] =
+    factory.parseError(stream, message)
+
+
+  /** Reads value with its attribute. */
+  private def readWithAttr[T](stream: S, block: => M[T]): M[(A, T)] =
+    for
+      ctx <- factory.start(stream)
+      value <- block
+      attr <- factory.finish(ctx, stream)
+    yield
+      (attr, value)
+
+
+  /** Reads value with its attribute and constructs JSON. */
+  private def readJsonValue[T](stream: S, block: => M[T], cb: (T, A) => Json[A]): M[Json[A]] =
+    for
+      ctx <- factory.start(stream)
+      value <- block
+      attr <- factory.finish(ctx, stream)
+    yield
+      cb(value, attr)
 }
 
-/** Reader for the attributed json model. */
+
 object Reader {
-  /**
-   * (Additional) error types thar are specific to this reader.
-   * @tparam M execution monad.
-   * @tparam S type of the input stream supported.
-   * @tparam A type of the attributes supported by this error handler.
-   */
-  trait Errors[M[_], -S, -A] {
+  /** Factory for the Json Attributes and handling errors. */
+  trait Factory[M[_], -S, A] {
     /**
-     * Handles a situation where json object contains duplicate keys. An implementation
-     * may decide to flag a error and abort execution in monad-specific way. If the
-     * execution completes successfully, new value would be read and the new entry will
-     * replace the old one. In other words, the latest value observed takes the precedence
-     * in case of successfull execution of this method.
-     *
-     * @param prevEntry previous entry with the same name (both key
-     *   and value with their respective attributes).
-     * @param newKeyAttrs attributes that are to be applied to the new key.
-     * @param stream stream that contained the duplicate information.
-     *   Unlike with many other error handlers, stream position is **after**
-     *   the duplicate key.
-     * @return result of handling the duplicate key situation.
+     * Type of the context being captured at the value start position. Values
+     * of this type are used to carry-over some context until the value is
+     * fully read.
      */
-    def duplicateObjectKey(prevEntry: Json.ObjectEntry[A], newKeyAttrs: A, stream: S): M[Unit]
+    type Context
+
+    /**
+     * Captures all the required information an the
+     * **start** of some value in the source stream.
+     * @param stream source data stream that could be used to extract information.
+     * @return captured context that will later be passed to the `end` function.
+     */
+    def start(stream: S): M[Context]
+
+    /**
+     * Generates the attribute(s) based on the context (captured at the start
+     * of the value) and the stream data after the value was read.
+     * @param context context returned from the `start` method at the starting position.
+     * @param stream source data stream that could be used to extract information.
+     * @return attribute that should be applied to the value read between the
+     * corresponding `start` and `end` calls.
+     */
+    def finish(context: Context, stream: S): M[A]
+
+
+    /**
+     * Raises an error for the given stream.
+     * @param stream stream where the issue occured.
+     * @param error error description.
+     */
+    def parseError[T](stream: S, error: String): M[T]
+
+
+    /**
+     * Handles a situation where a duplicate key was found in an object.
+     * @param prevEntry previous entry with the same key.
+     * @param newKeyAttrs attributes of the new key.
+     * @param stream stream where the issue happened. The
+     *   stream position is just after the key.
+     * @return a "merge" function that takes a new value and returns
+     *   the entry that should be a result. For example, a function
+     *   may choose to use the _first_ value, the _last_ one or
+     *   attempt to merge them.
+     */
+    def duplicateObjectKey(
+          prevEntry: Json.ObjectEntry[A],
+          newKeyAttrs: A,
+          stream: S)
+        : M[Json[A] => Json.ObjectEntry[A]]
   }
-
-
-  object Errors {
-    /**
-     * Creates an error handler that ignores all the errors.
-     * @param success value that denotes success in the given monad/applicative.
-     */
-    def ignoreBy[M[_]](success: M[Unit]): Errors[M, Any, Any] =
-      new Errors[M, Any, Any] {
-        override def duplicateObjectKey(prevEntry: Json.ObjectEntry[Any], newKeyAttrs: Any, stream: Any): M[Unit] =
-          success
-      }
-
-
-    /** Creates an error handler that ignores all the errors. */
-    def ignore[M[_]: Applicative]: Errors[M, Any, Any] = ignoreBy(Applicative.pure(()))
-
-
-    /**
-     * Creates a handler that just raises the error with human-readable message, similar
-     * to stanadard hanlers. Note that error location reporting may be not very correct.
-     *
-     * @param handler the handler that knows how to encode the errorm into the
-     *   execution monad M. It may also enrich the message with the error context
-     *   (like location) from the input stream.
-     */
-    def simple[M[_]: Monad, S <: LookAheadStream[M]](handler: StdErrors.SimpleHandler[M, S]): Reader.Errors[M, S, Any] =
-      new Reader.Errors[M, S, Any] {
-        override def duplicateObjectKey(prevEntry: Json.ObjectEntry[Any], newKeyAttrs: Any, stream: S): M[Unit] =
-          handler.raise(
-            stream,
-            s"Duplicate object entry with key '${prevEntry.key}'"
-          )
-      }
-
-
-    /** Creates a simple error handler where errors are converted to text and raised in the monad. */
-    def raise[M[_], S](raiseFn: [T] => (S, String) => M[T]): Errors[M, S, Any] =
-      new Reader.Errors[M, S, Any] {
-        override def duplicateObjectKey(prevEntry: ObjectEntry[Any], newKeyAttrs: Any, stream: S): M[Unit] =
-          raiseFn(stream, s"Duplicate object entry with key '${prevEntry.key}'")
-      }
-  }
-
-
-
-  /**
-   * Reads a simple value from the stream and stops after the value was read.
-   *
-   * @param stream data stream to read.
-   * @param attributeFactory factory used to create JSON attributes from data
-   *   available through the given stream.
-   */
-  def readOneValue[M[_]: Monad, S: LooksAheadIn[M], A](
-        stream: S,
-        attributeFactory: AttributeFactory[M, S, A]
-      )(using
-        errs: SimpleReader.Errors[M, S],
-        attrErrors: Errors[M, S, A]
-      ): M[Json[A]] =
-    new Reader(attributeFactory, attrErrors, errs).readValue(stream)
-
-
-  /**
-   * Reads value from the stream ensuring that no other data is contained in
-   * the `stream`. In other words, it reads the **whole** stream as a single
-   * JSON value.
-   *
-   * @param stream data stream to read.
-   * @param attributeFactory factory used to create JSON attributes from data
-   *   available through the given stream.
-   */
-  def read[M[_]: Monad, S: LooksAheadIn[M], A](
-        stream: S,
-        attributeFactory: AttributeFactory[M, S, A]
-      )(using
-        errs: SimpleReader.Errors[M, S],
-        attrErrors: Errors[M, S, A]
-      ): M[Json[A]] =
-    new Reader(attributeFactory, attrErrors, errs).readFully(stream)
 }

@@ -15,3 +15,9 @@ trait LocationInfo[M[_], T] {
       this.getLocation(t)
   }
 }
+
+
+object LocationInfo {
+  type In[M[_]] = [T] =>> LocationInfo[M, T]
+  type Of[T] = [M[_]] =>> LocationInfo[M, T]
+}

@@ -13,7 +13,9 @@ import json.parser.EndOfFile
 
 import json.writer.{Values => JsonWriter}
 import json.writer.PrettyPrintOptions
-import json.parser.v2.SimpleReader
+
+import json.parser.v3.Peek
+import json.parser.v3.DefaultStream
 
 /**
  * Single node in the JSON tree model.
@@ -164,42 +166,6 @@ object Json {
       case Json.Array(_, _) => "array"
       case Json.Object(_, _) => "object"
     }
-
-
-  /**
-   * Reads a single value from the stream and stops after the value was read.
-   *
-   * @param stream data stream to read.
-   * @param attributeFactory factory used to create JSON attributes from data
-   *   available through the given stream.
-   */
-  inline def readOneValue[M[_]: Monad, S: LooksAheadIn[M], A](
-        stream: S,
-        attributeFactory: AttributeFactory[M, S, A]
-      )(using
-        errs: SimpleReader.Errors[M, S],
-        attrErrors: Reader.Errors[M, S, A]
-      ): M[Json[A]] =
-    Reader.readOneValue(stream, attributeFactory)
-
-
-  /**
-   * Reads value from the stream ensuring that no other data is contained in
-   * the `stream`. In other words, it reads the **whole** stream as a single
-   * JSON value.
-   *
-   * @param stream data stream to read.
-   * @param attributeFactory factory used to create JSON attributes from data
-   *   available through the given stream.
-   */
-  inline def read[M[_]: Monad, S: LooksAheadIn[M], A](
-        stream: S,
-        attributeFactory: AttributeFactory[M, S, A]
-      )(using
-        errs: SimpleReader.Errors[M, S],
-        attrErrors: Reader.Errors[M, S, A],
-      ): M[Json[A]] =
-    Reader.read(stream, attributeFactory)
 
 
   /** Outputs JSON into the given stream in the compact form. */
