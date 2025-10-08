@@ -135,7 +135,7 @@ object NumbersTest {
 
     override def start(stream: JsonStream): Operation[Context] = Monad.pure(new StringBuilder())
 
-    override def consumeSign(
+    override def readSign(
           stream: JsonStream,
           context: Context,
           count: Int,
@@ -145,7 +145,7 @@ object NumbersTest {
       stream.skip(count)
     }
 
-    override def consumeIntegerDigits(
+    override def readIntegerDigits(
           stream: JsonStream,
           context: Context,
           predicate: Char => Boolean
@@ -158,7 +158,7 @@ object NumbersTest {
     override def leadingIntegerZero(stream: JsonStream, context: Context): Operation[Unit] =
       raise(stream, "Leading integer zero")
 
-    override def consumeDecimalSeparator(
+    override def readDecimalSeparator(
           stream: JsonStream,
           context: Context,
           count: Int,
@@ -168,7 +168,7 @@ object NumbersTest {
       stream.skip(count)
     }
 
-    override def consumeDecimalDigits(
+    override def readDecimalDigits(
           stream: JsonStream,
           context: Context,
           predicate: Char => Boolean
@@ -178,7 +178,7 @@ object NumbersTest {
     override def missingDecimalDigits(stream: JsonStream, context: Context): Operation[Unit] =
       raise(stream, "Missing decimal digits")
 
-    override def consumeExponentIndicator(
+    override def readExponentIndicator(
           stream: JsonStream,
           context: Context,
           count: Int,
@@ -188,7 +188,7 @@ object NumbersTest {
       stream.skip(count)
     }
 
-    override def consumeExponentSign(
+    override def readExponentSign(
           stream: JsonStream,
           context: Context,
           count: Int,
@@ -198,7 +198,7 @@ object NumbersTest {
       stream.skip(count)
     }
 
-    override def consumeExponentDigits(
+    override def readExponentDigits(
           stream: JsonStream,
           context: Context,
           predicate: Char => Boolean

@@ -55,19 +55,19 @@ object ArraysTest {
   object Factory extends Arrays.Factory[Operation, JsonStream, Seq[String]] {
     override type Context = ArrayBuffer[String]
 
-    override def consumeIgnorableWhitespaces(stream: JsonStream): Operation[Unit] =
+    override def skipIgnorableWhitespaces(stream: JsonStream): Operation[Unit] =
       Whitespaces.skip(stream)
 
     override def start(stream: JsonStream, count: Int): Operation[Context] =
       stream.skip(1) >-| new Context()
 
-    override def badArrayStart(stream: JsonStream): Operation[Seq[String]] =
+    override def invalidArrayStart(stream: JsonStream): Operation[Seq[String]] =
       raise(stream, "Invalid array start")
 
-    override def consumeValue(stream: JsonStream, context: Context): Operation[Unit] =
+    override def readValue(stream: JsonStream, context: Context): Operation[Unit] =
       Numbers.read(stream, NumbersTest.Factory) >-> { s => context.append(s) }
 
-    override def consumeValueSeparator(
+    override def skipValueSeparator(
           stream: JsonStream,
           context: Context,
           count: Int
@@ -81,7 +81,7 @@ object ArraysTest {
         ): Operation[Seq[String]] =
       stream.skip(count) >-| context.toSeq
 
-    override def missingValueSeparatorOrArrayEnd(
+    override def invalidValueSeparatorOrArrayEnd(
           stream: JsonStream,
           context: Context
         ): Operation[Seq[String]] =

@@ -6,11 +6,11 @@ import TestIO.*
 
 final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
   private object Factory extends Literals.Factory[Operation, JsonStream, Unit] {
-    override def consume(stream: JsonStream, count: Int): Operation[Unit] =
+    override def read(stream: JsonStream, count: Int): Operation[Unit] =
       stream.skip(count)
 
-    override def badLiteral(stream: JsonStream, expected: String, badOffset: Int): Operation[Unit] =
-      raise(stream, s"Bad literal ${expected} at ${badOffset}")
+    override def invalidLiteral(stream: JsonStream, expected: String): Operation[Unit] =
+      raise(stream, s"Bad literal ${expected}")
   }
 
 
@@ -34,13 +34,13 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("Invalid literals") {
-    testFailure("tru", "Bad literal true at 3", Literals.readTrue)
-    testFailure("fal", "Bad literal false at 3", Literals.readFalse)
-    testFailure("nul", "Bad literal null at 3", Literals.readNull)
+    testFailure("tru", "Bad literal true", Literals.readTrue)
+    testFailure("fal", "Bad literal false", Literals.readFalse)
+    testFailure("nul", "Bad literal null", Literals.readNull)
 
-    testFailure("trux", "Bad literal true at 3", Literals.readTrue)
-    testFailure("falx", "Bad literal false at 3", Literals.readFalse)
-    testFailure("nulx", "Bad literal null at 3", Literals.readNull)
+    testFailure("trux", "Bad literal true", Literals.readTrue)
+    testFailure("falx", "Bad literal false", Literals.readFalse)
+    testFailure("nulx", "Bad literal null", Literals.readNull)
   }
 
 

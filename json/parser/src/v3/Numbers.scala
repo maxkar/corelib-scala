@@ -17,10 +17,10 @@ object Numbers {
     def start(stream: S): M[Context]
 
     /** Consumes sign character from the input stream. */
-    def consumeSign(stream: S, context: Context, count: Int, sign: Char): M[Unit]
+    def readSign(stream: S, context: Context, count: Int, sign: Char): M[Unit]
 
     /** Consumes integer digits. */
-    def consumeIntegerDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
+    def readIntegerDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
 
     /** Handles a case where no integer part is present in the number. */
     def missingIntegerDigits(stream: S, context: Context): M[Unit]
@@ -29,22 +29,22 @@ object Numbers {
     def leadingIntegerZero(stream: S, context: Context): M[Unit]
 
     /** Consumes the decimal separator. */
-    def consumeDecimalSeparator(stream: S, context: Context, count: Int, separator: Char): M[Unit]
+    def readDecimalSeparator(stream: S, context: Context, count: Int, separator: Char): M[Unit]
 
     /** Consumes decimal digits. */
-    def consumeDecimalDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
+    def readDecimalDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
 
     /** Handles a situation with missing decimal digits. */
     def missingDecimalDigits(stream: S, context: Context): M[Unit]
 
     /** Consumes exponent indicator. */
-    def consumeExponentIndicator(stream: S, context: Context, count: Int, separator: Char): M[Unit]
+    def readExponentIndicator(stream: S, context: Context, count: Int, separator: Char): M[Unit]
 
     /** Consumes exponent sign. */
-    def consumeExponentSign(stream: S, context: Context, count: Int, separator: Char): M[Unit]
+    def readExponentSign(stream: S, context: Context, count: Int, separator: Char): M[Unit]
 
     /** Consumes exponent digits. */
-    def consumeExponentDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
+    def readExponentDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
 
     /** Handles a situation with missing exponent digits. */
     def missingExponentDigits(stream: S, context: Context): M[Unit]
@@ -73,7 +73,7 @@ object Numbers {
         context: factory.Context
       ): M[Unit] =
     stream.peek(0) >=>> {
-      case sgn@('+' | '-') => factory.consumeSign(stream, context, 1, sgn)
+      case sgn@('+' | '-') => factory.readSign(stream, context, 1, sgn)
       case _ => Monad.pure(())
     }
 
@@ -88,9 +88,9 @@ object Numbers {
       case '0' =>
         stream.peek(1) >=>> {
           case '0' => factory.leadingIntegerZero(stream, context)
-          case _ => factory.consumeIntegerDigits(stream, context, isDigit)
+          case _ => factory.readIntegerDigits(stream, context, isDigit)
         }
-      case d if isDigitInt(d) => factory.consumeIntegerDigits(stream, context, isDigit)
+      case d if isDigitInt(d) => factory.readIntegerDigits(stream, context, isDigit)
       case other => factory.missingIntegerDigits(stream, context)
     }
 
@@ -103,7 +103,7 @@ object Numbers {
       ): M[Unit] =
     stream.peek(0) >=>> {
       case '.' =>
-        factory.consumeDecimalSeparator(stream, context, 1, '.') >=|| readDecimalDigits(stream, factory, context)
+        factory.readDecimalSeparator(stream, context, 1, '.') >=|| readDecimalDigits(stream, factory, context)
       case other => Monad.pure(())
     }
 
@@ -116,7 +116,7 @@ object Numbers {
       ): M[Unit] =
     stream.peek(0) >=>> { d =>
       if isDigitInt(d) then
-        factory.consumeDecimalDigits(stream, context, isDigit)
+        factory.readDecimalDigits(stream, context, isDigit)
       else
         factory.missingDecimalDigits(stream, context)
     }
@@ -130,7 +130,7 @@ object Numbers {
       ): M[Unit] =
     stream.peek(0) >=>> {
       case ind@('e' | 'E') =>
-        factory.consumeExponentIndicator(stream, context, 1, ind) >=||
+        factory.readExponentIndicator(stream, context, 1, ind) >=||
           readExponentSign(stream, factory, context) >=||
           readExponentDigits(stream, factory, context)
       case other => Monad.pure(())
@@ -144,7 +144,7 @@ object Numbers {
         context: factory.Context
       ): M[Unit] =
     stream.peek(0) >=>> {
-      case sgn@('+' | '-') => factory.consumeExponentSign(stream, context, 1, sgn)
+      case sgn@('+' | '-') => factory.readExponentSign(stream, context, 1, sgn)
       case _ => Monad.pure(())
     }
 
@@ -157,7 +157,7 @@ object Numbers {
       ): M[Unit] =
     stream.peek(0) >=>> { d =>
       if isDigitInt(d) then
-        factory.consumeExponentDigits(stream, context, isDigit)
+        factory.readExponentDigits(stream, context, isDigit)
       else
         factory.missingExponentDigits(stream, context)
     }

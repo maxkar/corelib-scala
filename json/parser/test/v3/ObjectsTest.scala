@@ -56,19 +56,19 @@ object ObjectsTest {
     override type Context = scala.collection.mutable.HashMap[String, String]
     override type Key = String
 
-    override def consumeIgnorableWhitespaces(stream: JsonStream): Operation[Unit] =
+    override def skipIgnorableWhitespaces(stream: JsonStream): Operation[Unit] =
       Whitespaces.skip(stream)
 
     override def start(stream: JsonStream, count: Int): Operation[Context] =
       stream.skip(count) >-| new Context()
 
-    override def badObjectStart(stream: JsonStream): Operation[Map[String, String]] =
+    override def invalidObjectStart(stream: JsonStream): Operation[Map[String, String]] =
       raise(stream, "Invalid object start")
 
-    override def consumeKey(stream: JsonStream, context: Context): Operation[Key] =
+    override def readKey(stream: JsonStream, context: Context): Operation[Key] =
       Strings.read(stream, StringsTest.Factory)
 
-    override def consumeKeyValueSeparator(
+    override def skipKeyValueSeparator(
           stream: JsonStream,
           context: Context,
           key: String,
@@ -76,14 +76,14 @@ object ObjectsTest {
         ): Operation[Unit] =
       stream.skip(1)
 
-    override def missingKeyValueSeparator(
+    override def invalidKeyValueSeparator(
           stream: JsonStream,
           context: Context,
           key: String
         ): Operation[Unit] =
       raise(stream, "Invalid key-value separator")
 
-    override def consumeValue(
+    override def readValue(
           stream: JsonStream,
           context: Context,
           key: Key
@@ -92,7 +92,7 @@ object ObjectsTest {
         context += (key -> value)
       }
 
-    override def consumeEntrySeparator(
+    override def skipEntrySeparator(
           stream: JsonStream,
           context: Context,
           count: Int
@@ -108,7 +108,7 @@ object ObjectsTest {
       stream.skip(count) >-| context.toMap
 
 
-    override def missingEntrySeparatorOrObjectEnd(
+    override def invalidEntrySeparatorOrObjectEnd(
           stream: JsonStream,
           context: Context
         ): Operation[Map[String, String]] =

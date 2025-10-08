@@ -23,16 +23,15 @@ object Literals {
      * Consumes `count` characters from the stream and returns the
      * JSON literal representation.
      */
-    def consume(stream: S, count: Int): M[J]
+    def read(stream: S, count: Int): M[J]
 
     /**
      * Processes an invalid (bad) literal
      * @param stream stream with the data.
      * @param expected expected literal.
-     * @param badOffset offset where stream does not match the literal.
      * @return JSON representation of the invalid literal.
      */
-    def badLiteral(stream: S, expected: String, badOffset: Int): M[J]
+    def invalidLiteral(stream: S, expected: String): M[J]
   }
 
 
@@ -47,11 +46,10 @@ object Literals {
       c3 <- stream.peek(2)
       c4 <- stream.peek(3)
       res <-
-        if c1 != 'n' then factory.badLiteral(stream, NULL, 0)
-        else if c2 != 'u' then factory.badLiteral(stream, NULL, 1)
-        else if c3 != 'l' then factory.badLiteral(stream, NULL, 2)
-        else if c4 != 'l' then factory.badLiteral(stream, NULL, 3)
-        else factory.consume(stream, 4)
+        if c1 != 'n' || c2 != 'u' || c3 != 'l' || c4 != 'l' then
+          factory.invalidLiteral(stream, NULL)
+        else
+          factory.read(stream, 4)
     yield res
 
 
@@ -66,11 +64,10 @@ object Literals {
       c3 <- stream.peek(2)
       c4 <- stream.peek(3)
       res <-
-        if c1 != 't' then factory.badLiteral(stream, TRUE, 0)
-        else if c2 != 'r' then factory.badLiteral(stream, TRUE, 1)
-        else if c3 != 'u' then factory.badLiteral(stream, TRUE, 2)
-        else if c4 != 'e' then factory.badLiteral(stream, TRUE, 3)
-        else factory.consume(stream, 4)
+        if c1 != 't' || c2 != 'r' || c3 != 'u' || c4 != 'e' then
+          factory.invalidLiteral(stream, TRUE)
+        else
+          factory.read(stream, 4)
     yield res
 
 
@@ -86,11 +83,9 @@ object Literals {
       c4 <- stream.peek(3)
       c5 <- stream.peek(4)
       res <-
-        if c1 != 'f' then factory.badLiteral(stream, FALSE, 0)
-        else if c2 != 'a' then factory.badLiteral(stream, FALSE, 1)
-        else if c3 != 'l' then factory.badLiteral(stream, FALSE, 2)
-        else if c4 != 's' then factory.badLiteral(stream, FALSE, 3)
-        else if c5 != 'e' then factory.badLiteral(stream, FALSE, 4)
-        else factory.consume(stream, 5)
+        if c1 != 'f' || c2 != 'a' || c3 != 'l' || c4 != 's' || c5 != 'e' then
+          factory.invalidLiteral(stream, FALSE)
+        else
+          factory.read(stream, 5)
     yield res
 }

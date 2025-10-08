@@ -25,13 +25,13 @@ object Strings {
      * Handles an error where a string is expected but no string start
      * marker is present.
      */
-    def badStringStart(stream: S): M[Context]
+    def invalidStringStart(stream: S): M[Context]
 
     /**
      * Consumes string characters while they match `predicate` and
      * add them to the string.
      */
-    def consumeWhile(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
+    def readWhile(stream: S, context: Context, predicate: Char => Boolean): M[Unit]
 
     /**
      * Consumes one escaped character from the stream and adds it to
@@ -41,7 +41,7 @@ object Strings {
      * @param count number of characters that comprise the escape character.
      * @param char unescaped character.
      */
-    def consumeEscape(stream: S, context: Context, count: Int, char: Char): M[Unit]
+    def readEscape(stream: S, context: Context, count: Int, char: Char): M[Unit]
 
     /**
      * Invalid escape character occured while reading the string. The stream position
@@ -70,14 +70,14 @@ object Strings {
     def finish(stream: S, context: Context, count: Int): M[J]
 
     /** Indicates that the string was not terminated properly but end of stream was reached. */
-    def unterminatedString(stream: S, context: Context): M[J]
+    def invalidStringEnd(stream: S, context: Context): M[J]
   }
 
 
   /** Reads string from the stream. */
   def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
     stream.peek(0) >=>> { c =>
-      if c == '"' then factory.start(stream, 1) else factory.badStringStart(stream)
+      if c == '"' then factory.start(stream, 1) else factory.invalidStringStart(stream)
     } >=>> readBody(stream, factory)
 
 
@@ -89,14 +89,13 @@ object Strings {
         ctx: factory.Context
       ): M[J] =
     def readRec(): M[J] =
-      factory.consumeWhile(stream, ctx, isRegularCharacter) >=|| (
-        stream.peek(0) >=>> {
-          case '"' => factory.finish(stream, ctx, 1)
-          case '\\' => readEscape(stream, factory, ctx) >=|| readRec()
-          case x if x <  0 => factory.unterminatedString(stream, ctx)
-          case other => factory.invalidCharacter(stream, ctx) >=|| readRec()
-        }
-      )
+      factory.readWhile(stream, ctx, isRegularCharacter) >=||
+      stream.peek(0) >=>> {
+        case '"' => factory.finish(stream, ctx, 1)
+        case '\\' => readEscape(stream, factory, ctx) >=|| readRec()
+        case x if x <  0 => factory.invalidStringEnd(stream, ctx)
+        case other => factory.invalidCharacter(stream, ctx) >=|| readRec()
+      }
     readRec()
 
 
@@ -107,14 +106,14 @@ object Strings {
         ctx: factory.Context
       ): M[Unit] =
     stream.peek(1) >=>> {
-      case '"' => factory.consumeEscape(stream, ctx, 2, '"')
-      case '\\' => factory.consumeEscape(stream, ctx, 2, '\\')
-      case '/' => factory.consumeEscape(stream, ctx, 2, '/')
-      case 'b' => factory.consumeEscape(stream, ctx, 2, '\b')
-      case 'f' => factory.consumeEscape(stream, ctx, 2, '\f')
-      case 'n' => factory.consumeEscape(stream, ctx, 2, '\n')
-      case 'r' => factory.consumeEscape(stream, ctx, 2, '\r')
-      case 't' => factory.consumeEscape(stream, ctx, 2, '\t')
+      case '"' => factory.readEscape(stream, ctx, 2, '"')
+      case '\\' => factory.readEscape(stream, ctx, 2, '\\')
+      case '/' => factory.readEscape(stream, ctx, 2, '/')
+      case 'b' => factory.readEscape(stream, ctx, 2, '\b')
+      case 'f' => factory.readEscape(stream, ctx, 2, '\f')
+      case 'n' => factory.readEscape(stream, ctx, 2, '\n')
+      case 'r' => factory.readEscape(stream, ctx, 2, '\r')
+      case 't' => factory.readEscape(stream, ctx, 2, '\t')
       case 'u' => readUnicodeEscape(stream, factory, ctx)
       case other => factory.invalidEscapeCharacter(stream, ctx)
     }
@@ -135,7 +134,7 @@ object Strings {
         if (c1 | c2 | c3 | c4) < 0 then
           factory.invalidUnicodeEscape(stream, ctx)
         else
-          factory.consumeEscape(stream, ctx, 6, ((c1 << 12) | (c2 << 8) | (c3 << 4) | c4).toChar)
+          factory.readEscape(stream, ctx, 6, ((c1 << 12) | (c2 << 8) | (c3 << 4) | c4).toChar)
     yield res
 
 

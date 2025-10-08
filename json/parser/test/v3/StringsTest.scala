@@ -191,17 +191,17 @@ object StringsTest {
     override def start(stream: JsonStream, count: Int): Operation[Context] =
       stream.skip(1) >-| new Context()
 
-    override def badStringStart(stream: JsonStream): Operation[StringBuilder] =
+    override def invalidStringStart(stream: JsonStream): Operation[StringBuilder] =
       raise(stream, s"Invalid string start")
 
-    override def consumeWhile(
+    override def readWhile(
           stream: JsonStream,
           context: Context,
           predicate: Char => Boolean
         ): Operation[Unit] =
       stream.readWhile(context, predicate)
 
-    override def consumeEscape(
+    override def readEscape(
           stream: JsonStream,
           context: Context,
           count: Int,
@@ -223,7 +223,7 @@ object StringsTest {
     override def finish(stream: JsonStream, context: Context, count: Int): Operation[String] =
       stream.skip(count) >-| context.toString()
 
-    override def unterminatedString(stream: JsonStream, context: Context): Operation[String] =
+    override def invalidStringEnd(stream: JsonStream, context: Context): Operation[String] =
       raise(stream, "Unterminated string")
   }
 }
