@@ -86,6 +86,12 @@ object BufferedJsonReader {
       Monad.pure(location.location())
 
 
+    private[BufferedJsonReader] def atEofImpl(): M[Boolean] = {
+      if streamEof then return Monad.pure(size == 0)
+      fillBuffer() >-| isEof()
+    }
+
+
     /** Fills buffer with the new data. */
     private def fillBuffer(): M[Unit] = {
       /* "Compact" the buffer by moving all the remaining data into the buffer start. */
@@ -169,6 +175,8 @@ object BufferedJsonReader {
         stream.skipWhileImpl(predicate)
       override def readWhile(into: StringBuilder, predicate: Char => Boolean): M[Unit] =
         stream.readWhileImpl(into, predicate)
+      override def atEof(): M[Boolean] =
+        stream.atEofImpl()
     }
   }
 

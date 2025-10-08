@@ -12,6 +12,7 @@ import json.parser.v3.Arrays
 import json.parser.v3.Objects
 import json.parser.v3.Values
 import json.parser.v3.Whitespaces
+import io.github.maxkar.json.parser.v3.Whitespaces.skip
 
 /** A reader of the input stream that has default capabilities. */
 final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
@@ -221,7 +222,16 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
 
 
   /** Reads one value from the stream. */
-  def readValue(stream: S): M[Json[A]] = Values.read(stream, valueFactory)
+  def readValue(stream: S): M[Json[A]] =
+    skipWhitespaces(stream) >=|| Values.read(stream, valueFactory)
+
+
+  def readFully(stream: S): M[Json[A]] =
+    for
+      res <- readValue(stream)
+      _ <- skipWhitespaces(stream)
+      _ <- stream.atEof() >-> { eof => if eof then Monad.pure(()) else factory.eofExpected(stream) }
+    yield res
 
 
   /** Skips whitespaces in the stream. */
@@ -308,5 +318,9 @@ object Reader {
           newKeyAttrs: A,
           stream: S)
         : M[Json[A] => Json.ObjectEntry[A]]
+
+
+    /** Hadles a condition where End-of-file(stream) was expected but more data was present. */
+    def eofExpected(stream: S): M[Unit]
   }
 }

@@ -22,6 +22,11 @@ trait DefaultStream[M[_], -S] {
      * Stops at a first character not matching the predicate.
      */
     def readWhile(into: StringBuilder, predicate: Char => Boolean): M[Unit]
+
+    /**
+     * Checks if the stream is at the end of the file.
+     */
+    def atEof(): M[Boolean]
   }
 }
 

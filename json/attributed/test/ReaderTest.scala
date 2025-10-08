@@ -101,7 +101,7 @@ final class NewReaderTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /** Runs the parser on the given input with with the given chunk size. */
   private def runParser(input: String): Json[Attrs] =
-    parse(input, reader.readValue)._1
+    parse(input, reader.readFully)._1
 }
 
 object NewReaderTest {
@@ -124,6 +124,10 @@ object NewReaderTest {
           stream: JsonStream
         ): Operation[Json[Attrs] => Json.ObjectEntry[Attrs]] =
       throw new JsonException(newKeyAttrs._1.offset, "Duplicate object key " + prevEntry.key)
+
+
+    override def eofExpected(stream: JsonStream): Operation[Unit] =
+      raise(stream, "EOF expected")
   }
 
   val reader = new Reader(Factory)
