@@ -12,155 +12,43 @@ import json.parser.v3.Arrays
 import json.parser.v3.Objects
 import json.parser.v3.Values
 import json.parser.v3.Whitespaces
+import json.parser.v3.ParseError
 import io.github.maxkar.json.parser.v3.Whitespaces.skip
+import io.github.maxkar.json.attr.Json.ObjectEntry
+import scala.collection.mutable
 
 /** A reader of the input stream that has default capabilities. */
 final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
       factory: Reader.Factory[M, S, A]
     ) {
 
+  private given ParseError[M, S] with {
+    extension (stream: S) {
+      override def parseError[T](message: String): M[T] =
+        factory.parseError(stream, message)
+    }
+  }
 
   /** Factory for the literal values. */
-  private val literalFactory =
-    new Literals.Factory[M, S, Unit] {
-      override def read(stream: S, count: Int): M[Unit] =
-        stream.skip(count)
-
-      override def invalidLiteral(stream: S, expected: String): M[Unit] =
-        parseError(stream, s"Invalid ${expected} literal")
-    }
-
+  private val literalFactory = new Literals.Factory.Simple(())
 
   /** Factory for string values. */
-  private val stringFactory =
-    new Strings.Factory[M, S, String] {
-      override type Context = StringBuilder
-
-      override def start(stream: S, count: Int): M[Context] =
-        stream.skip(count) >-| new Context()
-
-      override def invalidStringStart(stream: S): M[Context] =
-        parseError(stream, "Invalid string start")
-
-      override def readWhile(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
-        stream.readWhile(context, predicate)
-
-      override def readEscape(stream: S, context: Context, count: Int, char: Char): M[Unit] = {
-        context += char
-        stream.skip(count)
-      }
-
-      override def invalidEscapeCharacter(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Invalid escape character")
-
-      override def invalidUnicodeEscape(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Invalid unicode escape")
-
-      override def invalidCharacter(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Invalid character")
-
-      override def finish(stream: S, context: Context, count: Int): M[String] =
-        stream.skip(count) >-| context.toString()
-
-      override def invalidStringEnd(stream: S, context: Context): M[String] =
-        parseError(stream, "Invalid string end")
-    }
-
+  private val stringFactory = new Strings.Factory.AsString()
 
   /** Factory for numeric values. */
-  private val numberFactory =
-    new Numbers.Factory[M, S, String] {
-      override type Context = StringBuilder
-
-      override def start(stream: S): M[Context] = Monad.pure(new Context())
-
-      override def readSign(stream: S, context: Context, count: Int, sign: Char): M[Unit] = {
-        context += sign
-        stream.skip(count)
-      }
-
-      override def readIntegerDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
-        stream.readWhile(context, predicate)
-
-      override def missingIntegerDigits(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Missing integer digits")
-
-      override def leadingIntegerZero(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Leading 0 is not allowed")
-
-      override def readDecimalSeparator(stream: S, context: Context, count: Int, separator: Char): M[Unit] = {
-        context += separator
-        stream.skip(count)
-      }
-
-      override def readDecimalDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
-        stream.readWhile(context, predicate)
-
-      override def missingDecimalDigits(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Missing decimal digits")
-
-      override def readExponentIndicator(stream: S, context: Context, count: Int, separator: Char): M[Unit] = {
-        context += separator
-        stream.skip(count)
-      }
-
-      override def readExponentSign(stream: S, context: Context, count: Int, separator: Char): M[Unit] = {
-        context += separator
-        stream.skip(count)
-      }
-
-      override def readExponentDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
-        stream.readWhile(context, predicate)
-
-      override def missingExponentDigits(stream: S, context: Context): M[Unit] =
-        parseError(stream, "Missing exponent digits")
-
-      override def finish(stream: S, context: Context): M[String] = Monad.pure(context.toString())
-    }
-
+  private val numberFactory = new Numbers.Factory.AsString()
 
   /** Factory for arrays. */
-  private val arrayFactory =
-    new Arrays.Factory[M, S, Seq[Json[A]]] {
-      override type Context = scala.collection.mutable.ArrayBuffer[Json[A]]
-
-      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
-        skipWhitespaces(stream)
-
-      override def start(stream: S, count: Int): M[Context] =
-        stream.skip(count) >-| new Context()
-
-      override def invalidArrayStart(stream: S): M[Seq[Json[A]]] =
-        parseError(stream, "Invalid array start")
-
-      override def readValue(stream: S, context: Context): M[Unit] =
-        Reader.this.readValue(stream) >-> context.append
-
-      override def skipValueSeparator(stream: S, context: Context, count: Int): M[Unit] =
-        stream.skip(1)
-
-      override def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[Seq[Json[A]]] =
-        parseError(stream, "Invalid value separator or array end")
-
-      override def finish(stream: S, context: Context, count: Int): M[Seq[Json[A]]] =
-        stream.skip(count) >-| context.toSeq
-    }
-
+  private val arrayFactory = new Arrays.Factory.AsSequence(Reader.this.readValue)
 
   /** Factory for objects. */
   private val objectFactory =
-    new Objects.Factory[M, S, Map[String, Json.ObjectEntry[A]]] {
+    new Objects.Factory.Simple[M, S, Map[String, Json.ObjectEntry[A]]] {
       override type Context = scala.collection.mutable.HashMap[String, Json.ObjectEntry[A]]
       override type Key = (Json[A] => Json.ObjectEntry[A])
 
-      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
-        skipWhitespaces(stream)
-
-      override def start(stream: S, count: Int): M[Context] =
-        stream.skip(count) >-| new Context()
-
-      override def invalidObjectStart(stream: S): M[Map[String, Json.ObjectEntry[A]]] =
-        parseError(stream, "Invalid object start")
+      override def createContext(): Context = new Context()
+      override def createValue(context: Context): Map[String, ObjectEntry[A]] = context.toMap
 
       override def readKey(stream: S, context: Context): M[Key] =
         readWithAttr(stream, Strings.read(stream, stringFactory)) >=>> { (attr, key) =>
@@ -170,26 +58,11 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
           }
         }
 
-      override def skipKeyValueSeparator(stream: S, context: Context, key: Key, count: Int): M[Unit] =
-        stream.skip(count)
-
-      override def invalidKeyValueSeparator(stream: S, context: Context, key: Key): M[Unit] =
-        parseError(stream, "Invalid key-value separator")
-
       override def readValue(stream: S, context: Context, key: Key): M[Unit] =
         Reader.this.readValue(stream) >-> { value =>
           val entry = key(value)
           context.put(entry.key, entry)
         }
-
-      override def skipEntrySeparator(stream: S, context: Context, count: Int): M[Unit] =
-        stream.skip(count)
-
-      override def finish(stream: S, context: Context, count: Int): M[Map[String, Json.ObjectEntry[A]]] =
-        stream.skip(count) >-| context.toMap
-
-      override def invalidEntrySeparatorOrObjectEnd(stream: S, context: Context): M[Map[String, Json.ObjectEntry[A]]] =
-        parseError(stream, "Invalid entry separator or object end")
     }
 
   /** Factory for values. */
