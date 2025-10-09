@@ -109,7 +109,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
 
   private def checkSimpleSuccess(expected: String, input: String): Unit =
     withClue(input) {
-      val (result, offset) = parse(input, Numbers.read(_, factory))
+      val (result, offset) = parse(input, Numbers.read(factory))
       assert(expected === result)
     }
 
@@ -120,7 +120,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
       (data, offset) <- inputs
     } {
       withClue(data) {
-        val exn = failParse(data, Numbers.read(_, factory))
+        val exn = failParse(data, Numbers.read(factory))
         assert(offset === exn.offset)
         assert(error === exn.message)
       }

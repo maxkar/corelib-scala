@@ -25,7 +25,7 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite {
       inputString = inputBase + rpad
     do
       withClue(inputString) {
-        assert(expected === parse(inputString, Arrays.read(_, factory))._1)
+        assert(expected === parse(inputString, Arrays.read(factory))._1)
       }
   }
 
@@ -44,7 +44,7 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite {
       (inputString, offset, message) <- data
     do
       withClue(inputString) {
-        val actualExn = failParse(inputString, Arrays.read(_, factory))
+        val actualExn = failParse(inputString, Arrays.read(factory))
         assert(offset === actualExn.offset)
         assert(message === actualExn.message)
       }
@@ -53,6 +53,6 @@ final class ArraysTest extends org.scalatest.funsuite.AnyFunSuite {
 
 object ArraysTest {
   val factory = new Arrays.Factory.AsSequence[Operation, JsonStream, String](
-    Numbers.read(_, NumbersTest.factory)
+    Numbers.read(NumbersTest.factory)
   )
 }

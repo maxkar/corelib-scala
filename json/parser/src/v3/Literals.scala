@@ -54,7 +54,7 @@ object Literals {
    * Consumes the "true" literal from the stream and returns the value
    * created by the factory.
    */
-  def readNull[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
+  def readNull[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
     for
       c1 <- stream.peek(0)
       c2 <- stream.peek(1)
@@ -72,7 +72,7 @@ object Literals {
    * Consumes the "true" literal from the stream and returns the value
    * created by the factory.
    */
-  def readTrue[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
+  def readTrue[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
     for
       c1 <- stream.peek(0)
       c2 <- stream.peek(1)
@@ -90,7 +90,7 @@ object Literals {
    * Consumes the "false" literal from the stream and returns the value
    * created by the factory.
    */
-  def readFalse[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
+  def readFalse[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
     for
       c1 <- stream.peek(0)
       c2 <- stream.peek(1)

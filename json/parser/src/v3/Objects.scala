@@ -137,7 +137,7 @@ object Objects {
 
 
   /** Reads the object and creates its representation by using the provided factory. */
-  def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
+  def read[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
     stream.peek(0) >=>> { chr =>
       if chr != '{' then
         factory.invalidObjectStart(stream)

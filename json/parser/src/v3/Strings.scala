@@ -128,7 +128,7 @@ object Strings {
 
 
   /** Reads string from the stream. */
-  def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
+  def read[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
     stream.peek(0) >=>> { c =>
       if c == '"' then factory.start(stream, 1) else factory.invalidStringStart(stream)
     } >=>> readBody(stream, factory)

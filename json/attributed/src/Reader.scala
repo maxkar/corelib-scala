@@ -13,9 +13,7 @@ import json.parser.v3.Objects
 import json.parser.v3.Values
 import json.parser.v3.Whitespaces
 import json.parser.v3.ParseError
-import io.github.maxkar.json.parser.v3.Whitespaces.skip
 import io.github.maxkar.json.attr.Json.ObjectEntry
-import scala.collection.mutable
 
 /** A reader of the input stream that has default capabilities. */
 final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
@@ -31,15 +29,21 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
 
   /** Factory for the literal values. */
   private val literalFactory = new Literals.Factory.Simple(())
+  private val readTrueFn = Literals.readTrue(literalFactory)
+  private val readFalseFn = Literals.readFalse(literalFactory)
+  private val readNullFn = Literals.readNull(literalFactory)
 
   /** Factory for string values. */
   private val stringFactory = new Strings.Factory.AsString()
+  private val readStringFn = Strings.read(stringFactory)
 
   /** Factory for numeric values. */
   private val numberFactory = new Numbers.Factory.AsString()
+  private val readNumberFn = Numbers.read(numberFactory)
 
   /** Factory for arrays. */
   private val arrayFactory = new Arrays.Factory.AsSequence(Reader.this.readValue)
+  private val readArrayFn = Arrays.read(arrayFactory)
 
   /** Factory for objects. */
   private val objectFactory =
@@ -51,7 +55,7 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
       override def createValue(context: Context): Map[String, ObjectEntry[A]] = context.toMap
 
       override def readKey(stream: S, context: Context): M[Key] =
-        readWithAttr(stream, Strings.read(stream, stringFactory)) >=>> { (attr, key) =>
+        readWithAttr(stream, Strings.read(stringFactory)(stream)) >=>> { (attr, key) =>
           context.get(key) match {
             case Some(prev) => factory.duplicateObjectKey(prev, attr, stream)
             case None => Monad.pure(Json.ObjectEntry(key, attr, _))
@@ -64,30 +68,31 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
           context.put(entry.key, entry)
         }
     }
+  private val readObjectFn = Objects.read(objectFactory)
 
   /** Factory for values. */
   private val valueFactory =
     new Values.Factory[S, M[Json[A]]] {
       override def readTrue(stream: S): M[Json[A]] =
-        readJsonValue(stream, Literals.readTrue(stream, literalFactory), (_, attr) => Json.True(attr))
+        readJsonValue(stream, readTrueFn, (_, attr) => Json.True(attr))
 
       override def readFalse(stream: S): M[Json[A]] =
-        readJsonValue(stream, Literals.readFalse(stream, literalFactory), (_, attr) => Json.False(attr))
+        readJsonValue(stream, readFalseFn, (_, attr) => Json.False(attr))
 
       override def readNull(stream: S): M[Json[A]] =
-        readJsonValue(stream, Literals.readNull(stream, literalFactory), (_, attr) => Json.Null(attr))
+        readJsonValue(stream, readNullFn, (_, attr) => Json.Null(attr))
 
       override def readString(stream: S): M[Json[A]] =
-        readJsonValue(stream, Strings.read(stream, stringFactory), Json.String.apply)
+        readJsonValue(stream, readStringFn, Json.String.apply)
 
       override def readNumber(stream: S): M[Json[A]] =
-        readJsonValue(stream, Numbers.read(stream, numberFactory), Json.Number.apply)
+        readJsonValue(stream, readNumberFn, Json.Number.apply)
 
       override def readArray(stream: S): M[Json[A]] =
-        readJsonValue(stream, Arrays.read(stream, arrayFactory), Json.Array.apply)
+        readJsonValue(stream, readArrayFn, Json.Array.apply)
 
       override def readObject(stream: S): M[Json[A]] =
-        readJsonValue(stream, Objects.read(stream, objectFactory), Json.Object.apply)
+        readJsonValue(stream, readObjectFn, Json.Object.apply)
 
       override def invalidValue(stream: S): M[Json[A]] =
         parseError(stream, "Invalid JSON value")
@@ -96,7 +101,7 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
 
   /** Reads one value from the stream. */
   def readValue(stream: S): M[Json[A]] =
-    skipWhitespaces(stream) >=|| Values.read(stream, valueFactory)
+    skipWhitespaces(stream) >=|| Values.read(valueFactory)(stream)
 
 
   def readFully(stream: S): M[Json[A]] =
@@ -128,10 +133,10 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
 
 
   /** Reads value with its attribute and constructs JSON. */
-  private def readJsonValue[T](stream: S, block: => M[T], cb: (T, A) => Json[A]): M[Json[A]] =
+  private def readJsonValue[T](stream: S, body: S => M[T], cb: (T, A) => Json[A]): M[Json[A]] =
     for
       ctx <- factory.start(stream)
-      value <- block
+      value <- body(stream)
       attr <- factory.finish(ctx, stream)
     yield
       cb(value, attr)

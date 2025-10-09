@@ -171,7 +171,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
 
   private def checkSimpleSuccess(expected: String, input: String): Unit =
     withClue(input) {
-      val (result, offset) = parse(input, Strings.read(_, factory))
+      val (result, offset) = parse(input, Strings.read(factory))
       assert(expected === result)
       assert(input.length() === offset)
     }
@@ -180,7 +180,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Checks that error is raised. */
   private def checkError(data: String, offset: Int, message: String) =
     withClue(data) {
-      val exn = failParse(data, Strings.read(_, factory))
+      val exn = failParse(data, Strings.read(factory))
       assert(offset === exn.offset)
       assert(message === exn.message)
     }

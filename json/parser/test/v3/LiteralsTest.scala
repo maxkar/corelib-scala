@@ -28,33 +28,33 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("Invalid literals") {
-    testFailure("tru", "Invalid true literal", Literals.readTrue(_, factory))
-    testFailure("fal", "Invalid false literal", Literals.readFalse(_, factory))
-    testFailure("nul", "Invalid null literal", Literals.readNull(_, factory))
+    testFailure("tru", "Invalid true literal", Literals.readTrue)
+    testFailure("fal", "Invalid false literal", Literals.readFalse)
+    testFailure("nul", "Invalid null literal", Literals.readNull)
 
-    testFailure("trux", "Invalid true literal", Literals.readTrue(_, factory))
-    testFailure("falx", "Invalid false literal", Literals.readFalse(_, factory))
-    testFailure("nulx", "Invalid null literal", Literals.readNull(_, factory))
+    testFailure("trux", "Invalid true literal", Literals.readTrue)
+    testFailure("falx", "Invalid false literal", Literals.readFalse)
+    testFailure("nulx", "Invalid null literal", Literals.readNull)
   }
 
 
   private def testSuccess(
         input: String,
         length: Int,
-        reader: (JsonStream, factory.type) => Operation[Unit]
+        reader: factory.type => JsonStream => Operation[Unit]
       ): Unit =
     withClue(input) {
-      assert(length === parse(input, reader(_, factory))._2)
+      assert(length === parse(input, reader(factory))._2)
     }
 
 
   private def testFailure(
         input: String,
         message: String,
-        reader: JsonStream => Operation[Unit]
+        reader: factory.type => JsonStream => Operation[Unit]
       ): Unit =
     withClue(input) {
-      val exn = failParse(input, reader)
+      val exn = failParse(input, reader(factory))
       assert(0 === exn.offset)
       assert(message === exn.message)
     }

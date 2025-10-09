@@ -127,7 +127,7 @@ object Numbers {
 
 
   /** Reads a number from the stream. */
-  def read[M[_]: Monad, S: Peek.In[M], J](stream: S, factory: Factory[M, S, J]): M[J] =
+  def read[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
     for
       ctx <- factory.start(stream)
       _ <- readSign(stream, factory, ctx)

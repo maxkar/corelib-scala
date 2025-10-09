@@ -23,13 +23,13 @@ final class ValuesTest extends org.scalatest.funsuite.AnyFunSuite {
       (inputString, expected) <- data
     do
       withClue(inputString) {
-        assert(expected === parse(inputString, Values.read(_, Factory))._1)
+        assert(expected === parse(inputString, Values.read(Factory))._1)
       }
   }
 
 
   test("Some basic errors tests") {
-    val exn = failParse("xref", Values.read(_, Factory))
+    val exn = failParse("xref", Values.read(Factory))
     assert(0 === exn.offset)
   }
 }
