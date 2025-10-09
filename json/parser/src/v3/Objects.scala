@@ -1,6 +1,8 @@
 package io.github.maxkar
 package json.parser.v3
 
+import fun.typeclass.Functor
+import fun.typeclass.Applicative
 import fun.typeclass.Monad
 
 /** Object parsers. */
@@ -9,7 +11,7 @@ object Objects {
    * Factory that creates a 'J' representation of a JSON object
    * from the stream `S`.
    */
-  trait Factory[M[_], S, J] {
+  trait Factory[M[_], -S, J] {
     /** Context of an object being built. */
     type Context
     /** Type of the key. */
@@ -57,6 +59,80 @@ object Objects {
      * but neither was found.
      */
     def invalidEntrySeparatorOrObjectEnd(stream: S, context: Context): M[J]
+  }
+
+
+  object Factory {
+    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J]{
+      /** Creates a context. */
+      def createContext(): Context
+
+      /** Converts context to json value. */
+      def createValue(context: Context): J
+
+
+      /**
+       * Conusmes whitespaces that are not captured and do not affect reading
+       * object values.
+       */
+      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
+        Whitespaces.skip(stream)
+
+      override final def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| createContext()
+
+      /** Handles a situation where object start was expected but was not found. */
+      override final def invalidObjectStart(stream: S): M[J] =
+        stream.parseError("Invalid object start")
+
+      /** Consumes key-value separator from the stream. */
+      override final def skipKeyValueSeparator(stream: S, context: Context, key: Key, count: Int): M[Unit] =
+        stream.skip(count)
+
+      override final def invalidKeyValueSeparator(stream: S, context: Context, key: Key): M[Unit] =
+        stream.parseError("Invalid key-value separator")
+
+      override final def skipEntrySeparator(stream: S, context: Context, count: Int): M[Unit] =
+        stream.skip(count)
+
+      override final def finish(stream: S, context: Context, count: Int): M[J] =
+        stream.skip(count) >-| createValue(context)
+
+      override final def invalidEntrySeparatorOrObjectEnd(stream: S, context: Context): M[J] =
+        stream.parseError("Invalid entry separator or object end")
+    }
+
+
+    open class AsMap[M[_]: Monad, -S: DefaultStream.In[M]: ParseError.In[M], K, V](
+          readKey: S => M[K],
+          readValue: S => M[V],
+        ) extends Simple[M, S, Map[K, V]] {
+
+      override type Key = K
+      override type Context = scala.collection.mutable.HashMap[K, V]
+
+      /** Merges two values of the same key on the same object together. */
+      def merge(key: K, v1: V, v2: V): M[V] =
+        Applicative.pure(v1)
+
+      override def createContext(): Context =
+        new Context()
+
+      override def createValue(context: Context): Map[K, V] =
+        context.toMap
+
+      override def readKey(stream: S, context: Context): M[Key] =
+        readKey(stream)
+
+      override def readValue(stream: S, context: Context, key: Key): M[Unit] =
+        context.get(key) match {
+          case None => readValue(stream) >-> {(v: V) => context.put(key, v)}
+          case Some(oldValue) =>
+            readValue(stream) >=>>
+              {(v: V) => merge(key, oldValue, v)} >->
+              {(v: V) => context.put(key, v) }
+        }
+    }
   }
 
 

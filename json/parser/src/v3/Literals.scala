@@ -1,6 +1,7 @@
 package io.github.maxkar
 package json.parser.v3
 
+import fun.typeclass.Functor
 import fun.typeclass.Monad
 
 object Literals {
@@ -32,6 +33,20 @@ object Literals {
      * @return JSON representation of the invalid literal.
      */
     def invalidLiteral(stream: S, expected: String): M[J]
+  }
+
+
+  object Factory {
+    /** Simple factory that consumes literal and returns the specified value for default stream. */
+    final class Simple[M[_]: Functor, S: DefaultStream.In[M]: ParseError.In[M], J](
+          value: J
+        ) extends Factory[M, S, J] {
+      override def read(stream: S, count: Int): M[J] =
+        stream.skip(count) >-| value
+
+      override def invalidLiteral(stream: S, expected: String): M[J] =
+        stream.parseError(s"Invalid ${expected} literal")
+    }
   }
 
 

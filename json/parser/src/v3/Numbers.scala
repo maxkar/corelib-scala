@@ -2,6 +2,7 @@ package io.github.maxkar
 package json.parser.v3
 
 import fun.typeclass.Monad
+import fun.typeclass.Applicative
 
 /** Number parsers. */
 object Numbers {
@@ -9,7 +10,7 @@ object Numbers {
    * Factory that creates a JSON representation `J` of a number
    * from the stream `S`.
    */
-  trait Factory[M[_], S, J] {
+  trait Factory[M[_], -S, J] {
     /** Context of the operation. */
     type Context
 
@@ -51,6 +52,77 @@ object Numbers {
 
     /** Finishes processing and constructs a number representation. */
     def finish(stream: S, context: Context): M[J]
+  }
+
+
+  object Factory {
+    abstract class Simple[M[_]: Applicative, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J] {
+      /** Creates a context. */
+      def createContext(): Context
+
+      /** Converts context to json value. */
+      def createValue(context: Context): J
+
+      /** Appends a simple character to the context. */
+      def append(context: Context, chr: Char): Unit
+
+      /** Appends a simple character to the context. */
+      def appendWhile(context: Context, stream: S, predicate: Char => Boolean): M[Unit]
+
+      override final def start(stream: S): M[Context] = Monad.pure(createContext())
+
+      override final def readSign(stream: S, context: Context, count: Int, sign: Char): M[Unit] =
+        stream.skip(1) >-| append(context, sign)
+
+      override final def readIntegerDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        appendWhile(context, stream, predicate)
+
+      override final def missingIntegerDigits(stream: S, context: Context): M[Unit] =
+        stream.parseError("Missing integer digits")
+
+      override final def leadingIntegerZero(stream: S, context: Context): M[Unit] =
+        stream.parseError("Leading zero is not allowed")
+
+      override final def readDecimalSeparator(stream: S, context: Context, count: Int, separator: Char): M[Unit] =
+        stream.skip(1) >-| append(context, separator)
+
+      override final def readDecimalDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        appendWhile(context, stream, predicate)
+
+      /** Handles a situation with missing decimal digits. */
+      override final def missingDecimalDigits(stream: S, context: Context): M[Unit] =
+        stream.parseError("Missing decimal digits")
+
+      override final def readExponentIndicator(stream: S, context: Context, count: Int, separator: Char): M[Unit] =
+        stream.skip(1) >-| append(context, separator)
+
+      override final def readExponentSign(stream: S, context: Context, count: Int, separator: Char): M[Unit] =
+        stream.skip(1) >-| append(context, separator)
+
+      override final def readExponentDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        appendWhile(context, stream, predicate)
+
+      override final def missingExponentDigits(stream: S, context: Context): M[Unit] =
+        stream.parseError("Missing exponent digits")
+
+      override final def finish(stream: S, context: Context): M[J] =
+        Monad.pure(createValue(context))
+    }
+
+
+    /** Reader of a number as a simple string. */
+    final class AsString[M[_]: Applicative, -S: DefaultStream.In[M]: ParseError.In[M]] extends Simple[M, S, String] {
+      override type Context = StringBuilder
+
+      override def createContext(): Context =
+        new Context()
+      override def append(context: Context, chr: Char): Unit =
+        context += chr
+      override def appendWhile(context: Context, stream: S, predicate: Char => Boolean): M[Unit] =
+        stream.readWhile(context, predicate)
+      override def createValue(context: StringBuilder): String =
+        context.toString()
+    }
   }
 
 

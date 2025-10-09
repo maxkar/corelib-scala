@@ -1,8 +1,8 @@
 package io.github.maxkar
 package json.parser.v3
 
-import fun.typeclass.Monad
 import TestIO.*
+import TestIO.given
 
 final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
   import NumbersTest.*
@@ -94,7 +94,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("Leading 0") {
-    testFailure(leadingInt0, "Leading integer zero")
+    testFailure(leadingInt0, "Leading zero is not allowed")
   }
 
 
@@ -109,7 +109,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
 
   private def checkSimpleSuccess(expected: String, input: String): Unit =
     withClue(input) {
-      val (result, offset) = parse(input, Numbers.read(_, Factory))
+      val (result, offset) = parse(input, Numbers.read(_, factory))
       assert(expected === result)
     }
 
@@ -120,7 +120,7 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
       (data, offset) <- inputs
     } {
       withClue(data) {
-        val exn = failParse(data, Numbers.read(_, Factory))
+        val exn = failParse(data, Numbers.read(_, factory))
         assert(offset === exn.offset)
         assert(error === exn.message)
       }
@@ -130,85 +130,5 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
 object NumbersTest {
-  object Factory extends Numbers.Factory[Operation, JsonStream, String] {
-    type Context = StringBuilder
-
-    override def start(stream: JsonStream): Operation[Context] = Monad.pure(new StringBuilder())
-
-    override def readSign(
-          stream: JsonStream,
-          context: Context,
-          count: Int,
-          sign: Char
-        ): Operation[Unit] = {
-      context.append(sign)
-      stream.skip(count)
-    }
-
-    override def readIntegerDigits(
-          stream: JsonStream,
-          context: Context,
-          predicate: Char => Boolean
-        ): Operation[Unit] =
-      stream.readWhile(context, predicate)
-
-    override def missingIntegerDigits(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Missing integer digits")
-
-    override def leadingIntegerZero(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Leading integer zero")
-
-    override def readDecimalSeparator(
-          stream: JsonStream,
-          context: Context,
-          count: Int,
-          sign: Char
-        ): Operation[Unit] = {
-      context.append(sign)
-      stream.skip(count)
-    }
-
-    override def readDecimalDigits(
-          stream: JsonStream,
-          context: Context,
-          predicate: Char => Boolean
-        ): Operation[Unit] =
-      stream.readWhile(context, predicate)
-
-    override def missingDecimalDigits(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Missing decimal digits")
-
-    override def readExponentIndicator(
-          stream: JsonStream,
-          context: Context,
-          count: Int,
-          sign: Char
-        ): Operation[Unit] = {
-      context.append(sign)
-      stream.skip(count)
-    }
-
-    override def readExponentSign(
-          stream: JsonStream,
-          context: Context,
-          count: Int,
-          sign: Char
-        ): Operation[Unit] = {
-      context.append(sign)
-      stream.skip(count)
-    }
-
-    override def readExponentDigits(
-          stream: JsonStream,
-          context: Context,
-          predicate: Char => Boolean
-        ): Operation[Unit] =
-      stream.readWhile(context, predicate)
-
-    override def missingExponentDigits(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Missing exponent digits")
-
-    override def finish(stream: JsonStream, context: Context): Operation[String] =
-      Monad.pure(context.toString())
-  }
+  val factory = new Numbers.Factory.AsString[Operation, JsonStream]
 }

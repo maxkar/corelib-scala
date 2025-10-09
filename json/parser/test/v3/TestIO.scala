@@ -55,4 +55,11 @@ object TestIO {
         Monad.pure(stream.read(into, offset, length))
     }
   }
+
+  given ParseError[Operation, JsonStream] with {
+    extension (stream: JsonStream) {
+      override def parseError[T](message: String): Unnest[T] =
+        raise(stream, message)
+    }
+  }
 }

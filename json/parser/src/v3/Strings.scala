@@ -1,6 +1,7 @@
 package io.github.maxkar
 package json.parser.v3
 
+import fun.typeclass.Functor
 import fun.typeclass.Monad
 
 /** String parsers. */
@@ -9,7 +10,7 @@ object Strings {
    * Factory that creates a JSON representation `J` of a string
    * from the stream `S`.
    */
-  trait Factory[M[_], S, J] {
+  trait Factory[M[_], -S, J] {
     /** Context that is used to capture string contents. */
     type Context
 
@@ -35,8 +36,6 @@ object Strings {
 
     /**
      * Consumes one escaped character from the stream and adds it to
-     * the string.
-     * @param stream stream pointing at the escape character.
      * @param context context of string parsing.
      * @param count number of characters that comprise the escape character.
      * @param char unescaped character.
@@ -71,6 +70,60 @@ object Strings {
 
     /** Indicates that the string was not terminated properly but end of stream was reached. */
     def invalidStringEnd(stream: S, context: Context): M[J]
+  }
+
+
+  object Factory {
+    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J] {
+      /** Creates a context. */
+      def createContext(): Context
+
+      /** Converts context to json value. */
+      def createValue(context: Context): J
+
+      /** Appends a simple character to the context. */
+      def append(context: Context, chr: Char): Unit
+
+
+      override def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| createContext()
+
+      override final def invalidStringStart(stream: S): M[Context] =
+        stream.parseError("Invalid string start")
+
+      override final def readEscape(stream: S, context: Context, count: Int, char: Char): M[Unit] =
+        stream.skip(count) >-| append(context, char)
+
+      override final def invalidEscapeCharacter(stream: S, context: Context): M[Unit] =
+        stream.parseError("Invalid escape character")
+
+      override final def invalidUnicodeEscape(stream: S, context: Context): M[Unit] =
+        stream.parseError("Invalid unicode escape")
+
+      override final def invalidCharacter(stream: S, context: Context): M[Unit] =
+        stream.parseError("Invalid character")
+
+      override final def finish(stream: S, context: Context, count: Int): M[J] =
+        stream.skip(count) >-| createValue(context)
+
+      override final def invalidStringEnd(stream: S, context: Context): M[J] =
+        stream.parseError("Invalid string end")
+    }
+
+
+    /** Reader of the string context as a simple string. */
+    final class AsString[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M]] extends Simple[M, S, String] {
+      override type Context = StringBuilder
+
+      override def createContext(): Context =
+        new Context()
+      override def append(context: Context, chr: Char): Unit =
+        context += chr
+      override def readWhile(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
+        stream.readWhile(context, predicate)
+      override def createValue(context: StringBuilder): String =
+        context.toString()
+    }
   }
 
 

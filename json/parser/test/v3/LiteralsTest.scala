@@ -1,18 +1,12 @@
 package io.github.maxkar
 package json.parser.v3
 
-import fun.instances.Unnest
 import TestIO.*
+import TestIO.given
 
 final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
-  private object Factory extends Literals.Factory[Operation, JsonStream, Unit] {
-    override def read(stream: JsonStream, count: Int): Operation[Unit] =
-      stream.skip(count)
 
-    override def invalidLiteral(stream: JsonStream, expected: String): Operation[Unit] =
-      raise(stream, s"Bad literal ${expected}")
-  }
-
+  private val factory = new Literals.Factory.Simple(())
 
   test("Literals are read successfully") {
     testSuccess("true", 4, Literals.readTrue)
@@ -34,33 +28,33 @@ final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
 
 
   test("Invalid literals") {
-    testFailure("tru", "Bad literal true", Literals.readTrue)
-    testFailure("fal", "Bad literal false", Literals.readFalse)
-    testFailure("nul", "Bad literal null", Literals.readNull)
+    testFailure("tru", "Invalid true literal", Literals.readTrue(_, factory))
+    testFailure("fal", "Invalid false literal", Literals.readFalse(_, factory))
+    testFailure("nul", "Invalid null literal", Literals.readNull(_, factory))
 
-    testFailure("trux", "Bad literal true", Literals.readTrue)
-    testFailure("falx", "Bad literal false", Literals.readFalse)
-    testFailure("nulx", "Bad literal null", Literals.readNull)
+    testFailure("trux", "Invalid true literal", Literals.readTrue(_, factory))
+    testFailure("falx", "Invalid false literal", Literals.readFalse(_, factory))
+    testFailure("nulx", "Invalid null literal", Literals.readNull(_, factory))
   }
 
 
   private def testSuccess(
         input: String,
         length: Int,
-        reader: (JsonStream, Factory.type) => Operation[Unit]
+        reader: (JsonStream, factory.type) => Operation[Unit]
       ): Unit =
     withClue(input) {
-      assert(length === parse(input, reader(_, Factory))._2)
+      assert(length === parse(input, reader(_, factory))._2)
     }
 
 
   private def testFailure(
         input: String,
         message: String,
-        reader: (JsonStream, Factory.type) => Operation[Unit]
+        reader: JsonStream => Operation[Unit]
       ): Unit =
     withClue(input) {
-      val exn = failParse(input, reader(_, Factory))
+      val exn = failParse(input, reader)
       assert(0 === exn.offset)
       assert(message === exn.message)
     }

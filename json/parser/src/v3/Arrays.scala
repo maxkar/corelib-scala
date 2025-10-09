@@ -1,6 +1,7 @@
 package io.github.maxkar
 package json.parser.v3
 
+import fun.typeclass.Functor
 import fun.typeclass.Monad
 
 object Arrays {
@@ -45,6 +46,58 @@ object Arrays {
      * but neither was found.
      */
     def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[J]
+  }
+
+
+  object Factory {
+    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J] {
+      /** Creates a context. */
+      def createContext(): Context
+
+      /** Converts context to json value. */
+      def createValue(context: Context): J
+
+      override def skipIgnorableWhitespaces(stream: S): M[Unit] = Whitespaces.skip(stream)
+
+      /**
+       * Starts the array by consuming the array start character
+       * and creating the ("empty") context.
+       *
+       * @param stream stream being parsed.
+       * @param count number of characters in the array start. This number
+       *   of characters should be consumed.
+       */
+      override final def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| createContext()
+
+      /** Handles a situation where array start was expected but was not found. */
+      override final def invalidArrayStart(stream: S): M[J] =
+        stream.parseError("Invalid array start")
+
+      /** Consumes value separator. */
+      override final def skipValueSeparator(stream: S, context: Context, count: Int): M[Unit] =
+        stream.skip(count)
+
+      override final def finish(stream: S, context: Context, count: Int): M[J] =
+        stream.skip(count) >-| createValue(context)
+
+      override final def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[J] =
+        stream.parseError("Invalid value separator or array end")
+    }
+
+
+    /** Reader that builds a sequence of elements. */
+    final class AsSequence[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J](readValue: S => M[J])
+          extends Simple[M, S, Seq[J]] {
+      override type Context = scala.collection.mutable.ArrayBuffer[J]
+
+      override def createContext(): Context =
+        new Context()
+      override def createValue(context: Context): Seq[J] =
+        context.toSeq
+      override def readValue(stream: S, context: Context): M[Unit] =
+        readValue(stream) >-> (context.append)
+    }
   }
 
 

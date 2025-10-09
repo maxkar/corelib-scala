@@ -2,7 +2,7 @@ package io.github.maxkar
 package json.parser.v3
 
 import TestIO.*
-
+import TestIO.given
 
 final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
   import ObjectsTest.*
@@ -25,7 +25,7 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
       inputString = inputBase + rpad
     do
       withClue(inputString) {
-        assert(expected === parse(inputString, Objects.read(_, Factory))._1)
+        assert(expected === parse(inputString, Objects.read(_, factory))._1)
       }
   }
 
@@ -44,7 +44,7 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
       (inputString, offset, message) <- data
     do
       withClue(inputString) {
-        val actualExn = failParse(inputString, Objects.read(_, Factory))
+        val actualExn = failParse(inputString, Objects.read(_, factory))
         assert(offset === actualExn.offset)
         assert(message === actualExn.message)
       }
@@ -52,66 +52,8 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
 }
 
 object ObjectsTest {
-  object Factory extends Objects.Factory[Operation, JsonStream, Map[String, String]] {
-    override type Context = scala.collection.mutable.HashMap[String, String]
-    override type Key = String
-
-    override def skipIgnorableWhitespaces(stream: JsonStream): Operation[Unit] =
-      Whitespaces.skip(stream)
-
-    override def start(stream: JsonStream, count: Int): Operation[Context] =
-      stream.skip(count) >-| new Context()
-
-    override def invalidObjectStart(stream: JsonStream): Operation[Map[String, String]] =
-      raise(stream, "Invalid object start")
-
-    override def readKey(stream: JsonStream, context: Context): Operation[Key] =
-      Strings.read(stream, StringsTest.Factory)
-
-    override def skipKeyValueSeparator(
-          stream: JsonStream,
-          context: Context,
-          key: String,
-          count: Int
-        ): Operation[Unit] =
-      stream.skip(1)
-
-    override def invalidKeyValueSeparator(
-          stream: JsonStream,
-          context: Context,
-          key: String
-        ): Operation[Unit] =
-      raise(stream, "Invalid key-value separator")
-
-    override def readValue(
-          stream: JsonStream,
-          context: Context,
-          key: Key
-        ): Operation[Unit] =
-      Numbers.read(stream, NumbersTest.Factory) >-> { value =>
-        context += (key -> value)
-      }
-
-    override def skipEntrySeparator(
-          stream: JsonStream,
-          context: Context,
-          count: Int
-        ): Operation[Unit] =
-      stream.skip(count)
-
-
-    override def finish(
-          stream: JsonStream,
-          context: Context,
-          count: Int
-        ): Operation[Map[String, String]] =
-      stream.skip(count) >-| context.toMap
-
-
-    override def invalidEntrySeparatorOrObjectEnd(
-          stream: JsonStream,
-          context: Context
-        ): Operation[Map[String, String]] =
-      raise(stream, "Invalid entry separator or object end")
-  }
+  val factory = new Objects.Factory.AsMap[Operation, JsonStream, String, String](
+    Strings.read(_, StringsTest.factory),
+    Numbers.read(_, NumbersTest.factory)
+  )
 }

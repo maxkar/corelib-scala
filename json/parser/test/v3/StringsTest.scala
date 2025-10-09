@@ -2,6 +2,8 @@ package io.github.maxkar
 package json.parser.v3
 
 import TestIO.*
+import TestIO.given
+
 
 final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
   import StringsTest.*
@@ -76,7 +78,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
       suffix <- Seq.tabulate(8) { c => "Y" * c }
     do {
       val base = prefix + input + suffix
-      checkError("\"" + base, base.length() + 1, "Unterminated string")
+      checkError("\"" + base, base.length() + 1, "Invalid string end")
     }
   }
 
@@ -97,7 +99,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
     do {
       val base = prefix + input + suffix
       /* Error position is prefix and opening quote. */
-      checkError("\"" + base + "\"", prefix.length() + 1, "Illegal character")
+      checkError("\"" + base + "\"", prefix.length() + 1, "Invalid character")
     }
   }
 
@@ -169,7 +171,7 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
 
   private def checkSimpleSuccess(expected: String, input: String): Unit =
     withClue(input) {
-      val (result, offset) = parse(input, Strings.read(_, Factory))
+      val (result, offset) = parse(input, Strings.read(_, factory))
       assert(expected === result)
       assert(input.length() === offset)
     }
@@ -178,52 +180,12 @@ final class StringsTest extends org.scalatest.funsuite.AnyFunSuite {
   /** Checks that error is raised. */
   private def checkError(data: String, offset: Int, message: String) =
     withClue(data) {
-      val exn = failParse(data, Strings.read(_, Factory))
+      val exn = failParse(data, Strings.read(_, factory))
       assert(offset === exn.offset)
       assert(message === exn.message)
     }
 }
 
 object StringsTest {
-  object Factory extends Strings.Factory[Operation, JsonStream, String] {
-    override type Context = StringBuilder
-
-    override def start(stream: JsonStream, count: Int): Operation[Context] =
-      stream.skip(1) >-| new Context()
-
-    override def invalidStringStart(stream: JsonStream): Operation[StringBuilder] =
-      raise(stream, s"Invalid string start")
-
-    override def readWhile(
-          stream: JsonStream,
-          context: Context,
-          predicate: Char => Boolean
-        ): Operation[Unit] =
-      stream.readWhile(context, predicate)
-
-    override def readEscape(
-          stream: JsonStream,
-          context: Context,
-          count: Int,
-          char: Char
-        ): Operation[Unit] = {
-      context.append(char)
-      stream.skip(count)
-    }
-
-    override def invalidEscapeCharacter(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Invalid escape character")
-
-    override def invalidUnicodeEscape(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Invalid unicode escape")
-
-    override def invalidCharacter(stream: JsonStream, context: Context): Operation[Unit] =
-      raise(stream, "Illegal character")
-
-    override def finish(stream: JsonStream, context: Context, count: Int): Operation[String] =
-      stream.skip(count) >-| context.toString()
-
-    override def invalidStringEnd(stream: JsonStream, context: Context): Operation[String] =
-      raise(stream, "Unterminated string")
-  }
+  val factory = new Strings.Factory.AsString[Operation, JsonStream]
 }
