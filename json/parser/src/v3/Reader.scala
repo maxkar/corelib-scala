@@ -1,6 +1,8 @@
 package io.github.maxkar
 package json.parser.v3
 
+import fun.typeclass.Monad
+
 /** Reader typeclass for the stream of type `S`. */
 trait Reader[M[_], -S] {
   extension (stream: S) {
@@ -18,4 +20,11 @@ trait Reader[M[_], -S] {
 object Reader {
   type In[M[_]] = [T] =>> Reader[M, T]
   type Of[T] = [M[_]] =>> Reader[M, T]
+
+  given javaIoReaderReader[M[_]: Monad]: Reader[M, java.io.Reader] with {
+    extension (stream: java.io.Reader) {
+      override def read(into: Array[Char], offset: Int, length: Int): M[Int] =
+        Monad.pure(stream.read(into, offset, length))
+    }
+  }
 }

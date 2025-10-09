@@ -11,6 +11,7 @@ import org.scalatest.Assertions
 
 object TestIO {
   export Unnest.given
+  export Reader.given
   export BufferedJsonReader.given
 
   /** Type of the test operation. */
@@ -48,13 +49,6 @@ object TestIO {
   def failParse(input: String, cb: JsonStream => Operation[?]): JsonException =
     Assertions.intercept[JsonException] { run(input, cb) }
 
-
-  given Reader[Operation, StringReader] with {
-    extension (stream: StringReader) {
-      override def read(into: Array[Char], offset: Int, length: Int): Unnest[Int] =
-        Monad.pure(stream.read(into, offset, length))
-    }
-  }
 
   given ParseError[Operation, JsonStream] with {
     extension (stream: JsonStream) {
