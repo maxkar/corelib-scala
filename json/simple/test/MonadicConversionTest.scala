@@ -17,7 +17,7 @@ import scala.language.implicitConversions
  * A test for monadic (higher-kinded) json parsing and conversion. Illustrates some
  * "real-world" scenario and may be used as an implementation example.
  */
-final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
+final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite {
   /**
    * The monad we use for parsing. Our particular implementation collects all
    * errors encountered during parsing into the Left part.
@@ -26,15 +26,14 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
 
 
   /** Monad implementation. */
-  given mdImpl: Monad[Md] with
+  given mdImpl: Monad[Md] with {
     override def pure[T](v: T): Md[T] = Right(v)
 
     override def bind[S, R](v: Md[S], fn: S => Md[R]): Md[R] =
-      v match
+      v match {
         case Left(x) => Left(x)
         case Right(v) => fn(v)
-      end match
-    end bind
+      }
 
     /* We need custom applicative here - we want to preserve both sides of error. */
     override def aapply[S, R](v: Md[S], fn: Md[S => R]): Md[R] =
@@ -44,23 +43,23 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
         case (_, Left(y)) => Left(y)
         case (Right(xv), Right(fv)) => Right(fv(xv))
       }
-  end mdImpl
+  }
 
 
   /** How to collect multiple operations into one. */
-  given collectImpl: Collect[Md] with
-    override def collect[T](items: Seq[Md[T]]): Md[Seq[T]] =
+  given collectImpl: Collect[Md] with {
+    override def collect[T](items: Seq[Md[T]]): Md[Seq[T]] = {
       val (errors, successes) = items.partitionMap(identity)
       if errors.nonEmpty then
         Left(errors.flatten)
       else
         Right(successes)
-    end collect
-  end collectImpl
+    }
+  }
 
 
   /** How to encode errors. */
-  given convertibleImpl: ConvertibleBy[Md] with
+  given convertibleImpl: ConvertibleBy[Md] with {
     override def pure[T](v: T): Md[T] = Right(v)
 
     override def accessError[T](validPath: Path, value: Json, invalidPath: Path): Md[T] =
@@ -71,7 +70,7 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
 
     override def invalidDomainValue[T](path: Path, value: Json, message: String): Md[T] =
       Left(Seq(s"${path}:InvalidValue[message=${message}]"))
-  end convertibleImpl
+  }
 
 
   /** Inner DTO. */
@@ -164,5 +163,4 @@ final class MonadicConversionTest extends org.scalatest.funsuite.AnyFunSuite:
     val maybeDto3 = parseDto(Query(lessStupid: Json).data(0))
     assert(maybeDto3 === expectedDto)
   }
-
-end MonadicConversionTest
+}

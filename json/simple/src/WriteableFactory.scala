@@ -7,10 +7,9 @@ import json.writer.Values
 /**
  * Implementation of the write protocol for the simple JSON.
  */
-given WriteableFactory:  Values.ValueClassifier[Json] with
-
+given WriteableFactory:  Values.ValueClassifier[Json] with {
   override def classifyValue[R](jsonValue: Json, visitor: Values.ValueCallback[Json, R]): R =
-    jsonValue match
+    jsonValue match {
       case Json.Null => visitor.nullValue()
       case Json.True => visitor.boolean(true)
       case Json.False => visitor.boolean(false)
@@ -18,8 +17,7 @@ given WriteableFactory:  Values.ValueClassifier[Json] with
       case Json.Number(representation) => visitor.number(representation)
       case Json.Array(elts) => visitor.array(elts.iterator)
       case Json.Object(elts) => visitor.unorderedObject(elts.iterator)
-      end match
-  end classifyValue
-end WriteableFactory
+    }
+}
 
 

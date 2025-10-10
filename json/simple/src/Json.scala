@@ -26,7 +26,7 @@ abstract sealed class MaybeJson extends ObjectUpdateInstruction
 /**
  * Single node in the JSON tree model.
  */
-abstract sealed class Json extends MaybeJson:
+abstract sealed class Json extends MaybeJson {
   /** Outputs this JSON into the given stream in the compact form. */
   inline def writeCompact[M[_]: Monad](stream: OutStream[M]): M[Unit] =
     Json.writeCompact(this, stream)
@@ -55,10 +55,10 @@ abstract sealed class Json extends MaybeJson:
         format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
       ): java.lang.String =
     Json.toPrettyString(this, format)
-end Json
+}
 
 
-object Json:
+object Json {
   /** Instruction to remove JSON element with the given name. */
   case object Remove extends ObjectUpdateInstruction
 
@@ -81,7 +81,7 @@ object Json:
   case class Number(repr: java.lang.String) extends Json
 
   /** Json Array. */
-  case class Array(elements: Seq[Json]) extends Json:
+  case class Array(elements: Seq[Json]) extends Json {
     /** Creates an array that is concatenation of this array and another array. */
     def ++(another: Array): Array =
       Array(elements ++ another.elements)
@@ -113,10 +113,10 @@ object Json:
       Array(
         elements ++ (items.collect { case x: Json => x})
       )
-  end Array
+  }
 
   /** Json Object. */
-  case class Object(elements: Map[java.lang.String, Json]) extends Json:
+  case class Object(elements: Map[java.lang.String, Json]) extends Json {
     /**
      * Creates an array that is "concatenation" of this object and another object.
      * Values from `another` object will take precedence over values present in this object.
@@ -151,21 +151,21 @@ object Json:
      *
      * Instructions are processed in the order provided.
      */
-    def update(instructions: (java.lang.String, ObjectUpdateInstruction)*): Object =
+    def update(instructions: (java.lang.String, ObjectUpdateInstruction)*): Object = {
       var res = elements
       val itr = instructions.iterator
 
-      while itr.hasNext do
+      while itr.hasNext do {
         val (key, instruction) = itr.next()
-        instruction match
+        instruction match {
           case Remove => res = res - key
           case Empty => ()
           case other: Json => res = res + ((key -> other))
-        end match
-      end while
+        }
+      }
       Object(res)
-    end update
-  end Object
+    }
+  }
 
   /**
    * An implementation of the JSON builder from the given dispatch over the model.
@@ -173,7 +173,7 @@ object Json:
   private final class FromBuilder[T](
         dispatch: ValueClassifier[T],
       )
-      extends ValueCallback[T, Unnest[Json]]:
+      extends ValueCallback[T, Unnest[Json]] {
     import Unnest.given
 
     /** Converts value to json. */
@@ -191,51 +191,48 @@ object Json:
     override def string(v: CharSequence): Unnest[Json] =
       Monad.pure(Json.String(v.toString()))
 
-
     override def array(iter: Iterator[T]): Unnest[Json] =
       arrayAgg(iter, List.empty)
-
 
     override def unorderedObject(iter: Iterator[(java.lang.String, T)]): Unnest[Json] =
       objectAgg(iter, List.empty)
 
 
     /** Aggregates array in the monadic way. */
-    private def arrayAgg(iter: Iterator[T], agg: List[Json]): Unnest[Json] =
+    private def arrayAgg(iter: Iterator[T], agg: List[Json]): Unnest[Json] = {
       if iter.hasNext then
         convert(iter.next()).flatMap { x => arrayAgg(iter, x :: agg) }
       else
         Monad.pure(Json.Array(agg.reverseIterator.toSeq))
-    end arrayAgg
+    }
 
 
     /** Aggregates object in the monadic way. */
     private def objectAgg(
           iter: Iterator[(java.lang.String, T)],
           agg: List[(java.lang.String, Json)]
-        ):  Unnest[Json] =
+        ):  Unnest[Json] = {
       if iter.hasNext then
         val (k, v) = iter.next()
         convert(v).flatMap { x => objectAgg(iter, (k -> x) :: agg) }
       else
         Monad.pure(Json.Object(agg.toMap))
-    end objectAgg
-  end FromBuilder
+    }
+  }
 
 
   /**
    * Retruns simple name of the json type (i.e. boolean, number, etc...).
    */
   def typeName(v: Json): java.lang.String =
-    v match
+    v match {
       case Json.Null => "null"
       case Json.True | Json.False => "boolean"
       case Json.Number(_) => "number"
       case Json.String(_) => "string"
       case Json.Object(_) => "object"
       case Json.Array(_) => "array"
-    end match
-  end typeName
+    }
 
 
   /**
@@ -315,26 +312,26 @@ object Json:
 
 
   /** Returns compact string representation of the given JSON. */
-  def toCompactString(v: Json): java.lang.String =
+  def toCompactString(v: Json): java.lang.String = {
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
     val stream = new StringBuilderStream()
     Unnest.run(writeCompact(v, stream))
     stream.data
-  end toCompactString
+  }
 
 
   /** Returns pretty string representation of the given JSON. */
   def toPrettyString(
         v: Json,
         format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
-      ): java.lang.String =
+      ): java.lang.String = {
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
     val stream = new StringBuilderStream()
     Unnest.run(writePretty(v, stream, format))
     stream.data
-  end toPrettyString
-end Json
+  }
+}

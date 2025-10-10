@@ -13,7 +13,7 @@ import defaultConversions.given
 /**
  * Tests for simple json conversion and navigation.
  */
-final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite {
 
   /** Our conversion protocol. */
   private given ConvertibleBy[Identity] =
@@ -82,5 +82,4 @@ final class ConversionAndSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
       )
     assert(q2.as[Map[String, Map[String, BigDecimal]]] === expected2)
   }
-
-end ConversionAndSyntaxTest
+}

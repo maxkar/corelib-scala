@@ -14,7 +14,7 @@ import fun.typeclass.Applicative
  * The typeclass may encode conversions in some specific ways as needed.
  * @tparam M conversion target (monad).
  */
-trait ConvertibleBy[M[_]]:
+trait ConvertibleBy[M[_]] {
   /** Wraps a "successfull" value. */
   def pure[T](v: T): M[T]
 
@@ -30,26 +30,26 @@ trait ConvertibleBy[M[_]]:
    * date, etc...)
    */
   def invalidDomainValue[T](path: Path, value: Json, message: String): M[T]
-end ConvertibleBy
+}
 
 
-object ConvertibleBy:
+object ConvertibleBy {
 
   /** Simple error converters - it knows how to "raise" error given the message. */
-  trait SimpleErrors[M[_]]:
+  trait SimpleErrors[M[_]] {
     /** "Raises" the issue with the given message. */
     def raise[T](message: String): M[T]
-  end SimpleErrors
+  }
 
 
-  object SimpleErrors:
+  object SimpleErrors {
     /** An implementation that just raises IOException on the calling thread. */
     def raiseIOException[M[_]]: SimpleErrors[M] =
       new SimpleErrors[M] {
         override def raise[T](message: String): M[T] =
           throw new java.io.IOException(message)
       }
-  end SimpleErrors
+  }
 
 
   /**
@@ -75,5 +75,4 @@ object ConvertibleBy:
           s"${path}: Could not convert JSON value into domain value: ${message}"
         )
     }
-  end apply
-end ConvertibleBy
+}

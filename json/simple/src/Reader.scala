@@ -55,6 +55,8 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M]: ParseError.
     for
       res <- readValue(stream)
       _ <- Whitespaces.skip(stream)
-      _ <- stream.atEof() >-> { eof => if eof then Monad.pure(()) else stream.parseError("End of file expected") }
+      _ <- stream.atEof() >-> { eof =>
+        if eof then Monad.pure(()) else stream.parseError("End of file expected")
+      }
     yield res
 }

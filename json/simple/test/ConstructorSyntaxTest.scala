@@ -8,7 +8,7 @@ import scala.language.implicitConversions
 /**
  * Tests for simple json construction syntax.
  */
-final class ConstructorSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
+final class ConstructorSyntaxTest extends org.scalatest.funsuite.AnyFunSuite {
 
   test("Smoke construction test") {
     check(Json.True, true)
@@ -141,4 +141,4 @@ final class ConstructorSyntaxTest extends org.scalatest.funsuite.AnyFunSuite:
   /** Checks that x and y match. Most useful for implicit value conversion tests. */
   private def check(x: Json, y: Json): Unit =
     assert(x === y)
-end ConstructorSyntaxTest
+}

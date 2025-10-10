@@ -14,7 +14,7 @@ import scala.collection.SeqMap
 /**
  * Test for the writer (both json writer and writer for the simple binding).
  */
-final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuite:
+final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Primitives are serialized as needed") {
     given options: PrettyPrintOptions = PrettyPrintOptions("  ", false)
 
@@ -432,5 +432,4 @@ final class AttributedPrettyWriterTest extends org.scalatest.funsuite.AnyFunSuit
    */
   private def checkPretty(expected: String, v: Json)(using opts: PrettyPrintOptions): Unit =
     assert(expected === v.toPrettyString(opts))
-  end checkPretty
-end AttributedPrettyWriterTest
+}
