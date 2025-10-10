@@ -1,34 +1,12 @@
 package io.github.maxkar
 package json.simple
 
-import fun.instances.Identity
-import fun.instances.Identity.given
-
-import java.nio.CharBuffer
-
-import text.input.LookAheadStream
-import text.input.BufferLookAheadStream
-
-import json.parser.Values.AllErrors
-import json.parser.Errors
-
+import json.parser.v3.TestIO
+import json.parser.v3.TestIO.given
 
 
 /** Tests for simple json parsing. */
-class AttributeParsingTest extends org.scalatest.funsuite.AnyFunSuite:
-  /** Simple implementation of the error handler. */
-  private object RaiseError extends Errors.SimpleHandler[Identity, Any]:
-    override def raise[T](stream: Any, message: String): T =
-      throw new java.io.IOException(message)
-  end RaiseError
-
-
-  /** Error handler for all the errors. */
-  given errorHandler: Errors.ErrorHandler[Identity, LookAheadStream[Identity]] =
-    Errors.simple[Identity, LookAheadStream[Identity]](RaiseError)
-  import errorHandler.endOfFileErrors
-
-
+class AttributeParsingTest extends org.scalatest.funsuite.AnyFunSuite {
   test("Some basic literals work") {
     assert(parse("true") === Json.True)
     assert(parse("false") === Json.False)
@@ -79,9 +57,5 @@ class AttributeParsingTest extends org.scalatest.funsuite.AnyFunSuite:
 
   /** Parses the input. */
   private def parse(input: String): Json =
-    val reader = new java.io.StringReader(input)
-    val filler = BufferLookAheadStream.Filler[Identity](reader, (), x => throw x)
-    val inputStream = BufferLookAheadStream(filler, CharBuffer.allocate(10))
-    Json.read(inputStream)
-  end parse
-end AttributeParsingTest
+    TestIO.parse(input, Json.read)._1
+}

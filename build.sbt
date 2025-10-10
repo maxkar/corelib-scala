@@ -108,7 +108,7 @@ val libJsonSimple = project.in(file("json/simple"))
          |output and query facilities""".stripMargin,
     libraryDependencies += scalatest
   )
-  .dependsOn(libFun, libJsonParser, libJsonWriter, libJsonQuery)
+  .dependsOn(libFun, libJsonParser % "compile->compile;test->test", libJsonWriter, libJsonQuery)
 
 
 val libJsonAttributed = project.in(file("json/attributed"))

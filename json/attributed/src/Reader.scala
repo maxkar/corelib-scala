@@ -13,7 +13,6 @@ import json.parser.v3.Objects
 import json.parser.v3.Values
 import json.parser.v3.Whitespaces
 import json.parser.v3.ParseError
-import io.github.maxkar.json.attr.Json.ObjectEntry
 
 /** A reader of the input stream that has default capabilities. */
 final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
@@ -52,7 +51,7 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
       override type Key = (Json[A] => Json.ObjectEntry[A])
 
       override def createContext(): Context = new Context()
-      override def createValue(context: Context): Map[String, ObjectEntry[A]] = context.toMap
+      override def createValue(context: Context): Map[String, Json.ObjectEntry[A]] = context.toMap
 
       override def readKey(stream: S, context: Context): M[Key] =
         readWithAttr(stream, Strings.read(stringFactory)(stream)) >=>> { (attr, key) =>

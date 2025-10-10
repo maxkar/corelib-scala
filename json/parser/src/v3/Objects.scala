@@ -113,7 +113,7 @@ object Objects {
 
       /** Merges two values of the same key on the same object together. */
       def merge(key: K, v1: V, v2: V): M[V] =
-        Applicative.pure(v1)
+        Applicative.pure(v2)
 
       override def createContext(): Context =
         new Context()

@@ -4,17 +4,17 @@ package json.simple
 import fun.typeclass.Monad
 import fun.instances.Unnest
 
-import text.input.LookAheadStream
 import text.output.{Stream => OutStream}
 import text.output.StringBuilderStream
 
-import json.parser.{Values => JsonReader}
-import json.parser.Values.AllErrors
-import json.parser.EndOfFile
 import json.writer.{Values => JsonWriter}
 import json.writer.PrettyPrintOptions
 import json.writer.Values.ValueClassifier
 import json.writer.Values.ValueCallback
+
+import json.parser.v3.Peek
+import json.parser.v3.DefaultStream
+import json.parser.v3.ParseError
 
 
 /** Instruction on how to update specific object element. */
@@ -275,14 +275,10 @@ object Json:
         .toMap
     )
 
-  /** Reads a simple value from the stream and stops after the value was read. */
-  def readOneValue[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S,
-      )(implicit
-        errors: AllErrors[M, S],
-      ): M[Json] =
-    JsonReader.readSimple(Builder, stream)
-  end readOneValue
+
+  /** Reads a single value from the stream and stops after the value was read. */
+  def readOneValue[M[_]: Monad, S: Peek.In[M]: DefaultStream.In[M]: ParseError.In[M]](stream: S): M[Json] =
+    new Reader().readValue(stream)
 
 
   /**
@@ -290,17 +286,8 @@ object Json:
    * the `stream`. In other words, it reads the **whole** stream as a single
    * JSON value.
    */
-  def read[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S
-      )(implicit
-        errors: AllErrors[M, S],
-        eofErrors: EndOfFile.Errors[M, S]
-      ): M[Json] =
-    for {
-      res <- readOneValue(stream)
-      _ <- EndOfFile.expectNoValues(stream)
-    } yield res
-  end read
+  def read[M[_]: Monad, S: Peek.In[M]: DefaultStream.In[M]: ParseError.In[M]](stream: S): M[Json] =
+    new Reader().readFully(stream)
 
 
   /**
