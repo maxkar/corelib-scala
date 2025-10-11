@@ -3,19 +3,21 @@ package json.attr
 
 import fun.typeclass.Monad
 
-import text.input.LookAheadStream
-import text.v2.input.LooksAheadIn
 import text.output.{Stream => OutStream}
 import text.output.StringBuilderStream
 
-import json.parser.Values
-import json.parser.EndOfFile
-
-import json.writer.{Values => JsonWriter}
-import json.writer.PrettyPrintOptions
-
 import json.parser.v3.Peek
 import json.parser.v3.DefaultStream
+import json.writer.v3.DefaultWriter
+import json.writer.v3.Layout
+import json.writer.v3.Literals
+import json.writer.v3.Strings
+import json.writer.v3.Objects
+import json.writer.v3.Arrays
+import json.writer.{Values => JsonWriter}
+import json.writer.PrettyPrintOptions
+import java.io.StringWriter
+
 
 /**
  * Single node in the JSON tree model.
@@ -35,16 +37,18 @@ abstract sealed class Json[+A] {
 
 
   /** Outputs this JSON into the given stream in the compact form. */
-  inline def writeCompact[M[_]: Monad](stream: OutStream[M]): M[Unit] =
-    Json.writeCompact(this, stream)
+  inline def writeCompact[M[_]: Monad, S: DefaultWriter.In[M]](stream: S): M[Unit] =
+    Json.writeCompact(stream, this)
 
 
   /** Outputs this JSON into the given stream in the pretty form. */
-  inline def writePretty[M[_]: Monad](
-        stream: OutStream[M],
+  inline def writePretty[M[_]: Monad, S: DefaultWriter.In[M]](
+        stream: S,
+        indent: Int = 2,
         format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
       ): M[Unit] =
-    Json.writePretty(this, stream, format)
+    Json.writePretty(stream, this, indent)
+
 
   /**
    * Returns pretty string representation of this value.
@@ -59,9 +63,9 @@ abstract sealed class Json[+A] {
    * This function is recursive and may cause stack overflow on large objects.
    */
   inline def toPrettyString(
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+        indent: Int = 2,
       ): java.lang.String =
-    Json.toPrettyString(this, format)
+    Json.toPrettyString(this, indent)
 }
 
 
@@ -169,17 +173,54 @@ object Json {
 
 
   /** Outputs JSON into the given stream in the compact form. */
-  inline def writeCompact[M[_]: Monad, A](v: Json[A], stream: OutStream[M]): M[Unit] =
-    JsonWriter.writeCompact(v, stream)
+  def writeCompact[M[_]: Monad, S: DefaultWriter.In[M], A](
+        stream: S,
+        value: Json[A],
+        objectKeyOrder: Iterable[ObjectEntry[A]] => Iterable[ObjectEntry[A]] = identity,
+      ): M[Unit] =
+    write(stream, value, new Layout.Compact(), objectKeyOrder)
 
 
   /** Outputs JSON into the given stream in the pretty form. */
-  inline def writePretty[M[_]: Monad, A](
-        v: Json[A],
-        stream: OutStream[M],
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+  inline def writePretty[M[_]: Monad, S: DefaultWriter.In[M], A](
+        stream: S,
+        value: Json[A],
+        indent: Int = 2,
+        objectKeyOrder: Iterable[ObjectEntry[A]] => Iterable[ObjectEntry[A]] = identity,
       ): M[Unit] =
-    JsonWriter.writePretty(format, v, stream)
+    write(stream, value, Layout.Indent(2), objectKeyOrder)
+
+
+  /** Outputs JSON into the stream in the given format. */
+  def write[M[_]: Monad, S: DefaultWriter.In[M], A](
+        stream: S,
+        value: Json[A],
+        format: Layout[M, S],
+        objectKeyOrder: (Iterable[ObjectEntry[A]] => Iterable[ObjectEntry[A]]) = identity,
+      ): M[Unit] =
+    value match {
+      case Json.Null(_) =>
+        stream.write(Literals.NULL)
+      case Json.True(_) =>
+        stream.write(Literals.TRUE)
+      case Json.False(_) =>
+        stream.write(Literals.FALSE)
+      case Json.String(value, _) =>
+        Strings.write(stream, value)
+      case Json.Number(value, _) =>
+        stream.write(value)
+      case Json.Array(elements, _) =>
+        Arrays.writeAll(stream, format.arrayLayout, write[M, S, A](_, _, format.nested, objectKeyOrder), elements)
+      case Json.Object(elements, _) =>
+        Objects.writeAll[M, S, ObjectEntry[A]](
+          stream,
+          format.objectLayout,
+          { (stream, entry) => Strings.write(stream, entry.key)},
+          { (stream, entry) => write(stream, entry.value, format.nested, objectKeyOrder)},
+          objectKeyOrder(elements.values)
+        )
+    }
+
 
 
   /** Returns compact string representation of the given JSON. */
@@ -187,22 +228,22 @@ object Json {
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
-    val stream = new StringBuilderStream()
-    Unnest.run(writeCompact(v, stream))
-    stream.data
+    val stream = new StringWriter()
+    Unnest.run(writeCompact(stream, v))
+    stream.toString()
   }
 
 
   /** Returns pretty string representation of the given JSON. */
   def toPrettyString(
         v: Json[?],
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+        indent: Int = 2,
       ): java.lang.String = {
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
-    val stream = new StringBuilderStream()
-    Unnest.run(writePretty(v, stream, format))
-    stream.data
+    val stream = new StringWriter()
+    Unnest.run(writePretty(stream, v, indent))
+    stream.toString()
   }
 }
