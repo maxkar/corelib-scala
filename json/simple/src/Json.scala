@@ -7,14 +7,19 @@ import fun.instances.Unnest
 import text.output.{Stream => OutStream}
 import text.output.StringBuilderStream
 
-import json.writer.{Values => JsonWriter}
-import json.writer.PrettyPrintOptions
+import json.writer.v3.DefaultWriter
+import json.writer.v3.Layout
+import json.writer.v3.Literals
+import json.writer.v3.Strings
+import json.writer.v3.Objects
+import json.writer.v3.Arrays
 import json.writer.Values.ValueClassifier
 import json.writer.Values.ValueCallback
 
 import json.parser.v3.Peek
 import json.parser.v3.DefaultStream
 import json.parser.v3.ParseError
+import java.io.StringWriter
 
 
 /** Instruction on how to update specific object element. */
@@ -28,16 +33,16 @@ abstract sealed class MaybeJson extends ObjectUpdateInstruction
  */
 abstract sealed class Json extends MaybeJson {
   /** Outputs this JSON into the given stream in the compact form. */
-  inline def writeCompact[M[_]: Monad](stream: OutStream[M]): M[Unit] =
-    Json.writeCompact(this, stream)
+  inline def writeCompact[M[_]: Monad, S: DefaultWriter.In[M]](stream: S): M[Unit] =
+    Json.writeCompact(stream, this)
 
 
   /** Outputs this JSON into the given stream in the pretty form. */
-  inline def writePretty[M[_]: Monad](
-        stream: OutStream[M],
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+  inline def writePretty[M[_]: Monad, S: DefaultWriter.In[M]](
+        stream: S,
+        indent: Int = 2,
       ): M[Unit] =
-    Json.writePretty(this, stream, format)
+    Json.writePretty(stream, this, indent)
 
   /**
    * Returns pretty string representation of this value.
@@ -52,9 +57,9 @@ abstract sealed class Json extends MaybeJson {
    * This function is recursive and may cause stack overflow on large objects.
    */
   inline def toPrettyString(
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+        indent: Int = 2,
       ): java.lang.String =
-    Json.toPrettyString(this, format)
+    Json.toPrettyString(this, indent)
 }
 
 
@@ -298,40 +303,69 @@ object Json {
 
 
   /** Outputs JSON into the given stream in the compact form. */
-  def writeCompact[M[_]: Monad](v: Json, stream: OutStream[M]): M[Unit] =
-    JsonWriter.writeCompact(v, stream)
+  def writeCompact[M[_]: Monad, S: DefaultWriter.In[M]](stream: S, v: Json): M[Unit] =
+    write(stream, v, new Layout.Compact)
 
 
   /** Outputs JSON into the given stream in the pretty form. */
-  def writePretty[M[_]: Monad](
+  def writePretty[M[_]: Monad, S: DefaultWriter.In[M]](
+        stream: S,
         v: Json,
-        stream: OutStream[M],
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+        indent: Int = 2,
       ): M[Unit] =
-    JsonWriter.writePretty(format, v, stream)
+    write(stream, v, Layout.Indent(indent))
 
+
+  /** Outputs JSON into the stream in the given format. */
+  def write[M[_]: Monad, S: DefaultWriter.In[M]](
+        stream: S,
+        value: Json,
+        format: Layout[M, S],
+      ): M[Unit] =
+    value match {
+      case Json.Null =>
+        stream.write(Literals.NULL)
+      case Json.True =>
+        stream.write(Literals.TRUE)
+      case Json.False =>
+        stream.write(Literals.FALSE)
+      case Json.String(value) =>
+        Strings.write(stream, value)
+      case Json.Number(value) =>
+        stream.write(value)
+      case Json.Array(elements) =>
+        Arrays.writeAll(stream, format.arrayLayout, write[M, S](_, _, format.nested), elements)
+      case Json.Object(elements) =>
+        Objects.writeAll[M, S, (java.lang.String, Json)](
+          stream,
+          format.objectLayout,
+          { (stream, entry) => Strings.write(stream, entry._1) },
+          { (stream, entry) => write(stream, entry._2, format.nested)},
+          elements
+        )
+    }
 
   /** Returns compact string representation of the given JSON. */
   def toCompactString(v: Json): java.lang.String = {
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
-    val stream = new StringBuilderStream()
-    Unnest.run(writeCompact(v, stream))
-    stream.data
+    val stream = new StringWriter()
+    Unnest.run(writeCompact(stream, v))
+    stream.toString()
   }
 
 
   /** Returns pretty string representation of the given JSON. */
   def toPrettyString(
         v: Json,
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
+        indent: Int = 2,
       ): java.lang.String = {
     import fun.instances.Unnest
     import fun.instances.Unnest.given
 
-    val stream = new StringBuilderStream()
-    Unnest.run(writePretty(v, stream, format))
-    stream.data
+    val stream = new StringWriter()
+    Unnest.run(writePretty(stream, v, indent))
+    stream.toString()
   }
 }

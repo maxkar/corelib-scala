@@ -112,6 +112,7 @@ object Objects {
 
       prologue >=||
         writeKey(stream, entry) >=||
+        layout.beforeKeyValueSeparator(stream) >=||
         stream.write(OBJECT_KEY_VALUE_SEPARATOR) >=||
         layout.beforeValue(stream) >=||
         writeValue(stream, entry)
