@@ -15,7 +15,7 @@ object Whitespaces {
 
 
   /** Skips whitespaces in the stream. */
-  def skip[M[_], S: DefaultStream.In[M]](stream: S): M[Unit] =
+  def skip[M[_], S: SkipStream.In[M]](stream: S): M[Unit] =
     stream.skipWhile(isWhitespace)
 
 

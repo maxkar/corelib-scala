@@ -149,17 +149,12 @@ object StreamingFormatter {
   }
 
 
-  def formatJson(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] = {
-    stream.dropWhile(Whitespaces.isWhitespace)
-    Values.readExact(new JsonFactory(layout))(stream)
-  }
+  def formatJson(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] =
+    Values.read(new JsonFactory(layout))(stream)
 
   def formatFully(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unit =
     Unnest.run {
-      formatJson(stream, layout) >=|| {
-        stream.dropWhile(Whitespaces.isWhitespace)
-        if stream.isEof() then Monad.pure(()) else raise(stream, "EOF expected")
-      }
+      Values.readFully(new JsonFactory(layout))(stream)
     }
 
 

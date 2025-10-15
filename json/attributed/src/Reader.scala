@@ -107,7 +107,7 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](
     for
       res <- readValue(stream)
       _ <- skipWhitespaces(stream)
-      _ <- stream.atEof() >-> { eof => if eof then Monad.pure(()) else factory.eofExpected(stream) }
+      _ <- stream.peek(0) >-> { next => if next < 0 then Monad.pure(()) else factory.eofExpected(stream) }
     yield res
 
 

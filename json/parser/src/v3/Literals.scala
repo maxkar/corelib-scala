@@ -43,7 +43,7 @@ object Literals {
     }
 
     /** Simple factory that consumes literal and returns the specified value for default stream. */
-    final class Simple[M[_]: Functor, S: DefaultStream.In[M]: ParseError.In[M], J](
+    final class Simple[M[_]: Functor, S: SkipStream.In[M]: ParseError.In[M], J](
           value: J
         ) extends Factory.RaiseParseErrors[M, S, J] {
       override def read(stream: S, count: Int): M[J] =

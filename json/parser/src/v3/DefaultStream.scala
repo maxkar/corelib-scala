@@ -6,27 +6,13 @@ package json.parser.v3
  * a stream `S`. This stream API is intended for use by the JSON
  * modules (json model readers) in the platform.
  */
-trait DefaultStream[M[_], -S] {
+trait DefaultStream[M[_], -S] extends SkipStream[M, S] {
   extension (stream: S) {
-    /** Skips `count` characters from the input. */
-    def skip(count: Int): M[Unit]
-
-    /**
-     * Skips characters matching the predicate and stops at
-     * a character not matching it.
-     */
-    def skipWhile(predicate: Char => Boolean): M[Unit]
-
     /**
      * Reads characters matching the predicate into the `into` buffer.
      * Stops at a first character not matching the predicate.
      */
     def readWhile(into: StringBuilder, predicate: Char => Boolean): M[Unit]
-
-    /**
-     * Checks if the stream is at the end of the file.
-     */
-    def atEof(): M[Boolean]
   }
 }
 

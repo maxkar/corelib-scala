@@ -50,14 +50,14 @@ object Values {
 
 
   /** Reads JSON value from the stream, allows leading whitespaces. */
-  def read[M[_]: Monad, S: Peek.In[M]: DefaultStream.In[M], J](factory: Factory[S, M[J]])(stream: S): M[J] =
+  def read[M[_]: Monad, S: Peek.In[M]: SkipStream.In[M], J](factory: Factory[S, M[J]])(stream: S): M[J] =
     Whitespaces.skip(stream) >=|| readExact(factory)(stream)
 
 
   /**
    * Reads JSON value from the stream, ignores trailing whitespaces and raises an error if there is more data.
    */
-  def readSingleValue[M[_]: Monad, S: Peek.In[M]: DefaultStream.In[M]: ParseError.In[M], J](factory: Factory[S, M[J]])(stream: S): M[J] =
+  def readFully[M[_]: Monad, S: Peek.In[M]: SkipStream.In[M]: ParseError.In[M], J](factory: Factory[S, M[J]])(stream: S): M[J] =
     read(factory)(stream) >=>> { res =>
       Whitespaces.skip(stream) >=|| stream.peek(0) >=>> { lookAhead =>
         if lookAhead < 0 then

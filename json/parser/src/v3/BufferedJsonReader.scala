@@ -86,12 +86,6 @@ object BufferedJsonReader {
       Monad.pure(location.location())
 
 
-    private[BufferedJsonReader] def atEofImpl(): M[Boolean] = {
-      if streamEof then return Monad.pure(size == 0)
-      fillBuffer() >-| isEof()
-    }
-
-
     /** Fills buffer with the new data. */
     private def fillBuffer(): M[Unit] = {
       /* "Compact" the buffer by moving all the remaining data into the buffer start. */
@@ -146,19 +140,6 @@ object BufferedJsonReader {
   }
 
 
-  given peek[M[_]]: Peek[M, BufferedJsonReader[M]] with {
-    extension (stream: BufferedJsonReader[M]) {
-      override def peek(offset: Int): M[Int] = {
-        if offset < 0 then
-          throw new IllegalArgumentException(s"Offset ${offset} could not be negative")
-        if offset >= Peek.MAX_LOOK_AHEAD_DISTANCE then
-          throw new IllegalArgumentException(s"Offset ${offset} should be less than ${Peek.MAX_LOOK_AHEAD_DISTANCE}")
-        stream.peekImpl(offset)
-      }
-    }
-  }
-
-
   given reader[M[_]]: Reader[M, BufferedJsonReader[M]] with {
     extension (stream: BufferedJsonReader[M]) {
       override def read(into: Array[Char], offset: Int, length: Int): M[Int] =
@@ -171,12 +152,20 @@ object BufferedJsonReader {
     extension (stream: BufferedJsonReader[M]) {
       override def skip(count: Int): M[Unit] =
         stream.skipImpl(count)
+
       override def skipWhile(predicate: Char => Boolean): M[Unit] =
         stream.skipWhileImpl(predicate)
+
       override def readWhile(into: StringBuilder, predicate: Char => Boolean): M[Unit] =
         stream.readWhileImpl(into, predicate)
-      override def atEof(): M[Boolean] =
-        stream.atEofImpl()
+
+      override def peek(offset: Int): M[Int] = {
+        if offset < 0 then
+          throw new IllegalArgumentException(s"Offset ${offset} could not be negative")
+        if offset >= Peek.MAX_LOOK_AHEAD_DISTANCE then
+          throw new IllegalArgumentException(s"Offset ${offset} should be less than ${Peek.MAX_LOOK_AHEAD_DISTANCE}")
+        stream.peekImpl(offset)
+      }
     }
   }
 

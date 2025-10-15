@@ -15,6 +15,7 @@ import json.writer.v3.DefaultWriter
 import java.io.Reader
 import java.io.Writer
 import java.io.IOException
+import io.github.maxkar.json.parser.v3.SkipStream
 
 /** Input/output operations for the formatter. */
 final class FormatterIO(input: Reader, output: Writer) {
@@ -171,10 +172,14 @@ final class FormatterIO(input: Reader, output: Writer) {
 
 
 object FormatterIO {
-  given Peek[Unnest, FormatterIO] with {
+  given SkipStream[Unnest, FormatterIO] with {
     extension (stream: FormatterIO) {
       override def peek(offset: Int): Unnest[Int] =
         Monad.pure(stream.peekImpl(offset))
+      override def skip(count: Int): Unnest[Unit] =
+        Monad.pure(stream.drop(count))
+      override def skipWhile(predicate: Char => Boolean): Unnest[Unit] =
+        Monad.pure(stream.dropWhile(predicate))
     }
   }
 

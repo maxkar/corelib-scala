@@ -73,7 +73,7 @@ object Objects {
     }
 
 
-    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J]{
+    abstract class Simple[M[_]: Functor, -S: SkipStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J]{
       /** Creates a context. */
       def createContext(): Context
 
@@ -98,7 +98,7 @@ object Objects {
     }
 
 
-    open class AsMap[M[_]: Monad, -S: DefaultStream.In[M]: ParseError.In[M], K, V](
+    open class AsMap[M[_]: Monad, -S: SkipStream.In[M]: ParseError.In[M], K, V](
           readKey: S => M[K],
           readValue: S => M[V],
         ) extends Simple[M, S, Map[K, V]] {

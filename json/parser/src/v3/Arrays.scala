@@ -59,14 +59,15 @@ object Arrays {
     }
 
 
-    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
+    abstract class Simple[M[_]: Functor, -S: SkipStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
       /** Creates a context. */
       def createContext(): Context
 
       /** Converts context to json value. */
       def createValue(context: Context): J
 
-      override def skipIgnorableWhitespaces(stream: S): M[Unit] = Whitespaces.skip(stream)
+      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
+        Whitespaces.skip(stream)
 
       /**
        * Starts the array by consuming the array start character
@@ -89,7 +90,7 @@ object Arrays {
 
 
     /** Reader that builds a sequence of elements. */
-    final class AsSequence[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J](readValue: S => M[J])
+    final class AsSequence[M[_]: Functor, -S: SkipStream.In[M]: ParseError.In[M], J](readValue: S => M[J])
           extends Simple[M, S, Seq[J]] {
       override type Context = scala.collection.mutable.ArrayBuffer[J]
 

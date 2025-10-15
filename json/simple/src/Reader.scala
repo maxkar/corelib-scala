@@ -48,15 +48,9 @@ final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M]: ParseError.
 
   /** Reads one value from the stream. */
   def readValue(stream: S): M[Json] =
-    Whitespaces.skip(stream) >=|| Values.read(valueFactory)(stream)
+    Values.read(valueFactory)(stream)
 
 
   def readFully(stream: S): M[Json] =
-    for
-      res <- readValue(stream)
-      _ <- Whitespaces.skip(stream)
-      _ <- stream.atEof() >-> { eof =>
-        if eof then Monad.pure(()) else stream.parseError("End of file expected")
-      }
-    yield res
+    Values.readFully(valueFactory)(stream)
 }

@@ -67,7 +67,7 @@ object Numbers {
         stream.parseError("Missing exponent digits")
     }
 
-    abstract class Simple[M[_]: Applicative, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
+    abstract class Simple[M[_]: Applicative, -S: SkipStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
       /** Creates a context. */
       def createContext(): Context
 
