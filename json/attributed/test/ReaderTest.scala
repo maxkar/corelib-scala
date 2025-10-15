@@ -5,9 +5,9 @@ import fun.instances.Unnest
 
 import text.Location
 
-import json.parser.v3.BufferedJsonReader
-import json.parser.v3.TestIO.*
-import json.parser.v3.TestIO.given
+import json.parser.BufferedJsonReader
+import json.parser.TestIO.*
+import json.parser.TestIO.given
 
 final class NewReaderTest extends org.scalatest.funsuite.AnyFunSuite {
   import NewReaderTest.*

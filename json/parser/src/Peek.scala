@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.v3
+package json.parser
 
 /** A typeclass that allows looking at the stream without consuming its data. */
 trait Peek[M[_], -S] {

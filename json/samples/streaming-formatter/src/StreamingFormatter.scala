@@ -1,16 +1,14 @@
 package io.github.maxkar
 package json.sample.formatter.streaming
 
-import json.parser.v3.Whitespaces
-import json.parser.v3.Literals
-import json.parser.v3.{Strings => IStrings}
+import json.parser.Whitespaces
+import json.parser.Literals
+import json.parser.{Strings => IStrings}
 import json.writer.v3.{Strings => OStrings}
-import json.parser.v3.Numbers
-import json.parser.v3.{Arrays => IArrays}
-import json.writer.v3.{Arrays => OArrays}
-import json.parser.v3.{Objects => IObjects}
-import json.writer.v3.{Objects => OObjects}
-import json.parser.v3.Values
+import json.parser.Numbers
+import json.parser.Arrays
+import json.parser.Objects
+import json.parser.Values
 
 import json.writer.v3.Layout
 
@@ -76,7 +74,7 @@ object StreamingFormatter {
   private val copyNumber = Numbers.read(NumberFactory)
 
 
-  private final class ArrayFactory(layout: Layout[Unnest, FormatterIO]) extends IArrays.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
+  private final class ArrayFactory(layout: Layout[Unnest, FormatterIO]) extends Arrays.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     private val arrayLayout = layout.arrayLayout
     private val nestedLayout = layout.nested
 
@@ -103,10 +101,10 @@ object StreamingFormatter {
       arrayLayout.beforeArrayEnd(stream, context.first) >-| { stream.copy(count) }
   }
   def copyArray(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] =
-    IArrays.read(new ArrayFactory(layout))(stream)
+    Arrays.read(new ArrayFactory(layout))(stream)
 
 
-  private final class ObjectFactory(layout: Layout[Unnest, FormatterIO]) extends IObjects.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
+  private final class ObjectFactory(layout: Layout[Unnest, FormatterIO]) extends Objects.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     private val objectLayout = layout.objectLayout
     private val nestedLayout = layout.nested
 
@@ -135,7 +133,7 @@ object StreamingFormatter {
       objectLayout.beforeObjectEnd(stream, context.first) >-| stream.copy(count)
   }
   def copyObject(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] =
-    IObjects.read(new ObjectFactory(layout))(stream)
+    Objects.read(new ObjectFactory(layout))(stream)
 
 
   private class JsonFactory(layout: Layout[Unnest, FormatterIO]) extends Values.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {

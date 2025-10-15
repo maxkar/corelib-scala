@@ -1,144 +1,141 @@
 package io.github.maxkar
 package json.parser
 
+import fun.typeclass.Functor
 import fun.typeclass.Monad
 
-import text.input.LookAheadStream
-
-import scala.collection.mutable.ArrayBuffer
-
-
-/** Array readers and related utilities. */
 object Arrays {
+  /**
+   * Factory for creating a `J` representation of a JSON
+   * array read from the stream `S`.
+   */
+  trait Factory[M[_], -S, J] {
+    /** Context of the array being built. */
+    type Context
 
-  /** Error encoding for array formats. */
-  trait Errors[M[_], -S] {
     /**
-     * Invoked when array start was expected but something different occured in the stream.
-     * Stream position is before the character that was expected to be array start.
+     * Conusmes whitespaces that are not captured and do not affect reading
+     * array values.
      */
-    def invalidArrayStart[T](stream: S): M[T]
+    def skipIgnorableWhitespaces(stream: S): M[Unit]
 
     /**
-     * Invoked when array end or value separator was expected
-     * but something different occured in the stream.
-     * Stream position is before the character that should be array end or
-     * value separator.
+     * Starts the array by consuming the array start character
+     * and creating the ("empty") context.
+     *
+     * @param stream stream being parsed.
+     * @param count number of characters in the array start. This number
+     *   of characters should be consumed.
      */
-    def invalidArrayEnd[T](stream: S): M[T]
+    def start(stream: S, count: Int): M[Context]
+
+    /** Handles a situation where array start was expected but was not found. */
+    def invalidArrayStart(stream: S): M[J]
+
+    /** Consumes one value belonging to the array. */
+    def readValue(stream: S, context: Context): M[Unit]
+
+    /** Consumes value separator. */
+    def skipValueSeparator(stream: S, context: Context, count: Int): M[Unit]
+
+    /** Consumes end of the array and returns JSON array representation. */
+    def finish(stream: S, context: Context, count: Int): M[J]
+
+    /**
+     * Handles a situation where value separator or array end was expected
+     * but neither was found.
+     */
+    def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[J]
   }
 
 
-  /** Checks if character is an array start character. */
-  def isArrayStart(char: Char): Boolean =
-    char == '['
-
-
-  /** Checks if character is indicator of array end character. */
-  def isArrayEnd(char: Char): Boolean =
-    char == ']'
-
-
-  /** Checks if character is array element separator. */
-  def isArraySeparator(char: Char): Boolean =
-    char == ','
-
-
-  /** Reads start of the array - the leading character. */
-  def readArrayStart[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Unit] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() <= 0 || !isArrayStart(lookAhead.charAt(0)) then
-        errs.invalidArrayStart(stream)
-      else
-        stream.skip(1)
+  object Factory {
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
+      /** Handles a situation where array start was expected but was not found. */
+      override final def invalidArrayStart(stream: S): M[J] =
+        stream.parseError("Invalid array start")
+      override final def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[J] =
+        stream.parseError("Invalid value separator or array end")
     }
 
 
-  /**
-   * Checks if array is an empty array or not after the start character was read.
-   * Consumes array end character if array is empty, otherwise leaves input intact.
-   */
-  def hasFirstValue[M[_]: Monad](stream: LookAheadStream[M]): M[Boolean] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() <= 0 || !isArrayEnd(lookAhead.charAt(0)) then
-        Monad.pure(true)
-      else
-        stream.skip(1) map { _ => false }
+    abstract class Simple[M[_]: Functor, -S: SkipStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
+      /** Creates a context. */
+      def createContext(): Context
+
+      /** Converts context to json value. */
+      def createValue(context: Context): J
+
+      override def skipIgnorableWhitespaces(stream: S): M[Unit] =
+        Whitespaces.skip(stream)
+
+      /**
+       * Starts the array by consuming the array start character
+       * and creating the ("empty") context.
+       *
+       * @param stream stream being parsed.
+       * @param count number of characters in the array start. This number
+       *   of characters should be consumed.
+       */
+      override final def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| createContext()
+
+      /** Consumes value separator. */
+      override final def skipValueSeparator(stream: S, context: Context, count: Int): M[Unit] =
+        stream.skip(count)
+
+      override final def finish(stream: S, context: Context, count: Int): M[J] =
+        stream.skip(count) >-| createValue(context)
     }
 
 
-  /**
-   * Checks if array has next element or it is array end. Consumes the separator or end
-   * character from input.
-   */
-  def hasNextValue[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Boolean] =
-    stream.peek(1) flatMap { lookAhead =>
-      if lookAhead.length() <= 0 then
-        errs.invalidArrayEnd(stream)
+    /** Reader that builds a sequence of elements. */
+    final class AsSequence[M[_]: Functor, -S: SkipStream.In[M]: ParseError.In[M], J](readValue: S => M[J])
+          extends Simple[M, S, Seq[J]] {
+      override type Context = scala.collection.mutable.ArrayBuffer[J]
+
+      override def createContext(): Context =
+        new Context()
+      override def createValue(context: Context): Seq[J] =
+        context.toSeq
+      override def readValue(stream: S, context: Context): M[Unit] =
+        readValue(stream) >-> (context.append)
+    }
+  }
+
+
+  /** Reads the array and creates it representation using the given factory. */
+  def read[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S) : M[J] =
+    stream.peek(0) >=>> { chr =>
+      if chr != '[' then
+        factory.invalidArrayStart(stream)
       else
-        lookAhead.charAt(0) match {
-          case ',' => stream.skip(1) map { _ => true }
-          case ']' => stream.skip(1) map { _ => false }
-          case _ => errs.invalidArrayEnd(stream)
+        factory.start(stream, 1) >=>> { context =>
+          factory.skipIgnorableWhitespaces(stream) >=||
+          (stream.peek(0) >=>> {
+            case ']' => factory.finish(stream, context, 1)
+            case _ => readValues(stream, factory, context)
+          })
         }
     }
 
 
   /**
-   * Reads complete array as a sequence.
-   * Whitespace and value reading is delegated to provided handlers.
+   * Reads values from the stream and "appends" them to the context.
+   * This method could be used inside `missingValueSeparatorOrArrayEnd` to
+   * recover from an error and continue array parsing.
    */
-  def readAll[T, M[_]: Monad, S <: LookAheadStream[M]](
-        skipWhitespaces: S => M[Unit],
-        readValue: S => M[T],
+  def readValues[M[_]: Monad, S: Peek.In[M], J](
         stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Seq[T]] = {
-    for
-      _ <- readArrayStart(stream)
-      _ <- skipWhitespaces(stream)
-      nonEmpty <- hasFirstValue(stream)
-      res <-
-        if nonEmpty then
-          readAllImpl(skipWhitespaces, readValue, stream, new ArrayBuffer)
-        else
-          Monad.pure(Seq.empty)
-    yield
-      res
-  }
-
-
-  /** Recursive reader implementation. */
-  private def readAllImpl[T, M[_]: Monad, S <: LookAheadStream[M]](
-        skipWhitespaces: S => M[Unit],
-        readValue: S => M[T],
-        stream: S,
-        agg: ArrayBuffer[T],
-      )(using
-        errs: Errors[M, S]
-      ): M[Seq[T]] = {
-    for
-      _ <- skipWhitespaces(stream)
-      elem <- readValue(stream)
-      _ <- skipWhitespaces(stream)
-      hasNext <- hasNextValue(stream)
-      _ = agg += elem
-      res <-
-        if hasNext then
-          readAllImpl(skipWhitespaces, readValue, stream, agg)
-        else
-          Monad.pure(agg.toSeq)
-        end if
-    yield
-      res
-  }
+        factory: Factory[M, S, J],
+        context: factory.Context,
+      ): M[J] =
+    factory.skipIgnorableWhitespaces(stream) >=||
+    factory.readValue(stream, context) >=||
+    factory.skipIgnorableWhitespaces(stream) >=||
+    stream.peek(0) >=>> {
+      case ']' => factory.finish(stream, context, 1)
+      case ',' => factory.skipValueSeparator(stream, context, 1) >=|| readValues(stream, factory, context)
+      case _ => factory.invalidValueSeparatorOrArrayEnd(stream, context)
+    }
 }

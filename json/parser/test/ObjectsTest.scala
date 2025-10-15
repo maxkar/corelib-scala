@@ -1,16 +1,11 @@
 package io.github.maxkar
 package json.parser
 
-import fun.instances.Identity
-import fun.instances.Identity.given
+import TestIO.*
+import TestIO.given
 
-
-/** Tests for object-related functionality. */
 final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
-  import NumbersTest.given
-  import StringsTest.given
-  import ObjectsTest.given
-
+  import ObjectsTest.*
 
   test("Happy path scenarios") {
     val data = Seq(
@@ -28,65 +23,37 @@ final class ObjectsTest extends org.scalatest.funsuite.AnyFunSuite {
       (inputBase, expected) <- data
       rpad <- Seq.tabulate(5) { x => "X" * x }
       inputString = inputBase + rpad
-      chunkSize <- 1 until inputString.length()
     do
-      withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new SimpleStringStream(inputString, chunkSize)
-        val res = Objects.readAll(Whitespaces.skipAll[Identity], Strings.readAll, Numbers.readAll, stream)
-        assert(res === expected)
-        assert(stream.readOffset === inputBase.length())
+      withClue(inputString) {
+        assert(expected === parse(inputString, Objects.read(factory))._1)
       }
   }
 
 
   test("Object format errors") {
     val data = Seq(
-      ("45", new ObjectErrors.InvalidObjectStart(), 0),
-      ("""{"a" -> 45}""", new ObjectErrors.InvalidKeyValueSeparator(), 5),
-      ("""{"a"?45}""", new ObjectErrors.InvalidKeyValueSeparator(), 4),
-      ("""{"a": 45, "b" -> 66}""", new ObjectErrors.InvalidKeyValueSeparator(), 14),
-      ("""{"a":45+"b" -> 66}""", new ObjectErrors.InvalidEntrySeparator(), 7),
-      ("""{"a": 45 +"b" -> 66}""", new ObjectErrors.InvalidEntrySeparator(), 9),
+      ("45", 0, "Invalid object start"),
+      ("""{"a" -> 45}""", 5, "Invalid key-value separator"),
+      ("""{"a"?45}""", 4, "Invalid key-value separator"),
+      ("""{"a": 45, "b" -> 66}""", 14, "Invalid key-value separator"),
+      ("""{"a":45+"b" -> 66}""", 7, "Invalid entry separator or object end"),
+      ("""{"a": 45 +"b" -> 66}""", 9, "Invalid entry separator or object end"),
     )
 
     for
-      (inputString, exn, offset) <- data
-      chunkSize <- 1 until inputString.length()
+      (inputString, offset, message) <- data
     do
-      withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new SimpleStringStream(inputString, chunkSize)
-        try {
-          Objects.readAll(Whitespaces.skipAll[Identity], Strings.readAll, Numbers.readAll, stream)
-          fail(s"Expected ${exn} but got nothing")
-        } catch {
-          case e if e === exn => ()
-          case other => throw other
-        }
-        assert(stream.readOffset === offset)
+      withClue(inputString) {
+        val actualExn = failParse(inputString, Objects.read(factory))
+        assert(offset === actualExn.offset)
+        assert(message === actualExn.message)
       }
   }
 }
 
-
 object ObjectsTest {
-  /** Object errors implementation. */
-  given ObjectErrors: Objects.Errors[Identity, Any] with {
-    /** Encoding of invalid object start. */
-    final case class InvalidObjectStart() extends Exception
-
-    /** Encoding for invalid entry separator. */
-    final case class InvalidEntrySeparator() extends Exception
-
-    /** Encoding for invalid key-value separator. */
-    final case class InvalidKeyValueSeparator() extends Exception
-
-    override def invalidObjectStart[T](stream: Any): T =
-      throw new InvalidObjectStart()
-
-    override def invalidObjectEnd[T](stream: Any): Identity[T] =
-      throw new InvalidEntrySeparator()
-
-    override def invalidKeyValueSeparator[T](stream: Any): Identity[T] =
-      throw new InvalidKeyValueSeparator()
-  }
+  val factory = new Objects.Factory.AsMap[Operation, JsonStream, String, String](
+    Strings.read(StringsTest.factory),
+    Numbers.read(NumbersTest.factory)
+  )
 }

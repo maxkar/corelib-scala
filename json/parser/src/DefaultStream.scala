@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.v3
+package json.parser
 
 /**
  * Typeclass providing most common operations for reading data from

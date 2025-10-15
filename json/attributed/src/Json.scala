@@ -6,16 +6,14 @@ import fun.typeclass.Monad
 import text.output.{Stream => OutStream}
 import text.output.StringBuilderStream
 
-import json.parser.v3.Peek
-import json.parser.v3.DefaultStream
+import json.parser.Peek
+import json.parser.DefaultStream
 import json.writer.v3.DefaultWriter
 import json.writer.v3.Layout
 import json.writer.v3.Literals
 import json.writer.v3.Strings
 import json.writer.v3.Objects
 import json.writer.v3.Arrays
-import json.writer.{Values => JsonWriter}
-import json.writer.PrettyPrintOptions
 import java.io.StringWriter
 
 
@@ -45,7 +43,6 @@ abstract sealed class Json[+A] {
   inline def writePretty[M[_]: Monad, S: DefaultWriter.In[M]](
         stream: S,
         indent: Int = 2,
-        format: PrettyPrintOptions = PrettyPrintOptions.defaultOptions,
       ): M[Unit] =
     Json.writePretty(stream, this, indent)
 

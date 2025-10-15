@@ -7,15 +7,15 @@ import fun.instances.Unnest
 import text.Location
 import text.LocationTracker
 
-import json.parser.v3.Peek
-import json.parser.v3.ParseError
+import json.parser.Peek
+import json.parser.ParseError
+import json.parser.SkipStream
 import json.writer.v3.CharWriter
 import json.writer.v3.DefaultWriter
 
 import java.io.Reader
 import java.io.Writer
 import java.io.IOException
-import io.github.maxkar.json.parser.v3.SkipStream
 
 /** Input/output operations for the formatter. */
 final class FormatterIO(input: Reader, output: Writer) {

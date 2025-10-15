@@ -1,29 +1,10 @@
 package io.github.maxkar
 package json.parser
 
+import fun.typeclass.Functor
 import fun.typeclass.Monad
-import fun.typeclass.Applicative
 
-import text.input.LookAheadStream
-
-/**
- * Literal readers.
- */
 object Literals {
-  /**
-   * Error handlers for (simple) JSON literals.
-   * @tparam M execution (monad).
-   * @tparam S type of the stream (i.e. "context") required by the error generation.
-   */
-  trait Errors[M[_], -S]:
-    /**
-     * Invoked when specific literal (text) was expected but stream content was different.
-     * Stream position is before the first character of the literal in the stream.
-     */
-    def badLiteral(expected: String, stream: S): M[Unit]
-  end Errors
-
-
   /** Representation of the `true` literal. */
   val TRUE = "true"
 
@@ -35,75 +16,93 @@ object Literals {
 
 
   /**
-   * Compares string (expected literal) and actual literal in the stream.
-   * @param literal expected literal.
-   * @param characters the input sequence (that should be not shorter than
-   *   the literal).
+   * Value factory that creates a JSON representation `J` of
+   * a literal read from stream `S`.
    */
-  def isSameLiteral(literal: String, characters: CharSequence): Boolean = {
-    if characters.length() < literal.length() then
-      return false
-    var ptr = 0
-    while ptr < literal.length() do
-      if literal.charAt(ptr) != characters.charAt(ptr) then
-        return false
-      ptr += 1
-    return true
+  trait Factory[M[_], -S, J] {
+    /**
+     * Consumes `count` characters from the stream and returns the
+     * JSON literal representation.
+     */
+    def read(stream: S, count: Int): M[J]
+
+    /**
+     * Processes an invalid (bad) literal
+     * @param stream stream with the data.
+     * @param expected expected literal.
+     * @return JSON representation of the invalid literal.
+     */
+    def invalidLiteral(stream: S, expected: String): M[J]
+  }
+
+
+  object Factory {
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
+      override final def invalidLiteral(stream: S, expected: String): M[J] =
+        stream.parseError(s"Invalid ${expected} literal")
+    }
+
+    /** Simple factory that consumes literal and returns the specified value for default stream. */
+    final class Simple[M[_]: Functor, S: SkipStream.In[M]: ParseError.In[M], J](
+          value: J
+        ) extends Factory.RaiseParseErrors[M, S, J] {
+      override def read(stream: S, count: Int): M[J] =
+        stream.skip(count) >-| value
+    }
   }
 
 
   /**
-   * Checks if the input (or at least its prefix) is the same as the given literal.
+   * Consumes the "true" literal from the stream and returns the value
+   * created by the factory.
    */
-  def startsWithLiteral[M[_]: Applicative](
-        literal: String,
-        stream: LookAheadStream[M])
-      : M[Boolean] =
-    stream.peek(literal.length()) map { isSameLiteral(literal, _) }
+  def readNull[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
+    for
+      c1 <- stream.peek(0)
+      c2 <- stream.peek(1)
+      c3 <- stream.peek(2)
+      c4 <- stream.peek(3)
+      res <-
+        if c1 != 'n' || c2 != 'u' || c3 != 'l' || c4 != 'l' then
+          factory.invalidLiteral(stream, NULL)
+        else
+          factory.read(stream, 4)
+    yield res
 
 
   /**
-   * Reads the literal from the input stream.
-   * @param literal expected literal to read.
-   * @param stream stream that must contain the literal exactly at the defined position.
+   * Consumes the "true" literal from the stream and returns the value
+   * created by the factory.
    */
-  def readLiteral[M[_]: Monad, S <: LookAheadStream[M]](
-        literal: String,
-        stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Unit] =
-    stream.peek(literal.length()) flatMap { lookAhead =>
-      if isSameLiteral(literal, lookAhead) then
-        stream.skip(literal.length())
-      else
-        errs.badLiteral(literal, stream)
-    }
+  def readTrue[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
+    for
+      c1 <- stream.peek(0)
+      c2 <- stream.peek(1)
+      c3 <- stream.peek(2)
+      c4 <- stream.peek(3)
+      res <-
+        if c1 != 't' || c2 != 'r' || c3 != 'u' || c4 != 'e' then
+          factory.invalidLiteral(stream, TRUE)
+        else
+          factory.read(stream, 4)
+    yield res
 
 
-  /** Reads the "true" literal from the stream. */
-  inline def readTrue[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Unit] =
-    readLiteral(TRUE, stream)
-
-
-  /** Reads the "false" literal from the stream. */
-  inline def readFalse[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Unit] =
-    readLiteral(FALSE, stream)
-
-
-  /** Reads the "null" literal from the stream. */
-  inline def readNull[M[_]: Monad, S <: LookAheadStream[M]](
-        stream: S,
-      )(using
-        errs: Errors[M, S]
-      ): M[Unit] =
-    readLiteral(NULL, stream)
+  /**
+   * Consumes the "false" literal from the stream and returns the value
+   * created by the factory.
+   */
+  def readFalse[M[_]: Monad, S: Peek.In[M], J](factory: Factory[M, S, J])(stream: S): M[J] =
+    for
+      c1 <- stream.peek(0)
+      c2 <- stream.peek(1)
+      c3 <- stream.peek(2)
+      c4 <- stream.peek(3)
+      c5 <- stream.peek(4)
+      res <-
+        if c1 != 'f' || c2 != 'a' || c3 != 'l' || c4 != 's' || c5 != 'e' then
+          factory.invalidLiteral(stream, FALSE)
+        else
+          factory.read(stream, 5)
+    yield res
 }

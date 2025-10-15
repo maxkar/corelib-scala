@@ -1,8 +1,8 @@
 package io.github.maxkar
 package json.simple
 
-import json.parser.v3.TestIO
-import json.parser.v3.TestIO.given
+import json.parser.TestIO
+import json.parser.TestIO.given
 
 
 /** Tests for simple json parsing. */

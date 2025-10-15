@@ -1,83 +1,63 @@
 package io.github.maxkar
 package json.parser
 
-import fun.instances.Identity
-import fun.instances.Identity.given
+import TestIO.*
+import TestIO.given
 
-/**
- * Tests for the literal parser.
- */
 final class LiteralsTest extends org.scalatest.funsuite.AnyFunSuite {
-  import LiteralsTest._
-  import LiteralsTest.given
 
+  private val factory = new Literals.Factory.Simple(())
 
-  test("isSameLiteral works") {
-    assert(Literals.isSameLiteral("hello", "hello"))
-    assert(Literals.isSameLiteral("hello", "helloo"))
-    assert(!Literals.isSameLiteral("hello", "hell"))
+  test("Literals are read successfully") {
+    testSuccess("true", 4, Literals.readTrue)
+    testSuccess("false", 5, Literals.readFalse)
+    testSuccess("null", 4, Literals.readNull)
+
+    testSuccess("true,", 4, Literals.readTrue)
+    testSuccess("false,", 5, Literals.readFalse)
+    testSuccess("null,", 4, Literals.readNull)
+
+    testSuccess("true ", 4, Literals.readTrue)
+    testSuccess("false ", 5, Literals.readFalse)
+    testSuccess("null ", 4, Literals.readNull)
+
+    testSuccess("truez ", 4, Literals.readTrue)
+    testSuccess("falsez ", 5, Literals.readFalse)
+    testSuccess("nullz ", 4, Literals.readNull)
   }
 
-  test("startsWithLiteral works") {
-    SimpleStringStream.forAllLookAheadSizes[Identity]("hello, world") { stream =>
-      assert(Literals.startsWithLiteral("hello", stream))
-      assert(stream.readOffset === 0)
+
+  test("Invalid literals") {
+    testFailure("tru", "Invalid true literal", Literals.readTrue)
+    testFailure("fal", "Invalid false literal", Literals.readFalse)
+    testFailure("nul", "Invalid null literal", Literals.readNull)
+
+    testFailure("trux", "Invalid true literal", Literals.readTrue)
+    testFailure("falx", "Invalid false literal", Literals.readFalse)
+    testFailure("nulx", "Invalid null literal", Literals.readNull)
+  }
+
+
+  private def testSuccess(
+        input: String,
+        length: Int,
+        reader: factory.type => JsonStream => Operation[Unit]
+      ): Unit =
+    withClue(input) {
+      assert(length === parse(input, reader(factory))._2)
     }
-  }
 
 
-  test("readLiteral works") {
-    SimpleStringStream.forAllLookAheadSizes[Identity]("hello, world") { stream =>
-      Literals.readLiteral("hello", stream)
-      assert(stream.readOffset === 5)
+  private def testFailure(
+        input: String,
+        message: String,
+        reader: factory.type => JsonStream => Operation[Unit]
+      ): Unit =
+    withClue(input) {
+      val exn = failParse(input, reader(factory))
+      assert(0 === exn.offset)
+      assert(message === exn.message)
     }
-  }
 
-  test("readLiteral properly handles invalid terminals") {
-    SimpleStringStream.forAllLookAheadSizes[Identity]("greeting") { stream =>
-      try
-        Literals.readLiteral("greeter", stream)
-        fail("Exception expected")
-      catch
-        case BadLiteral("greeter") => ()
-        case other => throw other
-      end try
-      assert(stream.readOffset === 0)
-    }
-  }
-
-
-  test("readTrue works") {
-    SimpleStringStream.forAllLookAheadSizes[Identity]("true?") { stream =>
-      Literals.readTrue(stream)
-      assert(stream.readOffset === 4)
-    }
-  }
-
-
-  test("readFalse works") {
-    SimpleStringStream.forAllLookAheadSizes[Identity]("false?") { stream =>
-      Literals.readFalse(stream)
-      assert(stream.readOffset === 5)
-    }
-  }
-
-
-  test("readNull works") {
-    SimpleStringStream.forAllLookAheadSizes[Identity]("null?") { stream =>
-      Literals.readNull(stream)
-      assert(stream.readOffset === 4)
-    }
-  }
 }
 
-
-private object LiteralsTest {
-  /** Encoding of the "bad literal" exception. */
-  final case class BadLiteral(expected: String) extends Exception
-
-  given LiteralErrors: Literals.Errors[Identity, Any] with {
-    override def badLiteral(expected: String, stream: Any): Unit =
-      throw new BadLiteral(expected)
-  }
-}

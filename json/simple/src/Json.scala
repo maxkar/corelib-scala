@@ -16,9 +16,9 @@ import json.writer.v3.Arrays
 import json.writer.Values.ValueClassifier
 import json.writer.Values.ValueCallback
 
-import json.parser.v3.Peek
-import json.parser.v3.DefaultStream
-import json.parser.v3.ParseError
+import json.parser.Peek
+import json.parser.DefaultStream
+import json.parser.ParseError
 import java.io.StringWriter
 
 

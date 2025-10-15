@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.v3
+package json.parser
 
 /** A typeclass for raising parsing errors in a context of a stream `S`. */
 trait ParseError[M[_], -S] {

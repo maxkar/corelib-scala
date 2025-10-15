@@ -3,16 +3,16 @@ package json.attr
 
 import fun.typeclass.Monad
 
-import json.parser.v3.Peek
-import json.parser.v3.DefaultStream
-import json.parser.v3.Literals
-import json.parser.v3.Strings
-import json.parser.v3.Numbers
-import json.parser.v3.Arrays
-import json.parser.v3.Objects
-import json.parser.v3.Values
-import json.parser.v3.Whitespaces
-import json.parser.v3.ParseError
+import json.parser.Peek
+import json.parser.DefaultStream
+import json.parser.Literals
+import json.parser.Strings
+import json.parser.Numbers
+import json.parser.Arrays
+import json.parser.Objects
+import json.parser.Values
+import json.parser.Whitespaces
+import json.parser.ParseError
 
 /** A reader of the input stream that has default capabilities. */
 final class Reader[M[_]: Monad, -S: Peek.In[M]: DefaultStream.In[M], A](

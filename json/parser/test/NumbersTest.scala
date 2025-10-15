@@ -1,14 +1,11 @@
 package io.github.maxkar
 package json.parser
 
-import fun.instances.Identity
-import fun.instances.Identity.given
+import TestIO.*
+import TestIO.given
 
-/**
- * Tests for the number parsers.
- */
 final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
-  import NumbersTest.given
+  import NumbersTest.*
 
   /** Valid numbers - should be parsed fully. */
   val validNumbers: Seq[String] = {
@@ -85,83 +82,53 @@ final class NumbersTest extends org.scalatest.funsuite.AnyFunSuite {
       num <- validNumbers
       trailer <- Seq("", ",", " ", ", ", " ,")
       inputString = num + trailer
-      chunkSize <- 1 until inputString.length()
     do
-      withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new SimpleStringStream(inputString, chunkSize)
-        assert(num === Numbers.readAll(stream))
-        assert(stream.readOffset === num.length())
+      withClue(inputString) {
+        checkSimpleSuccess(num, inputString)
       }
   }
 
   test("Missing integer digits") {
-    testFailure(missingIntegerDigits, new NumberErrors.MissingIntegerDigits())
+    testFailure(missingIntegerDigits, "Missing integer digits")
   }
 
 
   test("Leading 0") {
-    testFailure(leadingInt0, new NumberErrors.LeadingIntegerZero())
+    testFailure(leadingInt0, "Leading zero is not allowed")
   }
 
 
   test("Missing decimal digits") {
-    testFailure(missingDecimalDigits, new NumberErrors.MissingDecimalDigits())
+    testFailure(missingDecimalDigits, "Missing decimal digits")
   }
 
 
   test("Missing exponent digits") {
-    testFailure(missingExponentDigits, new NumberErrors.MissingExponentDigits())
+    testFailure(missingExponentDigits, "Missing exponent digits")
   }
 
+  private def checkSimpleSuccess(expected: String, input: String): Unit =
+    withClue(input) {
+      val (result, offset) = parse(input, Numbers.read(factory))
+      assert(expected === result)
+    }
 
-  /** Runs a generic failure test. */
-  private def testFailure(inputs: Seq[(String, Int)], expected: Throwable): Unit = {
-    for
-      (num, failurePosition) <- inputs
-      trailer <- Seq("", ",", " ", ", ", " ,")
-      inputString = num + trailer
-      chunkSize <- 1 until inputString.length()
-    do
-      withClue(s"${inputString} (by ${chunkSize})") {
-        val stream = new SimpleStringStream(inputString, chunkSize)
-        try {
-          Numbers.readAll(stream)
-          fail(s"Exception ${expected} expected")
-        } catch {
-          case e if e == expected => ()
-          case other => throw other
-        }
-        assert(stream.readOffset === failurePosition)
+
+  /** Checks that error is raised. */
+  private def testFailure(inputs: Seq[(String, Int)], error: String): Unit = {
+    for {
+      (data, offset) <- inputs
+    } {
+      withClue(data) {
+        val exn = failParse(data, Numbers.read(factory))
+        assert(offset === exn.offset)
+        assert(error === exn.message)
       }
+    }
   }
 }
 
 
 object NumbersTest {
-  /** Implementation of number errors. */
-  given NumberErrors: Numbers.Errors[Identity, Any] with {
-    /** Encoding for missing integer digits. */
-    case class MissingIntegerDigits() extends Exception
-
-    /** Encoding for missing decimal digits. */
-    case class MissingDecimalDigits() extends Exception
-
-    /** Encoding for missing exponent digits. */
-    case class MissingExponentDigits() extends Exception
-
-    /** Encoding for integer with leading 0. */
-    case class LeadingIntegerZero() extends Exception
-
-    override def missingIntegerDigits[T](stream: Any): T =
-      throw new MissingIntegerDigits()
-
-    override def leadingIntegerZero[T](stream: Any): T =
-      throw new LeadingIntegerZero()
-
-    override def missingDecimalDigits[T](stream: Any): T =
-      throw new MissingDecimalDigits()
-
-    override def missingExponentDigits[T](stream: Any): T =
-      throw new MissingExponentDigits()
-  }
+  val factory = new Numbers.Factory.AsString[Operation, JsonStream]
 }

@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.v3
+package json.parser
 
 import fun.typeclass.Monad
 import text.Location
@@ -14,7 +14,7 @@ opaque type BufferedJsonReader[M[_]] = BufferedJsonReader.Impl[M, ?]
 
 object BufferedJsonReader {
   /** Implementation of the reader. */
-  private[v3] final class Impl[M[_]: Monad, S: Reader.In[M]](buffer: Array[Char], stream: S) {
+  private[parser] final class Impl[M[_]: Monad, S: Reader.In[M]](buffer: Array[Char], stream: S) {
     /** Limit after which we do buffer compaction. */
     private val compactionLimit = buffer.length - Peek.MAX_LOOK_AHEAD_DISTANCE
     /** Tracker of the input location. */

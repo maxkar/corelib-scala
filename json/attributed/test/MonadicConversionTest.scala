@@ -13,7 +13,7 @@ import fun.typeclass.Collect
 
 import scala.language.implicitConversions
 
-import json.parser.v3.TestIO
+import json.parser.TestIO
 
 /**
  * A test for monadic (higher-kinded) json parsing and conversion. Illustrates some

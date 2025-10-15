@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.v3
+package json.parser
 
 import fun.typeclass.Monad
 import fun.instances.Unnest

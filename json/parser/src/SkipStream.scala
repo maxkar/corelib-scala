@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.parser.v3
+package json.parser
 
 /** A typeclass for a reader that could skip characters. */
 trait SkipStream[M[_], -S] extends Peek[M, S] {
