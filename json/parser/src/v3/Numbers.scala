@@ -56,7 +56,18 @@ object Numbers {
 
 
   object Factory {
-    abstract class Simple[M[_]: Applicative, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J] {
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
+      override final def missingIntegerDigits(stream: S, context: Context): M[Unit] =
+        stream.parseError("Missing integer digits")
+      override final def leadingIntegerZero(stream: S, context: Context): M[Unit] =
+        stream.parseError("Leading zero is not allowed")
+      override final def missingDecimalDigits(stream: S, context: Context): M[Unit] =
+        stream.parseError("Missing decimal digits")
+      override final def missingExponentDigits(stream: S, context: Context): M[Unit] =
+        stream.parseError("Missing exponent digits")
+    }
+
+    abstract class Simple[M[_]: Applicative, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
       /** Creates a context. */
       def createContext(): Context
 
@@ -77,21 +88,11 @@ object Numbers {
       override final def readIntegerDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
         appendWhile(context, stream, predicate)
 
-      override final def missingIntegerDigits(stream: S, context: Context): M[Unit] =
-        stream.parseError("Missing integer digits")
-
-      override final def leadingIntegerZero(stream: S, context: Context): M[Unit] =
-        stream.parseError("Leading zero is not allowed")
-
       override final def readDecimalSeparator(stream: S, context: Context, count: Int, separator: Char): M[Unit] =
         stream.skip(1) >-| append(context, separator)
 
       override final def readDecimalDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
         appendWhile(context, stream, predicate)
-
-      /** Handles a situation with missing decimal digits. */
-      override final def missingDecimalDigits(stream: S, context: Context): M[Unit] =
-        stream.parseError("Missing decimal digits")
 
       override final def readExponentIndicator(stream: S, context: Context, count: Int, separator: Char): M[Unit] =
         stream.skip(1) >-| append(context, separator)
@@ -101,9 +102,6 @@ object Numbers {
 
       override final def readExponentDigits(stream: S, context: Context, predicate: Char => Boolean): M[Unit] =
         appendWhile(context, stream, predicate)
-
-      override final def missingExponentDigits(stream: S, context: Context): M[Unit] =
-        stream.parseError("Missing exponent digits")
 
       override final def finish(stream: S, context: Context): M[J] =
         Monad.pure(createValue(context))

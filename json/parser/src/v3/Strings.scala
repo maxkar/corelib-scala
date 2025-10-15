@@ -74,25 +74,9 @@ object Strings {
 
 
   object Factory {
-    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J] {
-      /** Creates a context. */
-      def createContext(): Context
-
-      /** Converts context to json value. */
-      def createValue(context: Context): J
-
-      /** Appends a simple character to the context. */
-      def append(context: Context, chr: Char): Unit
-
-
-      override def start(stream: S, count: Int): M[Context] =
-        stream.skip(count) >-| createContext()
-
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
       override final def invalidStringStart(stream: S): M[Context] =
         stream.parseError("Invalid string start")
-
-      override final def readEscape(stream: S, context: Context, count: Int, char: Char): M[Unit] =
-        stream.skip(count) >-| append(context, char)
 
       override final def invalidEscapeCharacter(stream: S, context: Context): M[Unit] =
         stream.parseError("Invalid escape character")
@@ -103,11 +87,29 @@ object Strings {
       override final def invalidCharacter(stream: S, context: Context): M[Unit] =
         stream.parseError("Invalid character")
 
-      override final def finish(stream: S, context: Context, count: Int): M[J] =
-        stream.skip(count) >-| createValue(context)
-
       override final def invalidStringEnd(stream: S, context: Context): M[J] =
         stream.parseError("Invalid string end")
+    }
+
+
+    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
+      /** Creates a context. */
+      def createContext(): Context
+
+      /** Converts context to json value. */
+      def createValue(context: Context): J
+
+      /** Appends a simple character to the context. */
+      def append(context: Context, chr: Char): Unit
+
+      override final def start(stream: S, count: Int): M[Context] =
+        stream.skip(count) >-| createContext()
+
+      override final def readEscape(stream: S, context: Context, count: Int, char: Char): M[Unit] =
+        stream.skip(count) >-| append(context, char)
+
+      override final def finish(stream: S, context: Context, count: Int): M[J] =
+        stream.skip(count) >-| createValue(context)
     }
 
 

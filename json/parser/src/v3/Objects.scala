@@ -63,43 +63,38 @@ object Objects {
 
 
   object Factory {
-    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J]{
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
+      override final def invalidObjectStart(stream: S): M[J] =
+        stream.parseError("Invalid object start")
+      override final def invalidKeyValueSeparator(stream: S, context: Context, key: Key): M[Unit] =
+        stream.parseError("Invalid key-value separator")
+      override final def invalidEntrySeparatorOrObjectEnd(stream: S, context: Context): M[J] =
+        stream.parseError("Invalid entry separator or object end")
+    }
+
+
+    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J]{
       /** Creates a context. */
       def createContext(): Context
 
       /** Converts context to json value. */
       def createValue(context: Context): J
 
-
-      /**
-       * Conusmes whitespaces that are not captured and do not affect reading
-       * object values.
-       */
       override def skipIgnorableWhitespaces(stream: S): M[Unit] =
         Whitespaces.skip(stream)
 
       override final def start(stream: S, count: Int): M[Context] =
         stream.skip(count) >-| createContext()
 
-      /** Handles a situation where object start was expected but was not found. */
-      override final def invalidObjectStart(stream: S): M[J] =
-        stream.parseError("Invalid object start")
-
       /** Consumes key-value separator from the stream. */
       override final def skipKeyValueSeparator(stream: S, context: Context, key: Key, count: Int): M[Unit] =
         stream.skip(count)
-
-      override final def invalidKeyValueSeparator(stream: S, context: Context, key: Key): M[Unit] =
-        stream.parseError("Invalid key-value separator")
 
       override final def skipEntrySeparator(stream: S, context: Context, count: Int): M[Unit] =
         stream.skip(count)
 
       override final def finish(stream: S, context: Context, count: Int): M[J] =
         stream.skip(count) >-| createValue(context)
-
-      override final def invalidEntrySeparatorOrObjectEnd(stream: S, context: Context): M[J] =
-        stream.parseError("Invalid entry separator or object end")
     }
 
 

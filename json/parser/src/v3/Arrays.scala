@@ -50,7 +50,16 @@ object Arrays {
 
 
   object Factory {
-    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends Factory[M, S, J] {
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
+      /** Handles a situation where array start was expected but was not found. */
+      override final def invalidArrayStart(stream: S): M[J] =
+        stream.parseError("Invalid array start")
+      override final def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[J] =
+        stream.parseError("Invalid value separator or array end")
+    }
+
+
+    abstract class Simple[M[_]: Functor, -S: DefaultStream.In[M]: ParseError.In[M], J] extends RaiseParseErrors[M, S, J] {
       /** Creates a context. */
       def createContext(): Context
 
@@ -70,19 +79,12 @@ object Arrays {
       override final def start(stream: S, count: Int): M[Context] =
         stream.skip(count) >-| createContext()
 
-      /** Handles a situation where array start was expected but was not found. */
-      override final def invalidArrayStart(stream: S): M[J] =
-        stream.parseError("Invalid array start")
-
       /** Consumes value separator. */
       override final def skipValueSeparator(stream: S, context: Context, count: Int): M[Unit] =
         stream.skip(count)
 
       override final def finish(stream: S, context: Context, count: Int): M[J] =
         stream.skip(count) >-| createValue(context)
-
-      override final def invalidValueSeparatorOrArrayEnd(stream: S, context: Context): M[J] =
-        stream.parseError("Invalid value separator or array end")
     }
 
 

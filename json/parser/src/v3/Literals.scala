@@ -19,7 +19,7 @@ object Literals {
    * Value factory that creates a JSON representation `J` of
    * a literal read from stream `S`.
    */
-  trait Factory[M[_], S, J] {
+  trait Factory[M[_], -S, J] {
     /**
      * Consumes `count` characters from the stream and returns the
      * JSON literal representation.
@@ -37,15 +37,17 @@ object Literals {
 
 
   object Factory {
+    abstract class RaiseParseErrors[M[_], -S: ParseError.In[M], J] extends Factory[M, S, J] {
+      override final def invalidLiteral(stream: S, expected: String): M[J] =
+        stream.parseError(s"Invalid ${expected} literal")
+    }
+
     /** Simple factory that consumes literal and returns the specified value for default stream. */
     final class Simple[M[_]: Functor, S: DefaultStream.In[M]: ParseError.In[M], J](
           value: J
-        ) extends Factory[M, S, J] {
+        ) extends Factory.RaiseParseErrors[M, S, J] {
       override def read(stream: S, count: Int): M[J] =
         stream.skip(count) >-| value
-
-      override def invalidLiteral(stream: S, expected: String): M[J] =
-        stream.parseError(s"Invalid ${expected} literal")
     }
   }
 

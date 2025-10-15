@@ -23,10 +23,7 @@ import java.io.IOException
 /** Streaming formatter for the JSON values. */
 object StreamingFormatter {
   /** "Factory" for literals. */
-  private object LiteralFactory extends Literals.Factory[Unnest, FormatterIO, Unit] {
-    override def invalidLiteral(stream: FormatterIO, expected: String): Unnest[Unit] =
-      raise(stream, s"Invalid ${expected} literal")
-
+  private object LiteralFactory extends Literals.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     override def read(stream: FormatterIO, count: Int): Unnest[Unit] =
       Monad.pure(stream.copy(count))
   }
@@ -41,36 +38,22 @@ object StreamingFormatter {
 
 
   /** "Factory" for strings. */
-  private object StringFactory extends IStrings.Factory[Unnest, FormatterIO, Unit] {
+  private object StringFactory extends IStrings.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     override type Context = Unit
     override def start(stream: FormatterIO, count: Int): Unnest[Unit] =
       Monad.pure(stream.copy(count))
-    override def invalidStringStart(stream: FormatterIO): Unnest[Unit] =
-      raise(stream, "Invalid string start")
-    override def readWhile(
-          stream: FormatterIO,
-          context: Unit,
-          predicate: Char => Boolean)
-        : Unnest[Unit] =
+    override def readWhile(stream: FormatterIO, context: Unit, predicate: Char => Boolean) : Unnest[Unit] =
       Monad.pure(stream.copyWhile(predicate))
     override def readEscape(stream: FormatterIO, context: Unit, count: Int, char: Char): Unnest[Unit] =
       OStrings.write(stream, char) >-| { stream.drop(count) }
-    override def invalidEscapeCharacter(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Invalid escape character")
-    override def invalidUnicodeEscape(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Invalid unicode escape")
-    override def invalidCharacter(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Invalid character")
     override def finish(stream: FormatterIO, context: Unit, count: Int): Unnest[Unit] =
       Monad.pure(stream.copy(count))
-    override def invalidStringEnd(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Invalid string end")
   }
-  private val formatStringFn = IStrings.read(StringFactory)
+  private val copyString = IStrings.read(StringFactory)
 
 
   /** "Factory" for numbers. */
-  private object NumberFactory extends Numbers.Factory[Unnest, FormatterIO, Unit] {
+  private object NumberFactory extends Numbers.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     override type Context = Unit
 
     override def start(stream: FormatterIO): Unnest[Unit] = Monad.pure(())
@@ -78,30 +61,22 @@ object StreamingFormatter {
       Monad.pure(stream.copy(count))
     override def readIntegerDigits(stream: FormatterIO, context: Unit, predicate: Char => Boolean): Unnest[Unit] =
       Monad.pure(stream.copyWhile(predicate))
-    override def missingIntegerDigits(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Missing integer digits")
-    override def leadingIntegerZero(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Leading 0 is not allowed")
     override def readDecimalSeparator(stream: FormatterIO, context: Unit, count: Int, separator: Char): Unnest[Unit] =
       Monad.pure(stream.copy(count))
     override def readDecimalDigits(stream: FormatterIO, context: Unit, predicate: Char => Boolean): Unnest[Unit] =
       Monad.pure(stream.copyWhile(predicate))
-    override def missingDecimalDigits(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Missing decimal digits")
     override def readExponentIndicator(stream: FormatterIO, context: Unit, count: Int, separator: Char): Unnest[Unit] =
       Monad.pure(stream.copy(count))
     override def readExponentSign(stream: FormatterIO, context: Unit, count: Int, separator: Char): Unnest[Unit] =
       Monad.pure(stream.copy(count))
     override def readExponentDigits(stream: FormatterIO, context: Unit, predicate: Char => Boolean): Unnest[Unit] =
       Monad.pure(stream.copyWhile(predicate))
-    override def missingExponentDigits(stream: FormatterIO, context: Unit): Unnest[Unit] =
-      raise(stream, "Missing exponent digits")
     override def finish(stream: FormatterIO, context: Unit): Unnest[Unit] = Monad.pure(())
   }
-  private val formatNumberFn = Numbers.read(NumberFactory)
+  private val copyNumber = Numbers.read(NumberFactory)
 
 
-  private final class ArrayFactory(layout: Layout[Unnest, FormatterIO]) extends IArrays.Factory[Unnest, FormatterIO, Unit] {
+  private final class ArrayFactory(layout: Layout[Unnest, FormatterIO]) extends IArrays.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     private val arrayLayout = layout.arrayLayout
     private val nestedLayout = layout.nested
 
@@ -115,8 +90,6 @@ object StreamingFormatter {
         stream.copy(count)
         new Context()
       }
-    override def invalidArrayStart(stream: FormatterIO): Unnest[Unit] =
-      raise(stream, "Invalid array start")
 
     override def readValue(stream: FormatterIO, context: Context): Unnest[Unit] = {
       val isFirst = context.first
@@ -128,12 +101,12 @@ object StreamingFormatter {
       arrayLayout.beforeElementSeparator(stream) >-| { stream.copy(count) }
     override def finish(stream: FormatterIO, context: Context, count: Int): Unnest[Unit] =
       arrayLayout.beforeArrayEnd(stream, context.first) >-| { stream.copy(count) }
-    override def invalidValueSeparatorOrArrayEnd(stream: FormatterIO, context: Context): Unnest[Unit] =
-      raise(stream, "Invalid array separator or end")
   }
+  def copyArray(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] =
+    IArrays.read(new ArrayFactory(layout))(stream)
 
 
-  private final class ObjectFactory(layout: Layout[Unnest, FormatterIO]) extends IObjects.Factory[Unnest, FormatterIO, Unit] {
+  private final class ObjectFactory(layout: Layout[Unnest, FormatterIO]) extends IObjects.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     private val objectLayout = layout.objectLayout
     private val nestedLayout = layout.nested
 
@@ -147,44 +120,38 @@ object StreamingFormatter {
         stream.copy(count)
         new Context()
       }
-    override def invalidObjectStart(stream: FormatterIO): Unnest[Unit] =
-      raise(stream, "Invalid object start")
     override def readKey(stream: FormatterIO, context: Context): Unnest[Unit] = {
       val isFirst = context.first
       context.first = false
-      objectLayout.beforeKey(stream, isFirst) >=|| formatStringFn(stream)
+      objectLayout.beforeKey(stream, isFirst) >=|| copyString(stream)
     }
     override def skipKeyValueSeparator(stream: FormatterIO, context: Context, key: Unit, count: Int): Unnest[Unit] =
       objectLayout.beforeKeyValueSeparator(stream) >-| stream.copy(count)
-    override def invalidKeyValueSeparator(stream: FormatterIO, context: Context, key: Unit): Unnest[Unit] =
-      raise(stream, "Invalid key-value separator")
     override def readValue(stream: FormatterIO, context: Context, key: Unit): Unnest[Unit] =
       objectLayout.beforeValue(stream) >=|| formatJson(stream, layout)
     override def skipEntrySeparator(stream: FormatterIO, context: Context, count: Int): Unnest[Unit] =
       objectLayout.beforeEntrySeparator(stream) >-| stream.copy(count)
     override def finish(stream: FormatterIO, context: Context, count: Int): Unnest[Unit] =
       objectLayout.beforeObjectEnd(stream, context.first) >-| stream.copy(count)
-    override def invalidEntrySeparatorOrObjectEnd(stream: FormatterIO, context: Context): Unnest[Unit] =
-      raise(stream, "Invalid entry separator or object end")
   }
+  def copyObject(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] =
+    IObjects.read(new ObjectFactory(layout))(stream)
 
 
-  private class JsonFactory(layout: Layout[Unnest, FormatterIO]) extends Values.Factory[FormatterIO, Unnest[Unit]] {
+  private class JsonFactory(layout: Layout[Unnest, FormatterIO]) extends Values.Factory.RaiseParseErrors[Unnest, FormatterIO, Unit] {
     override def readTrue(stream: FormatterIO): Unnest[Unit] = copyTrue(stream)
     override def readFalse(stream: FormatterIO): Unnest[Unit] = copyFalse(stream)
     override def readNull(stream: FormatterIO): Unnest[Unit] = copyNull(stream)
-    override def readString(stream: FormatterIO): Unnest[Unit] = formatStringFn(stream)
-    override def readNumber(stream: FormatterIO): Unnest[Unit] = formatNumberFn(stream)
-    override def readArray(stream: FormatterIO): Unnest[Unit] = IArrays.read(new ArrayFactory(layout))(stream)
-    override def readObject(stream: FormatterIO): Unnest[Unit] = IObjects.read(new ObjectFactory(layout))(stream)
-    override def invalidValue(stream: FormatterIO): Unnest[Unit] =
-      raise(stream, "Invalid value")
+    override def readString(stream: FormatterIO): Unnest[Unit] = copyString(stream)
+    override def readNumber(stream: FormatterIO): Unnest[Unit] = copyNumber(stream)
+    override def readArray(stream: FormatterIO): Unnest[Unit] = copyArray(stream, layout)
+    override def readObject(stream: FormatterIO): Unnest[Unit] = copyObject(stream, layout)
   }
 
 
   def formatJson(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unnest[Unit] = {
     stream.dropWhile(Whitespaces.isWhitespace)
-    Values.read(new JsonFactory(layout))(stream)
+    Values.readExact(new JsonFactory(layout))(stream)
   }
 
   def formatFully(stream: FormatterIO, layout: Layout[Unnest, FormatterIO]): Unit =
