@@ -4,9 +4,6 @@ package json.simple
 import fun.typeclass.Monad
 import fun.instances.Unnest
 
-import text.output.{Stream => OutStream}
-import text.output.StringBuilderStream
-
 import json.writer.DefaultWriter
 import json.writer.Layout
 import json.writer.Literals

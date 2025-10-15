@@ -4,8 +4,6 @@ package json.attr
 import fun.instances.Identity
 import fun.instances.Identity.given
 
-import text.output.StringBuilderStream
-
 /**
  * Test for the writer (both json writer and writer for the attributed binding).
  */

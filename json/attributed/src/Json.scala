@@ -3,9 +3,6 @@ package json.attr
 
 import fun.typeclass.Monad
 
-import text.output.{Stream => OutStream}
-import text.output.StringBuilderStream
-
 import json.parser.Peek
 import json.parser.DefaultStream
 import json.writer.DefaultWriter
