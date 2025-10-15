@@ -4,6 +4,8 @@ package json.sample.formatter.streaming
 import java.io.StringReader
 import java.io.StringWriter
 
+import json.writer.v3.Layout
+
 /** Tests for JSON compaction. */
 final class CompactionTest extends org.scalatest.funsuite.AnyFunSuite {
 
@@ -47,7 +49,7 @@ final class CompactionTest extends org.scalatest.funsuite.AnyFunSuite {
   private def check(expected: String)(input: String): Unit = {
     val i = new StringReader(input)
     val o = new StringWriter()
-    assert(None === Formatter.compact(i, o))
+    StreamingFormatter.formatFully(new FormatterIO(i, o), Layout.Compact())
     assert(expected === o.toString())
   }
 }
