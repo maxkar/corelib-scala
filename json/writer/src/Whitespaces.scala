@@ -1,7 +1,7 @@
 package io.github.maxkar
-package json.writer.v3
+package json.writer
 
-private [v3] class Whitespaces(count: Int) extends CharSequence {
+private[writer] class Whitespaces(count: Int) extends CharSequence {
   override def charAt(index: Int): Char = ' '
   override def length(): Int = count
   override def subSequence(start: Int, end: Int): CharSequence = new Whitespaces(end - start)

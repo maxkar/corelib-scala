@@ -1,243 +1,139 @@
 package io.github.maxkar
 package json.writer
 
-import text.output.Stream
-
-import fun.typeclass.Monad
 import fun.typeclass.Applicative
+import fun.typeclass.Monad
 
-
-/** Array output utilities. */
+/** Utilities for writing arrays. */
 object Arrays {
-  /** Array start sequence. */
-  val ARRAY_START = "["
+  /** Array start character. */
+  val ARRAY_START = '['
 
-  /** Array end sequence. */
-  val ARRAY_END = "]"
+  /** Array end test. */
+  val ARRAY_END = ']'
 
-  /** Array element separator. */
-  val ARRAY_SEPARATOR = ","
-
-
-  /**
-   * Whitespace writer for arrays. Methods of this whitespacer are invoked to
-   * format the output being generated.
-   */
-  trait Whitespaces[M[_], -S] {
-    /** Outputs whitespaces before the array. */
-    def beforeArray(stream: S): M[Unit]
-
-    /** Outputs whitespaces after the array. */
-    def afterArray(stream: S): M[Unit]
-
-    /** Outputs whitespaces that should be present inside the empty array. */
-    def insideEmptyArray(stream: S): M[Unit]
-
-    /** Outputs whitespaces before first array element. */
-    def beforeFirstValue(stream: S): M[Unit]
-
-    /** Outputs whitespaces before an array element (whis is not the first element). */
-    def beforeValue(stream: S): M[Unit]
-
-    /** Outputs whitespacse after the last value (before closing the array). */
-    def afterLastValue(stream: S): M[Unit]
-
-    /** Outputs whitespaces after (non-last) array value. */
-    def afterValue(stream: S): M[Unit]
-  }
+  /** Array end test. */
+  val ARRAY_SEPARATOR = ','
 
 
-  object Whitespaces {
-    /** Creates a whitespace placement strategy that puts no whitespaces. */
-    def nothing[M[_]: Applicative, Any]: Whitespaces[M, Any] =
-      new Whitespaces[M, Any] {
-        /** Universal return value. */
-        private val pass = Monad.pure(())
+  /** Formatter for the array layout on a given stream `S`. */
+  trait Layout[M[_], -S] {
+    /**
+     * Puts whitespaces before value in the array.
+     * @param stream stream to put value into.
+     * @param first indicates if whitespaces are put before the first element or
+     *   any consequent element.
+     */
+    def beforeValue(stream: S, first: Boolean): M[Unit]
 
-        override def beforeArray(stream: Any): M[Unit] = pass
-        override def afterArray(stream: Any): M[Unit] = pass
-        override def insideEmptyArray(stream: Any): M[Unit] = pass
-        override def beforeFirstValue(stream: Any): M[Unit] = pass
-        override def beforeValue(stream: Any): M[Unit] = pass
-        override def afterLastValue(stream: Any): M[Unit] = pass
-        override def afterValue(stream: Any): M[Unit] = pass
-      }
-  }
-
-
-  /**
-   * (Stateful) array layout writer - writes whitespaces, boundaries and separators
-   * but does not write values by itself.
-   */
-  final class Layout[M[_]: Monad, S <: Stream[M]] private[Arrays](
-        whitespaces: Whitespaces[M, S]
-      ) {
-    /** If any values were observed. */
-    private var seenValue = false
-
+    /** Puts whitespaces before element separator. */
+    def beforeElementSeparator(stream: S): M[Unit]
 
     /**
-     * Prepares the stream for the next value by writing appropriate whitespaces
-     * and value separators.
+     * Puts whitespaces before array end.
+     * @param stream stream to put whitespacse into.
+     * @param isEmpty indicates if the array is empty (no elements written) or not.
      */
-    def prepareValue(stream: S): M[Unit] =
-      if seenValue then
-        prepareNext(stream)
-      else
-        prepareFirst(stream)
+    def beforeArrayEnd(stream: S, isEmpty: Boolean): M[Unit]
+  }
 
 
-    /** Finishes the stream by writing appropriate whitespaces and array terminator. */
-    def end(stream: S): M[Unit] = {
-      val base =
-        if seenValue then
-          whitespaces.afterLastValue(stream)
+  object Layout {
+    /** Compact layout - no whitespaces. */
+    final class Compact[M[_]: Applicative] extends Layout[M, Any] {
+      private val pass = Applicative.pure(())
+      override def beforeValue(stream: Any, first: Boolean): M[Unit] = pass
+      override def beforeElementSeparator(stream: Any): M[Unit] = pass
+      override def beforeArrayEnd(stream: Any, isEmpty: Boolean): M[Unit] = pass
+    }
+
+
+    /** Indented array formatter. */
+    final class Indent[M[_]: Monad, S: DefaultWriter.In[M]] private(
+          generalIndent: CharSequence,
+          lastIndent: CharSequence
+        ) extends Layout[M, S] {
+      private val pass = Monad.pure(())
+
+      override def beforeValue(stream: S, first: Boolean): M[Unit] =
+        stream.write('\n') >=|| stream.write(generalIndent)
+
+      override def beforeElementSeparator(stream: S): M[Unit] = pass
+
+      override def beforeArrayEnd(stream: S, isEmpty: Boolean): M[Unit] = {
+        if isEmpty then
+          pass
         else
-          whitespaces.insideEmptyArray(stream)
-
-      for
-        _ <- base
-        _ <- writeArrayEnd(stream)
-        res <- whitespaces.afterArray(stream)
-      yield res
-    }
-
-
-    /** Prepares for the "next" (non-first) value. */
-    private def prepareNext(stream: S): M[Unit] =
-      for
-        _ <- whitespaces.afterValue(stream)
-        _ <- writeArraySeparator(stream)
-        res <- whitespaces.beforeValue(stream)
-      yield res
-
-
-    /** Prepares for the first value in the stream. */
-    private def prepareFirst(stream: S): M[Unit] = {
-      seenValue = true
-      whitespaces.beforeFirstValue(stream)
-    }
-  }
-
-
-  /**
-   * Convenient "push-element" writer.
-   * @tparam M type of IO monad.
-   * @tparam T type of the element being written.
-   */
-  abstract sealed class Writer[M[_], -T] {
-    /** Outputs next array element. */
-    def element(v: T): M[Unit]
-
-    /** Finishes writing and closes the array output. */
-    def end(): M[Unit]
-  }
-
-
-  /** Array writer implementation (hides some types). */
-  private final class WriterImpl[M[_]: Monad, S <: Stream[M], T](
-        layout: Layout[M, S],
-        writeElement: (T, S) => M[Unit],
-        stream: S
-      ) extends Writer[M, T] {
-    override def element(v: T): M[Unit] =
-      layout.prepareValue(stream).flatMap { _ =>
-        writeElement(v, stream)
+          stream.write('\n') >=|| stream.write(lastIndent)
       }
+    }
 
-    override def end(): M[Unit] =
-      layout.end(stream)
+
+    object Indent {
+      def apply[M[_]: Monad, S: DefaultWriter.In[M]](generalIndent: Int, lastIndent: Int): Layout[M, S] =
+        new Indent(new Whitespaces(generalIndent), new Whitespaces(lastIndent))
+    }
   }
 
 
-  /** Writes array start (prologue). */
-  def writeArrayStart[M[_]](stream: Stream[M]): M[Unit] =
-    stream.write(ARRAY_START)
-
-
-  /** Writes array end (epilogue). */
-  def writeArrayEnd[M[_]](stream: Stream[M]): M[Unit] =
-    stream.write(ARRAY_END)
-
-
-  /** Writes array separator. */
-  def writeArraySeparator[M[_]](stream: Stream[M]): M[Unit] =
-    stream.write(ARRAY_SEPARATOR)
-
-
-  /**
-   * Starts laying out an array in the output stream according to
-   * the whitespace rules. The method writes starting whitespaces and
-   * array prologue and then returns a configured `Layout` instance.
-   * The implementation should then call `Layout.prepareValue(_)` before
-   * each value and `Layout.end()` at the end.
-   *
-   * The pseudocode is as follows:
-   * ```
-   * val layout = Arrays.beginArray(whitespaces, stream)
-   * while hasNextElement do
-   *   layout.prepareValue(stream)
-   *   writeNextElement
-   * layout.end(stream)
-   * ```
-   *
-   * @param whitespaces whitespace rules.
-   */
-  def beginArray[M[_]: Monad, S <: Stream[M]](
-        whitespaces: Whitespaces[M, S],
-        stream: S
-      ): M[Layout[M, S]] =
-    for
-      _ <- whitespaces.beforeArray(stream)
-      _ <- writeArrayStart(stream)
-    yield
-      new Layout(whitespaces)
-
-
-  /**
-   * Creates a new "push" protocol that writes data into the
-   * provided stream and uses the given strategy to put whitespaces.
-   *
-   * The pseudocode is as follows:
-   * ```
-   * val writer = Arrays.newWriter(whitespaces, stream)
-   * while hasNextElement do
-   *   writer.element(nextElement)
-   * writer.end()
-   * ```
-   *
-   * @param whitespaces whitespace rules.
-   * @param writeElement function to write (contents) of the element.
-   */
-  def newWriter[M[_]: Monad, S <: Stream[M], T](
-        whitespaces: Whitespaces[M, S],
-        writeElement: (T, S) => M[Unit],
+  /** One-by-one writer for array elements `J`. */
+  final class Writer[M[_]: Monad, -S: CharWriter.In[M], J](
         stream: S,
-      ): M[Writer[M, T]] =
-    beginArray(whitespaces, stream).map { layout =>
-      new WriterImpl(layout, writeElement, stream)
+        layout: Layout[M, S],
+        writeValue: (S, J) => M[Unit]
+      ) {
+    /** We are before the first element in the array. */
+    private var beforeFirst = true
+
+
+    /** Outputs next element of the array. */
+    def write(element: J): M[Unit] = {
+      if beforeFirst then {
+        beforeFirst = false
+        layout.beforeValue(stream, true) >=|| writeValue(stream, element)
+      } else {
+        layout.beforeElementSeparator(stream) >=||
+          stream.write(ARRAY_SEPARATOR) >=||
+          layout.beforeValue(stream, false) >=||
+          writeValue(stream, element)
+      }
     }
 
 
-  /** Writes the `data` as an array. */
-  def writeAll[M[_]: Monad, S <: Stream[M], T](
-        whitespaces: Whitespaces[M, S],
-        writeElement: (T, S) => M[Unit],
-        data: Iterator[T],
+    /** Finishes writing the array. */
+    def finish(): M[Unit] =
+      layout.beforeArrayEnd(stream, beforeFirst) >=|| stream.write(ARRAY_END)
+  }
+
+
+  /** Starts writing the array and creates "element-by-element" writer API. */
+  def startWriting[M[_]: Monad, S: CharWriter.In[M], J](
         stream: S,
+        layout: Layout[M, S],
+        writeValue: (S, J) => M[Unit]
+      ): M[Writer[M, S, J]] =
+    stream.write(ARRAY_START) >-| { new Writer(stream, layout, writeValue) }
+
+
+  /**
+   * Writes all the elements of the array in the given layout using the provided
+   * per-element function.
+   */
+  def writeAll[M[_]: Monad, S: CharWriter.In[M], J](
+        stream: S,
+        layout: Layout[M, S],
+        writeValue: (S, J) => M[Unit],
+        elements: Iterable[J]
       ): M[Unit] =
-    newWriter(whitespaces, writeElement, stream).flatMap { w =>
-      writeAllNext(data, w)
+    startWriting(stream, layout, writeValue) >=>> { writer =>
+      val itr = elements.iterator
+
+      def writeNext(): M[Unit] =
+        if itr.hasNext then
+          writer.write(itr.next()) >=|| writeNext()
+        else
+          writer.finish()
+
+      writeNext()
     }
-
-
-  /** Pass rest of the data (one by one) to the writer. */
-  private def writeAllNext[M[_]: Monad, T](
-        data: Iterator[T],
-        writer: Writer[M, T],
-      ): M[Unit] =
-    if data.hasNext then
-      writer.element(data.next()).flatMap { _ => writeAllNext(data, writer) }
-    else
-      writer.end()
 }

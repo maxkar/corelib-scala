@@ -4,7 +4,7 @@ package json.sample.formatter.streaming
 import java.io.StringReader
 import java.io.StringWriter
 
-import json.writer.v3.Layout
+import json.writer.Layout
 
 /** Tests for JSON prettyfication. */
 final class PrettyficationTest extends org.scalatest.funsuite.AnyFunSuite {

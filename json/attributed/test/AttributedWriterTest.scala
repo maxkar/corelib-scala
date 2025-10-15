@@ -6,8 +6,6 @@ import fun.instances.Identity.given
 
 import text.output.StringBuilderStream
 
-import json.writer.Values
-
 /**
  * Test for the writer (both json writer and writer for the attributed binding).
  */

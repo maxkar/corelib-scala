@@ -2,7 +2,7 @@ package io.github.maxkar
 package json.sample.formatter.streaming
 
 import fun.instances.Unnest
-import json.writer.v3.Layout
+import json.writer.Layout
 
 import java.io.IOException
 

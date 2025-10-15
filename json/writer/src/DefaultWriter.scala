@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.writer.v3
+package json.writer
 
 import fun.typeclass.Applicative
 import java.io.Writer

@@ -4,9 +4,6 @@ package json.simple
 import fun.instances.Identity
 import fun.instances.Identity.given
 
-import json.writer.Values
-
-
 /**
  * Test for the writer (both json writer and writer for the simple binding).
  */

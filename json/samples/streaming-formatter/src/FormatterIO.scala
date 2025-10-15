@@ -10,8 +10,8 @@ import text.LocationTracker
 import json.parser.Peek
 import json.parser.ParseError
 import json.parser.SkipStream
-import json.writer.v3.CharWriter
-import json.writer.v3.DefaultWriter
+import json.writer.CharWriter
+import json.writer.DefaultWriter
 
 import java.io.Reader
 import java.io.Writer

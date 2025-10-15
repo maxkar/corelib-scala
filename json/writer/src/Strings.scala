@@ -3,145 +3,86 @@ package json.writer
 
 import fun.typeclass.Monad
 
-import text.output.Stream
-import java.io.OutputStream
 
-
-/** String-related output functions. */
+/** Utilities for working with strings. */
 object Strings {
-  /** String boundary. */
-  val STRING_BOUNDARY: String = "\""
+  /** String boundary character. */
+  val STRING_BOUNDARY = '"'
 
   /** Hex digits. */
   private val HEX_DIGITS = "0123456789ABCDEF"
 
-  /** Lower unicode range. JSON requires these to be always escaped.  */
-  val LOWER_UNICODE: Array[String] =
-    (
-      HEX_DIGITS.map(v => s"\\u000${v}") ++
-      HEX_DIGITS.map(v => s"\\u001${v}")
-    ).toArray
 
-  /** Quote escape character. */
-  val ESC_QUOTE = "\\\""
-
-  /** Reverse slash escape character. */
-  val ESC_RSLASH = "\\\\"
-
-  /** Bell (\b) escape character. */
-  val ESC_BELL = "\\b"
-
-  /** Form feed escape character. */
-  val ESC_FF = "\\f"
-
-  /** Carriage return escape character. */
-  val ESC_CR = "\\r"
-
-  /** Line feed escape character. */
-  val ESC_LF = "\\n"
-
-  /** Tab escape character. */
-  val ESC_TAB = "\\t"
-
-  /** Writes string boundary into the output stream. */
-  def writeStringBoundary[M[_]](stream: Stream[M]): M[Unit] =
-    stream.write(STRING_BOUNDARY)
-
-
-  /**
-   * Outputs string content (no boundary characters) into the stream.
-   * Performs necessary (minimally required) escaping of the output.
-   *
-   * This method may be used consequently on string parts if complete
-   * string is not available for any reason.
-   */
-  def writeStringContent[M[_]: Monad](
-        data: CharSequence,
-        stream: Stream[M],
-      ): M[Unit] =
-    writeStringRest(data, 0, stream)
-
-
-  /**
-   * Writes the string including boundary characters.
-   */
-  def writeString[M[_]: Monad](
-        data: CharSequence,
-        stream: Stream[M],
-      ): M[Unit] =
-    for
-      _ <- writeStringBoundary(stream)
-      _ <- writeStringRest(data, 0, stream)
-      res <- writeStringBoundary(stream)
-    yield
-      res
-
-
-  /**
-   * Outputs string content from the given position in the char sequence and
-   * until the sequence end.
-   */
-  private def writeStringRest[M[_]: Monad](
-        data: CharSequence,
-        start: Int,
-        stream: Stream[M]
-      ): M[Unit] = {
-    if data.length() <= start then
-      return Monad.pure(())
-
-    var ptr = start
-
-    while ptr < data.length() do {
-      data.charAt(ptr) match {
-        case '"' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_QUOTE, stream)
-        case '\\' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_RSLASH, stream)
-        case '\b' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_BELL, stream)
-        case '\f' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_FF, stream)
-        case '\r' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_CR, stream)
-        case '\n' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_LF, stream)
-        case '\t' =>
-          return writeStringWithSpecial(data, start, ptr, ESC_TAB, stream)
-        case x if x < 0x0020 =>
-          return writeStringWithSpecial(data, start, ptr, LOWER_UNICODE(x), stream)
-        case other => ptr += 1
-      }
+  /** Writes one character into the stream. */
+  def write[M[_]: Monad, S: CharWriter.In[M]](stream: S, chr: Char): M[Unit] =
+    chr match {
+      case '"' => writeSimpleEscape(stream, '"')
+      case '\\' => writeSimpleEscape(stream, '\\')
+      case '\b' => writeSimpleEscape(stream, 'b')
+      case '\f' => writeSimpleEscape(stream, 'f')
+      case '\r' => writeSimpleEscape(stream, 'r')
+      case '\n' => writeSimpleEscape(stream, 'n')
+      case '\t' => writeSimpleEscape(stream, 't')
+      case x if x < 0x0020 => writeUnicodeEscape(stream, x)
+      case _ => stream.write(chr)
     }
 
-    stream.write(data.subSequence(start, ptr))
-  }
+
+  /** Checks if the character is special and must be escaped. */
+  def needsEscape(chr: Char): Boolean =
+    chr match {
+      case '"' | '\\' | '\b' | '\f' | '\r' | '\n' | '\t' => true
+      case x if x < 0x0020 => true
+      case _ => false
+    }
 
 
-  /**
-   * Writes "regular" string part and then some special (escaped) character.
-   */
-  private def writeStringWithSpecial[M[_]: Monad](
-        data: CharSequence,
+  /** Writes a char sequence as a part of the string. */
+  def writePart[M[_]: Monad, S: DefaultWriter.In[M]](stream: S, chars: CharSequence): M[Unit] =
+    writePart(stream, chars, 0, chars.length())
+
+
+  /** Writes a part of the char sequence as a part of the string. */
+  def writePart[M[_]: Monad, S: DefaultWriter.In[M]](
+        stream: S,
+        chars: CharSequence,
         start: Int,
-        regularEnd: Int,
-        special: String,
-        stream: Stream[M],
+        finish: Int
       ): M[Unit] = {
-    var base =
-      if start < regularEnd then
-        stream.write(data.subSequence(start, regularEnd)).flatMap { _ =>
-          stream.write(special)
-        }
-      else
-        stream.write(special)
+    if start >= finish then return Monad.pure(())
 
-    val nextSectionStart = regularEnd + 1
+    var ptr = start
+    while ptr < finish && !needsEscape(chars.charAt(ptr)) do
+      ptr += 1
 
-    if nextSectionStart < data.length() then
-      base.flatMap { _ =>
-        writeStringRest(data, nextSectionStart, stream)
-      }
-    else
-      base
+    if ptr >= finish then return stream.write(chars, start, finish)
+
+    if ptr == start then
+      return write(stream, chars.charAt(start)) >=||
+        writePart(stream, chars, start + 1, finish)
+
+    stream.write(chars, start, ptr) >=||
+      write(stream, chars.charAt(ptr)) >=||
+      writePart(stream, chars, ptr + 1, finish)
   }
+
+
+  /** Writes the whole character sequence as a JSON string. */
+  def write[M[_]: Monad, S: DefaultWriter.In[M]](stream: S, str: CharSequence): M[Unit] =
+    stream.write(STRING_BOUNDARY) >=|| writePart(stream, str) >=|| stream.write(STRING_BOUNDARY)
+
+
+  /** Writes a simple single escaped character. */
+  private def writeSimpleEscape[M[_]: Monad, S: CharWriter.In[M]](stream: S, escaped: Char): M[Unit] =
+    stream.write('\\') >=|| stream.write(escaped)
+
+
+  /** Writes character as an unicode escape. */
+  private def writeUnicodeEscape[M[_]: Monad, S: CharWriter.In[M]](stream: S, chr: Char): M[Unit] =
+    stream.write('\\') >=||
+    stream.write('u') >=||
+    stream.write(HEX_DIGITS((chr >> 12) & 0x0F)) >=||
+    stream.write(HEX_DIGITS((chr >> 8) & 0x0F)) >=||
+    stream.write(HEX_DIGITS((chr >> 4) & 0x0F)) >=||
+    stream.write(HEX_DIGITS(chr & 0x0F))
 }

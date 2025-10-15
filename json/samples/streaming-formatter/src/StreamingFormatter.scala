@@ -4,13 +4,13 @@ package json.sample.formatter.streaming
 import json.parser.Whitespaces
 import json.parser.Literals
 import json.parser.{Strings => IStrings}
-import json.writer.v3.{Strings => OStrings}
 import json.parser.Numbers
 import json.parser.Arrays
 import json.parser.Objects
 import json.parser.Values
 
-import json.writer.v3.Layout
+import json.writer.Layout
+import json.writer.{Strings => OStrings}
 
 import fun.typeclass.Monad
 import fun.instances.Unnest

@@ -1,5 +1,5 @@
 package io.github.maxkar
-package json.writer.v3
+package json.writer
 
 /** Writer capable of writing a single character. */
 trait CharWriter[M[_], -S] {

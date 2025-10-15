@@ -1,9 +1,8 @@
 package io.github.maxkar
-package json.writer.v3
+package json.writer
 
 import fun.typeclass.Applicative
 import fun.typeclass.Monad
-import scala.util.hashing.Hashing.Default
 
 
 /** A basic layout of the JSON output of the stream `S`. */
