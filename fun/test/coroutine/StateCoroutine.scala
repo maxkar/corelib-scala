@@ -1,6 +1,7 @@
 package io.github.maxkar
 package fun.coroutine
 
+import v2.*
 
 /** Implementation of the "State" monad using coroutine and some tests of the combination. */
 final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite {
@@ -40,26 +41,21 @@ final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite {
 
 
 object StateCoroutine {
-  /** Coroutine module. */
-  val module = new Coroutine[StateSus]
-  import module._
-
-  export module.given
-  export module.Routine
-
   /** State suspension. Hard-coded state type. */
-  enum StateSus[T] {
-    case Read extends StateSus[Int]
-    case Write(value: Int) extends StateSus[Unit]
+  enum Action[T] {
+    case Read extends Action[Int]
+    case Write(value: Int) extends Action[Unit]
   }
+
+  type Routine[T] = Coroutine[Action, T]
 
 
   /** Monad/operation for getting the current state. */
-  val getState: Routine[Int] = module.suspend(StateSus.Read)
+  val getState: Routine[Int] = Coroutine.call(Action.Read)
 
 
   /** Monad/operation for setting the current state. */
-  def setState(v: Int): Routine[Unit] = module.suspend(StateSus.Write(v))
+  def setState(v: Int): Routine[Unit] = Coroutine.call(Action.Write(v))
 
 
   /**
@@ -68,15 +64,15 @@ object StateCoroutine {
   def runState[T](state: Int, routine: Routine[T]): T = {
     /* Stackless (non-recursive) loop here. Just for fun and consistency. */
     var curState = state
-    var proc = routine
+    var proc = routine.run()
     while true do {
-      module.run(proc) match {
-        case Coroutine.RunResult.Suspended(StateSus.Read, cont) =>
+      proc match {
+        case Flow.Call(Action.Read, cont) =>
           proc = cont(curState)
-        case Coroutine.RunResult.Suspended(StateSus.Write(v), cont) =>
+        case Flow.Call(Action.Write(v), cont) =>
           curState = v
           proc = cont(())
-        case Coroutine.RunResult.Finished(x) => return x
+        case Flow.Done(x) => return x
       }
     }
     throw new Error("Please stop reaching unreacheable code")
