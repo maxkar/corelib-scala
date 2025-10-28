@@ -144,8 +144,6 @@ private final class RoutineExecutor[Qos](
             return
           case RunResult.Suspended(x: Operation.ContextOperation[Qos, _], cont) =>
             md = cont(x.perform(context))
-          case RunResult.Suspended(x: Operation.ComplexContextOperation[Qos, _], cont) =>
-            md = monadInstance.bind(x.perform(context), cont)
         }
       }
     } catch {

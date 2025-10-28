@@ -36,19 +36,13 @@ private final class RouteImpl[Qos](
 
 
   override def path[T](fn: PartialFunction[List[String], Step[T]]): Step[T] =
-    routine.suspend(new Operation.ComplexContextOperation[Qos, T] {
-      override def perform(context: RequestContext[Qos]): Step[T] =
-        doRoute(context.initialRequestPath, context.effectivePath, fn)
+    getPaths().flatMap((effectivePath, initialPath) => {
+      doRoute(initialPath, effectivePath, fn)
     })
 
 
   override def continue[T](unconsumedPath: List[String], handler: Step[T]): Step[T] =
-    routine.suspend(new Operation.ComplexContextOperation[Qos, T] {
-      override def perform(context: RequestContext[Qos]): Step[T] = {
-        context.effectivePath = unconsumedPath
-        handler
-      }
-    })
+    setPath(unconsumedPath).flatMap(_ => handler)
 
   override def getMethod(): Step[String] = getMethodInstance
 
@@ -67,4 +61,16 @@ private final class RouteImpl[Qos](
 
   override def getBodyAsBytes(limit: Long): Step[Array[Byte]] =
     routine.suspend(Operation.ReadInputBytes(limit))
+
+  private def getPaths(): Step[(List[String], List[String])] =
+    routine.suspend(new Operation.ContextOperation[Qos, (List[String], List[String])] {
+      override def perform(context: RequestContext[Qos]): (List[String], List[String]) =
+        (context.effectivePath, context.initialRequestPath)
+    })
+
+  private def setPath(newPath: List[String]): Step[Unit] =
+    routine.suspend(new Operation.ContextOperation[Qos, Unit] {
+      override def perform(context: RequestContext[Qos]): Unit =
+        context.effectivePath = newPath
+    })
 }

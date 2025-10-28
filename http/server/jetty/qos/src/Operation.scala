@@ -60,16 +60,4 @@ private object Operation {
     /** Performs the operation upon the given context. */
     def perform(context: RequestContext[Qos]): T
   }
-
-
-  /**
-   * Complex context operation - yields monad instead of the simple value.
-   */
-  private[qos] abstract class ComplexContextOperation[Qos, T] extends Operation[Qos, T] {
-    /**
-     * Performs the operation upon the given context but yields
-     * another computation instead of plain value.
-     */
-    def perform(context: RequestContext[Qos]): Coroutine.Routine[({type M[T] = Operation[Qos, T]})#M, T]
-  }
 }
