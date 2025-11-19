@@ -1,5 +1,5 @@
 package io.github.maxkar
-package fun.coroutine.v2
+package fun.coroutine
 
 /**
  * Result of attempting to execute a coroutine or part of it.

@@ -1,8 +1,6 @@
 package io.github.maxkar
 package fun.coroutine
 
-import v2.*
-
 /** Implementation of the "State" monad using coroutine and some tests of the combination. */
 final class StateCoroutine extends org.scalatest.funsuite.AnyFunSuite {
   import StateCoroutine._

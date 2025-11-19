@@ -2,8 +2,8 @@ package io.github.maxkar
 package http.server.jetty.qos
 
 import fun.typeclass.Monad
+import fun.coroutine.Flow
 import fun.coroutine.Coroutine
-import fun.coroutine.Coroutine.RunResult
 
 import http.server.api.Response
 import http.server.api.Processing
@@ -29,7 +29,6 @@ import scala.jdk.CollectionConverters.*
  * @param sensor sensor for various events.
  */
 private final class RoutineExecutor[Qos](
-        routine: Coroutine[HQ.Suspension[Qos]],
         control: RequestControl,
         queue: BlockingQueue[RequestContext[Qos]],
         errors: NegotiableErrors,
@@ -83,7 +82,7 @@ private final class RoutineExecutor[Qos](
    * @param nextSteps steps to perform on the context.
    */
   def continueRequest(context: RequestContext[Qos], nextSteps: HQ.Step[Qos][Response]): Unit = {
-    context.nextSteps = nextSteps
+    context.nextSteps = nextSteps.run
     continueRequest(context)
   }
 
@@ -92,8 +91,8 @@ private final class RoutineExecutor[Qos](
    * Continues the requset where next steps are created by applying a function
    * to a given value (most common continuation from "resultful" calls).
    */
-  def continueRequest[T](context: RequestContext[Qos], value: T, nextSteps: T => HQ.Step[Qos][Response]): Unit = {
-    context.nextSteps = Monad.pure(value) flatMap nextSteps
+  def continueRequest[T](context: RequestContext[Qos], value: T, nextSteps: T => HQ.StepResult[Qos][Response]): Unit = {
+    context.nextSteps = () => nextSteps(value)
     continueRequest(context)
   }
 
@@ -114,36 +113,36 @@ private final class RoutineExecutor[Qos](
     context.nextSteps = null
     try {
       while true do {
-        routine.run(md) match {
-          case RunResult.Finished(resp) =>
+        md() match {
+          case Flow.Done(resp) =>
             OutputOperation(this, context, resp)
             return
-          case RunResult.Suspended(Operation.Abort(resp), _) =>
+          case Flow.Call(Operation.Abort(resp), _) =>
             OutputOperation(this, context, resp)
             return
-          case RunResult.Suspended(Operation.Raise(error), _) =>
+          case Flow.Call(Operation.Raise(error), _) =>
             raiseInternalError(context, error)
             return
-          case RunResult.Suspended(Operation.ReadInputBytes(limit), cont) =>
+          case Flow.Call(Operation.ReadInputBytes(limit), cont) =>
             InputOperation(this, context, limit, cont)
             return
-          case RunResult.Suspended(Operation.RunCompletable(op, bound), cont) =>
+          case Flow.Call(Operation.RunCompletable(op, bound), cont) =>
             runCompletable(context, op, bound, cont)
             return
-          case RunResult.Suspended(Operation.RunScheduled(op, bound), cont) =>
+          case Flow.Call(Operation.RunScheduled(op, bound), cont) =>
             runScheduled(context, op, bound, cont)
             return
-          case RunResult.Suspended(Operation.SetQos(qos), cont) =>
+          case Flow.Call(Operation.SetQos(qos), cont) =>
             context.qos = qos
             /* Bind this as "cont(x)" may be heavy computation. */
-            context.nextSteps = monadInstance.bind(monadInstance.pure(()), cont)
+            context.nextSteps = () => cont(())
             /* Re-schedule the request with new QoS. This may de-prioritize
              * the current one and give some other request a chance to be executed.
              */
             continueRequest(context, (), cont)
             return
-          case RunResult.Suspended(x: Operation.ContextOperation[Qos, _], cont) =>
-            md = cont(x.perform(context))
+          case Flow.Call(x: Operation.ContextOperation[Qos, _], cont) =>
+            md = () => cont(x.perform(context))
         }
       }
     } catch {
@@ -159,7 +158,7 @@ private final class RoutineExecutor[Qos](
         context: RequestContext[Qos],
         operation: S[T],
         bound: boundary.Completable[S],
-        cont: T => HQ.Step[Qos][Response]
+        cont: T => HQ.StepResult[Qos][Response]
       ): Unit =
     bound.onComplete(operation,
       onSuccess = v =>
@@ -167,7 +166,7 @@ private final class RoutineExecutor[Qos](
       onFailure = t =>
         continueRequest(
           context,
-          routine.suspend(Operation.Raise[Qos, Response](t))
+          Coroutine.call(Operation.Raise[Qos, Response](t))
         )
     )
 
@@ -179,7 +178,7 @@ private final class RoutineExecutor[Qos](
         context: RequestContext[Qos],
         operation: S[T],
         bound: boundary.Scheduled[S, Qos],
-        cont: T => HQ.Step[Qos][Response]
+        cont: T => HQ.StepResult[Qos][Response]
       ): Unit =
     bound(
       operation,
@@ -190,7 +189,7 @@ private final class RoutineExecutor[Qos](
       onFailure = t =>
         continueRequest(
           context,
-          routine.suspend(Operation.Raise[Qos, Response](t))
+          Coroutine.call(Operation.Raise[Qos, Response](t))
         )
     )
 
@@ -209,7 +208,7 @@ private final class RoutineExecutor[Qos](
   private[qos] def completeInput(
         context: RequestContext[Qos],
         data: Array[Byte],
-        nextFun: Array[Byte] => HQ.Step[Qos][Response],
+        nextFun: Array[Byte] => HQ.StepResult[Qos][Response],
       ): Unit =
     continueRequest(context, data, nextFun)
 

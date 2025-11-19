@@ -3,9 +3,6 @@ package fun.coroutine
 
 import fun.typeclass.Monad
 
-import v2.*
-
-
 /** Implementation of the generator coroutine (yield-method from C#/Javascript). */
 final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite {
   import GeneratorCoroutine._

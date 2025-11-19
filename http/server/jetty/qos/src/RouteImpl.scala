@@ -13,7 +13,6 @@ import http.server.toolkit.BaseRoute
 
 /** Implementation of the route typeclass. */
 private final class RouteImpl[Qos](
-      routine: Coroutine[HQ.Suspension[Qos]],
       processing: Processing[HQ.Step[Qos]],
       override protected val errors: NegotiableErrors,
       override protected val knownMethods: Iterable[String],
@@ -22,13 +21,13 @@ private final class RouteImpl[Qos](
   private type Step[T] = HQ.Step[Qos][T]
 
   /** Cached implementation of the "get method" functionality. */
-  private val getMethodInstance: Step[String] = routine.suspend(Effects.GetMethod())
+  private val getMethodInstance: Step[String] = Coroutine.call(Effects.GetMethod())
 
   /** Cached instance of "get all header names". */
-  private val getHeadersInstance: Step[Seq[String]] = routine.suspend(Effects.GetHeaderNames())
+  private val getHeadersInstance: Step[Seq[String]] = Coroutine.call(Effects.GetHeaderNames())
 
   /** Cached instance of "get all parameters names". */
-  private val getParametersInstance: Step[Seq[String]] = routine.suspend(Effects.GetParameterNames())
+  private val getParametersInstance: Step[Seq[String]] = Coroutine.call(Effects.GetParameterNames())
 
 
   override protected def abort[T](response: Response): Step[T] =
@@ -49,27 +48,27 @@ private final class RouteImpl[Qos](
   override def getHeaderNames(): Step[Seq[String]] = getHeadersInstance
 
   override def getHeaders(name: String): Step[Seq[String]] =
-    routine.suspend(Effects.GetHeader(name))
+    Coroutine.call(Effects.GetHeader(name))
 
   override def getCookies(name: String): Step[Seq[String]] =
-    routine.suspend(Effects.GetCookies(name))
+    Coroutine.call(Effects.GetCookies(name))
 
   override def getParameterNames(): Step[Seq[String]] =  getParametersInstance
 
   override def getParameters(name: String): Step[Seq[String]] =
-    routine.suspend(Effects.GetParameter(name))
+    Coroutine.call(Effects.GetParameter(name))
 
   override def getBodyAsBytes(limit: Long): Step[Array[Byte]] =
-    routine.suspend(Operation.ReadInputBytes(limit))
+    Coroutine.call(Operation.ReadInputBytes(limit))
 
   private def getPaths(): Step[(List[String], List[String])] =
-    routine.suspend(new Operation.ContextOperation[Qos, (List[String], List[String])] {
+    Coroutine.call(new Operation.ContextOperation[Qos, (List[String], List[String])] {
       override def perform(context: RequestContext[Qos]): (List[String], List[String]) =
         (context.effectivePath, context.initialRequestPath)
     })
 
   private def setPath(newPath: List[String]): Step[Unit] =
-    routine.suspend(new Operation.ContextOperation[Qos, Unit] {
+    Coroutine.call(new Operation.ContextOperation[Qos, Unit] {
       override def perform(context: RequestContext[Qos]): Unit =
         context.effectivePath = newPath
     })

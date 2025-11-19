@@ -3,9 +3,6 @@ package fun.coroutine
 
 import fun.typeclass.Monad
 
-import v2.*
-
-
 /**
  * Implementation of the Input/Output coroutine.
  * Illustrates potential IO as coroutine (where IO may be asynchronous).
