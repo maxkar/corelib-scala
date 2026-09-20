@@ -3,7 +3,6 @@ package fun.coroutine
 
 import fun.typeclass.Monad
 
-
 /**
  * Implementation of the Input/Output coroutine.
  * Illustrates potential IO as coroutine (where IO may be asynchronous).
@@ -45,43 +44,36 @@ final class IOCoroutine extends org.scalatest.funsuite.AnyFunSuite {
 
 
 object IOCoroutine {
-  /** Coroutine module. */
-  val module = new Coroutine[IOSus]
-  import module._
-
-  export module.given
-  export module.Routine
-
-
   /** State suspension. Hard-coded state type. */
-  enum IOSus[T] {
-    case Read extends IOSus[Option[Char]]
-    case Write(value: Char) extends IOSus[Unit]
+  enum Call[T] {
+    case Read extends Call[Option[Char]]
+    case Write(value: Char) extends Call[Unit]
   }
 
+  type Routine[T] = Coroutine[Call, T]
 
   /** Reads next value from the "input stream". */
-  val read: Routine[Option[Char]] = module.suspend(IOSus.Read)
+  val read: Routine[Option[Char]] = Coroutine.call(Call.Read)
 
 
   /** Writes value into the "output stream". */
-  def write(c: Char): Routine[Unit] = module.suspend(IOSus.Write(c))
+  def write(c: Char): Routine[Unit] = Coroutine.call(Call.Write(c))
 
 
   /** Runs the IO routine. */
   def runIO[T](input: String, routine: Routine[T]): (String, T) =
     var ptr = 0
     var output = new StringBuilder()
-    var proc = routine
+    var proc = routine.run()
 
     /* Classical const-stack runner. Real IO (with async/nio streams) would probably
      * be const-stack as well but with results achieved by different means.
      */
     while true do {
-      module.run(proc) match {
-        case Coroutine.RunResult.Finished(x) =>
+      proc match {
+        case Flow.Done(x) =>
           return (output.toString(), x)
-        case Coroutine.RunResult.Suspended(IOSus.Read, c) =>
+        case Flow.Call(Call.Read, c) =>
           val iores =
             if ptr < input.length() then
               val r = input.charAt(ptr)
@@ -91,7 +83,7 @@ object IOCoroutine {
               None
             end if
           proc = c(iores)
-        case Coroutine.RunResult.Suspended(IOSus.Write(v), c) =>
+        case Flow.Call(Call.Write(v), c) =>
           output += v
           proc = c(())
       }

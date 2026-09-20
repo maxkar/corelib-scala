@@ -22,7 +22,7 @@ private class InputOperation[QoS](
       context: RequestContext[QoS],
       stream: ServletInputStream,
       limit: Long,
-      nextSteps: Array[Byte] => HQ.Step[QoS][Response]
+      nextSteps: Array[Byte] => HQ.StepResult[QoS][Response]
     ) extends ReadListener {
   /** Collector for the request data. */
   private var baos = new ByteArrayOutputStream()
@@ -109,7 +109,7 @@ private object InputOperation {
         module: RoutineExecutor[Qos],
         context: RequestContext[Qos],
         limit: Long,
-        nextSteps: Array[Byte] => HQ.Step[Qos][Response],
+        nextSteps: Array[Byte] => HQ.StepResult[Qos][Response],
       ): Unit = {
     val stream = context.baseRequest.getInputStream()
     val handler = new InputOperation(module, context, stream, limit, nextSteps)

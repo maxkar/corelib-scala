@@ -28,7 +28,6 @@ import org.eclipse.jetty.server.Request
  * @param workThreads working threads - used for awaiting termination.
  */
 final class Module[Qos] private(
-      routine: Coroutine[HQ.Suspension[Qos]],
       processing: Processing[HQ.Step[Qos]],
       routing: Route[HQ.Step[Qos]],
       control: RequestControl,
@@ -52,15 +51,14 @@ final class Module[Qos] private(
   /** Counter for generating request IDs. */
   private val requestSerial = new AtomicLong()
 
-  /** Implementation of the monad for the Step. */
-  given monadInstance: Monad[Step] = routine.monadInstance
-
   /** Request processing instance. */
   given processingInstance: Processing[Step] = processing
 
   /** Implementation of the route typeclass for our monad. */
   given routeInstance: Route[Step] = routing
 
+  /** Monad for the step. */
+  given monad: Monad[Step] = Coroutine.monadInstance
 
   /**
    * Implementation of the lift functionality for any type that
@@ -68,7 +66,7 @@ final class Module[Qos] private(
    */
   given liftCompletable[S[_]](using c: boundary.Completable[S]): Lift[S, Step] with {
     override def apply[T](base: S[T]): Step[T] =
-      routine.suspend(Operation.RunCompletable(base, c))
+      Coroutine.call(Operation.RunCompletable(base, c))
   }
 
 
@@ -78,12 +76,12 @@ final class Module[Qos] private(
    */
   given liftScheduled[S[_]](using s: boundary.Scheduled[S, Qos]): Lift[S, Step] with {
     override def apply[T](base: S[T]): Step[T] =
-      routine.suspend(Operation.RunScheduled(base, s))
+      Coroutine.call(Operation.RunScheduled(base, s))
   }
 
 
   /** Cached instance of "Get Quality of Service". */
-  private val getQosInstance: Step[Qos] = routine.suspend(Effects.GetQos())
+  private val getQosInstance: Step[Qos] = Coroutine.call(Effects.GetQos())
   /** Retrieves current value of the "quality of service" parameter. */
   def getQos(): Step[Qos] = getQosInstance
 
@@ -93,7 +91,7 @@ final class Module[Qos] private(
    *   processing is being scheduled.
    */
   def setQos(newQos: Qos): Step[Unit] =
-    routine.suspend(Operation.SetQos(newQos))
+    Coroutine.call(Operation.SetQos(newQos))
 
 
   /** Stops the module and awaits the termination. */
@@ -159,7 +157,7 @@ final class Module[Qos] private(
         qos = defaultQos,
         initialRequestPath = path,
         effectivePath = path,
-        nextSteps = proc
+        nextSteps = proc.run
       )
     routineExecutor.continueRequest(ctx)
   }
@@ -200,16 +198,15 @@ object Module {
         sensor: Sensor,
       ): Module[Qos] = {
 
-    val routine = new Coroutine[HQ.Suspension[Qos]]
-    implicit val processing = ProcessingImpl(routine)
-    val routing = RouteImpl(routine, processing, errors, knownMethods)
+    implicit val processing = ProcessingImpl[Qos]()
+    val routing = RouteImpl(processing, errors, knownMethods)
     val control = new RequestControl(maxRequestsInFlight)
     val queue =
       new PriorityBlockingQueue[RequestContext[Qos]](
         50,
         RequestContext.requestOrdering[Qos],
       )
-    val routineExecutor = new RoutineExecutor(routine, control, queue, errors, sensor)
+    val routineExecutor = new RoutineExecutor(control, queue, errors, sensor)
     val handler = new Runnable() {
       override def run(): Unit =
         routineExecutor.runAll()
@@ -220,7 +217,6 @@ object Module {
     threads.foreach(_.start())
 
     new Module(
-      routine,
       processing,
       routing,
       control,

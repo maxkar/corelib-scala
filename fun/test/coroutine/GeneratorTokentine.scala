@@ -3,7 +3,6 @@ package fun.coroutine
 
 import fun.typeclass.Monad
 
-
 /** Implementation of the generator coroutine (yield-method from C#/Javascript). */
 final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite {
   import GeneratorCoroutine._
@@ -44,34 +43,28 @@ final class GeneratorCoroutine extends org.scalatest.funsuite.AnyFunSuite {
 
 object GeneratorCoroutine {
 
-  /** Type of the suspension. */
-  abstract sealed class GeneratorSus[T]
-  case class Yield(v: Int) extends GeneratorSus[Unit]
+  abstract sealed class Action[T]
+  case class Yield(v: Int) extends Action[Unit]
 
-  val module = new Coroutine[GeneratorSus]
-  import module.*
-
-  export module.given
-  export module.Routine
-
+  type Routine[T] = Coroutine[Action, T]
 
   /** Implementation of the "yield" operator. */
-  def doYield(v: Int): Routine[Unit] = suspend(Yield(v))
+  def doYield(v: Int): Routine[Unit] = Coroutine.call(Yield(v))
 
 
   /** Runs the generator and returns both generated sequence and result. */
   def runGenerator[T](gen: Routine[T]): (Seq[Int], T) = {
     var acc = new scala.collection.mutable.ArrayBuffer[Int]
 
-    var routine = gen
+    var flow = gen.run()
 
     /* Also "stackless" implementation. */
     while true do {
-      module.run(routine) match
-        case Coroutine.RunResult.Suspended(Yield(v), cont) =>
+      flow match
+        case Flow.Call(Yield(v), cont) =>
           acc += v
-          routine = cont(())
-        case Coroutine.RunResult.Finished(v) =>
+          flow = cont(())
+        case Flow.Done(v) =>
           return (acc.toSeq, v)
       end match
     }

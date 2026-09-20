@@ -30,7 +30,7 @@ private final class RequestContext[Qos](
       var extraHeaders: Seq[(String, String)] = Seq.empty,
       var cookies: Seq[Cookie] = Seq.empty,
       var cleaner: Cleaner = null,
-      var nextSteps: Coroutine.Routine[({type Op[T] = Operation[Qos, T]})#Op, Response] = null
+      var nextSteps: () => HQ.StepResult[Qos][Response] = null
     )
 
 
